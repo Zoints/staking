@@ -9,8 +9,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@solana/spl-token": "^0.1.4",
-    "@solana/web3.js": "^1.13.0"
+    "@solana/spl-token": "^0.1.5",
+    "@solana/web3.js": "^1.15.0"
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.1",
