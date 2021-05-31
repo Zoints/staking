@@ -1,23 +1,11 @@
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{entrypoint::ProgramResult, program_error::ProgramError, pubkey::Pubkey};
+use solana_program::clock::UnixTimestamp;
+use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 
 use crate::error::StakingError;
 
 #[repr(C)]
-#[derive(
-    Debug,
-    PartialEq,
-    BorshDeserialize,
-    BorshSchema,
-    BorshSerialize,
-    Clone,
-    Copy,
-    Default,
-    Eq,
-    Ord,
-    PartialOrd,
-    Hash,
-)]
+#[derive(Debug, PartialEq, BorshDeserialize, BorshSchema, BorshSerialize, Clone, Copy, Eq)]
 pub struct Settings {
     pub token: Pubkey,
     pub authority: Pubkey,
@@ -38,4 +26,20 @@ impl Settings {
             _ => Err(StakingError::InvalidSettingsAccount.into()),
         }
     }
+}
+#[derive(Debug, PartialEq, BorshDeserialize, BorshSchema, BorshSerialize, Clone, Copy, Eq)]
+pub struct Community {
+    pub creation_date: UnixTimestamp,
+    pub last_action: UnixTimestamp,
+    pub primary: Beneficiary,
+    pub secondary: Beneficiary,
+    pub referrer: Pubkey,
+}
+
+#[derive(Debug, PartialEq, BorshDeserialize, BorshSchema, BorshSerialize, Clone, Copy, Eq)]
+pub struct Beneficiary {
+    pub staked: u64,
+    pub authority: Pubkey,
+    pub address: Pubkey,
+    pub unclaimed: u64,
 }

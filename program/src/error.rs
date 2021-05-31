@@ -26,6 +26,34 @@ pub enum StakingError {
     #[error("Token is not a valid SPL token")]
     TokenNotSPLToken,
 
+    /// Community Account Already Exists
+    #[error("Community Account Already Exists")]
+    CommunityAccountAlreadyExists,
+
+    /// Primary Associated Invalid Account
+    #[error("Primary Associated Invalid Account")]
+    PrimaryAssociatedInvalidAccount,
+
+    /// Primary Associated Invalid Owner
+    #[error("Primary Associated Invalid Owner")]
+    PrimaryAssociatedInvalidOwner,
+
+    /// Primary Associated Invalid Token
+    #[error("Primary Associated Invalid Token")]
+    PrimaryAssociatedInvalidToken,
+
+    /// Secondary Associated Invalid Owner
+    #[error("Secondary Associated Invalid Owner")]
+    SecondaryAssociatedInvalidOwner,
+
+    /// Secondary Associated Invalid Token
+    #[error("Secondary Associated Invalid Token")]
+    SecondaryAssociatedInvalidToken,
+
+    /// Secondary Associated Invalid Account
+    #[error("Secondary Associated Invalid Account")]
+    SecondaryAssociatedInvalidAccount,
+
     /// placeholder
     #[error("placeholder")]
     Placeholder,
