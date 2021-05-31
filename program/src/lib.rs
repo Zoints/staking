@@ -1,3 +1,4 @@
+pub mod account;
 #[cfg(not(feature = "no-entrypoint"))]
 mod entrypoint;
 pub mod error;

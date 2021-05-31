@@ -6,6 +6,26 @@ use thiserror::Error;
 
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum StakingError {
+    /// Missing Authority Signature
+    #[error("Missing Authority Signature")]
+    MissingAuthoritySignature,
+
+    /// Program Already Initialized
+    #[error("Program Already Initialized")]
+    ProgramAlreadyInitialized,
+
+    /// Program Not Initialized
+    #[error("Program Not Initialized")]
+    ProgramNotInitialized,
+
+    /// Invalid Settings Account
+    #[error("Invalid Settings Account")]
+    InvalidSettingsAccount,
+
+    /// Token is not a valid SPL token
+    #[error("Token is not a valid SPL token")]
+    TokenNotSPLToken,
+
     /// placeholder
     #[error("placeholder")]
     Placeholder,
