@@ -7,10 +7,8 @@ import {
 import {
     BPF_LOADER_PROGRAM_ID,
     BpfLoader,
-    Account,
     Keypair,
     LAMPORTS_PER_SOL,
-    Signer,
     Transaction,
     TransactionInstruction,
     AccountMeta,
@@ -20,7 +18,6 @@ import {
     SystemProgram
 } from '@solana/web3.js';
 import { Connection } from '@solana/web3.js';
-import { BADNAME } from 'dns';
 import * as fs from 'fs';
 
 const connection = new Connection('http://localhost:8899');
@@ -37,7 +34,7 @@ const token = new Token(
     connection,
     token_id.publicKey,
     TOKEN_PROGRAM_ID,
-    new Account(funder.secretKey)
+    funder
 );
 
 (async () => {
