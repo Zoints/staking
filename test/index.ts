@@ -19,12 +19,15 @@ import {
 } from '@solana/web3.js';
 import { Connection } from '@solana/web3.js';
 import * as fs from 'fs';
+import * as borsh from 'borsh';
+import { Initialize } from './instructions';
+import BN from 'bn.js';
 
 const connection = new Connection('http://localhost:8899');
 const funder = new Keypair();
 
 const token_id = new Keypair();
-const fee_authority = new Keypair();
+const authority = new Keypair();
 
 const mint_authority = new Keypair();
 const deploy_key = new Keypair();
@@ -36,6 +39,14 @@ const token = new Token(
     TOKEN_PROGRAM_ID,
     funder
 );
+
+function am(
+    pubkey: PublicKey,
+    isSigner: boolean,
+    isWritable: boolean
+): AccountMeta {
+    return { pubkey, isSigner, isWritable };
+}
 
 (async () => {
     console.log(`Funding ${funder.publicKey.toBase58()} with 20 SOL`);
@@ -94,4 +105,33 @@ const token = new Token(
     ]);
 
     console.log(`Attempting to initialize`);
+
+    const init_instruction = new Initialize(20_000);
+    const init_data = borsh.serialize(Initialize.schema, init_instruction);
+
+    const settings_id = (
+        await PublicKey.findProgramAddress([Buffer.from('settings')], programId)
+    )[0];
+
+    const init_keys: AccountMeta[] = [
+        am(funder.publicKey, true, false),
+        am(authority.publicKey, true, false),
+        am(settings_id, false, true),
+        am(token_id.publicKey, false, false),
+        am(SYSVAR_RENT_PUBKEY, false, false)
+    ];
+
+    const init_trans = new Transaction().add(
+        new TransactionInstruction({
+            keys: init_keys,
+            programId,
+            data: Buffer.from(init_data)
+        })
+    );
+
+    const init_sig = await sendAndConfirmTransaction(connection, init_trans, [
+        funder,
+        authority
+    ]);
+    console.log(`Initialized: ${init_sig}`);
 })();
