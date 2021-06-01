@@ -55,17 +55,31 @@ pub struct Beneficiary {
     pub unclaimed: u64,
 }
 
+impl Community {
+    pub fn from_account_info(
+        info: &AccountInfo,
+        program_id: &Pubkey,
+    ) -> Result<Community, ProgramError> {
+        if info.owner != program_id {
+            return Err(StakingError::InvalidCommunityAccount.into());
+        }
+
+        Self::try_from_slice(&info.data.borrow())
+            .map_err(|_| StakingError::InvalidCommunityAccount.into())
+    }
+}
+
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSchema, BorshSerialize, Clone, Copy, Eq)]
 pub struct Stake {
-    creation_date: UnixTimestamp,
-    total_stake: u64,
-    self_stake: u64,
-    primary_stake: u64,
-    secondary_stake: u64,
-    last_action: UnixTimestamp,
-    unclaimed: u64,
-    unbonding_start: UnixTimestamp,
-    unbonding_amount: u64,
+    pub creation_date: UnixTimestamp,
+    pub total_stake: u64,
+    pub self_stake: u64,
+    pub primary_stake: u64,
+    pub secondary_stake: u64,
+    pub last_action: UnixTimestamp,
+    pub unclaimed: u64,
+    pub unbonding_start: UnixTimestamp,
+    pub unbonding_amount: u64,
 }
 
 impl Stake {

@@ -36,8 +36,8 @@ impl Processor {
             StakingInstruction::RegisterCommunity => {
                 Self::process_register_community(program_id, accounts)
             }
-            StakingInstruction::Stake { amount } => {
-                Self::process_stake(program_id, accounts, amount)
+            StakingInstruction::InitializeStake => {
+                Self::process_initialize_stake(program_id, accounts)
             }
         }
     }
@@ -196,10 +196,9 @@ impl Processor {
         Ok(())
     }
 
-    pub fn process_stake(
+    pub fn process_initialize_stake(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
-        amount: u64,
     ) -> ProgramResult {
         let iter = &mut accounts.iter();
         let funder_info = next_account_info(iter)?;
@@ -207,17 +206,67 @@ impl Processor {
         let staker_associated_info = next_account_info(iter)?;
         let community_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
+        let stake_info = next_account_info(iter)?;
         let rent_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
         let rent = Rent::from_account_info(rent_info)?;
         let clock = Clock::from_account_info(clock_info)?;
         let settings = Settings::from_account_info(settings_info, program_id)?;
+        let _ = Community::from_account_info(community_info, program_id)?;
 
         if !staker_info.is_signer {
             return Err(StakingError::MissingStakeSignature.into());
         }
 
-        Ok(())
+        let staker_assoc = Account::unpack(&staker_associated_info.data.borrow())
+            .map_err(|_| StakingError::StakerAssociatedInvalidAccount)?;
+        if staker_assoc.mint != settings.token {
+            return Err(StakingError::StakerAssociatedInvalidToken.into());
+        }
+        if staker_assoc.owner != *staker_info.key {
+            return Err(StakingError::StakerAssociatedInvalidOwner.into());
+        }
+
+        let seed = Stake::verify_program_address(
+            stake_info.key,
+            community_info.key,
+            staker_info.key,
+            program_id,
+        )?;
+
+        let stake = Stake {
+            creation_date: clock.unix_timestamp,
+            total_stake: 0,
+            self_stake: 0,
+            primary_stake: 0,
+            secondary_stake: 0,
+            last_action: clock.unix_timestamp,
+            unclaimed: 0,
+            unbonding_start: clock.unix_timestamp,
+            unbonding_amount: 0,
+        };
+
+        let data = stake.try_to_vec()?;
+
+        let lamports = rent.minimum_balance(data.len());
+        let space = data.len() as u64;
+
+        invoke_signed(
+            &create_account(
+                funder_info.key,
+                stake_info.key,
+                lamports,
+                space as u64,
+                program_id,
+            ),
+            &[funder_info.clone(), stake_info.clone()],
+            &[&[
+                b"stake",
+                &community_info.key.to_bytes(),
+                &staker_info.key.to_bytes(),
+                &[seed],
+            ]],
+        )
     }
 }

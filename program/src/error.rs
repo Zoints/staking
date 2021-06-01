@@ -62,9 +62,25 @@ pub enum StakingError {
     #[error("Invalid Stake Account")]
     InvalidStakeAccount,
 
+    /// Invalid Community Account
+    #[error("Invalid Community Account")]
+    InvalidCommunityAccount,
+
     /// Missing Stake Signature
     #[error("Missing Stake Signature")]
     MissingStakeSignature,
+
+    /// Staker Associated Invalid Owner
+    #[error("Staker Associated Invalid Owner")]
+    StakerAssociatedInvalidOwner,
+
+    /// Staker Associated Invalid Token
+    #[error("Staker Associated Invalid Token")]
+    StakerAssociatedInvalidToken,
+
+    /// Staker Associated Invalid Account
+    #[error("Staker Associated Invalid Account")]
+    StakerAssociatedInvalidAccount,
 
     /// placeholder
     #[error("placeholder")]

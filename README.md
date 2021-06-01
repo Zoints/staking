@@ -1,3 +1,7 @@
+# TODO
+
+* Change community accounts to program accounts to stop injection of malicious accounts?
+
 # Staking Outline
 
 Unbonding Time: 10 days

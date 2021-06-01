@@ -5,7 +5,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 pub enum StakingInstruction {
     Initialize { sponsor_fee: u64 },
     RegisterCommunity,
-    Stake { amount: u64 },
+    InitializeStake,
 }
 
 #[cfg(test)]
