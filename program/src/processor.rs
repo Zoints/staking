@@ -96,6 +96,7 @@ impl Processor {
     ) -> ProgramResult {
         let iter = &mut accounts.iter();
         let funder_info = next_account_info(iter)?;
+        let creator_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
         let community_info = next_account_info(iter)?;
         let primary_info = next_account_info(iter)?;
@@ -105,6 +106,10 @@ impl Processor {
         let referrer_info = next_account_info(iter)?;
         let rent_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
+
+        if !creator_info.is_signer {
+            return Err(StakingError::CommunityCreatorSignatureMissing.into());
+        }
 
         let rent = Rent::from_account_info(rent_info)?;
         let clock = Clock::from_account_info(clock_info)?;
@@ -152,6 +157,7 @@ impl Processor {
                 unclaimed: 0,
             }
         } else {
+            msg!("No secondary account, enabling sponsor");
             Beneficiary {
                 staked: 0,
                 authority: ZERO_KEY,
@@ -163,6 +169,7 @@ impl Processor {
         let community = Community {
             creation_date: clock.unix_timestamp,
             last_action: clock.unix_timestamp,
+            authority: *creator_info.key,
             primary,
             secondary,
             referrer: *referrer_info.key,
@@ -173,6 +180,7 @@ impl Processor {
         let lamports = rent.minimum_balance(data.len());
         let space = data.len() as u64;
 
+        msg!("Registering Community: {:?}", community);
         invoke(
             &create_account(
                 funder_info.key,

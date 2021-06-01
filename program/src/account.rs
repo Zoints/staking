@@ -31,6 +31,7 @@ impl Settings {
 pub struct Community {
     pub creation_date: UnixTimestamp,
     pub last_action: UnixTimestamp,
+    pub authority: Pubkey,
     pub primary: Beneficiary,
     pub secondary: Beneficiary,
     pub referrer: Pubkey,

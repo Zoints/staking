@@ -22,3 +22,19 @@ export class Initialize {
         this.sponsorFee = sponsorFee;
     }
 }
+
+export class RegisterCommunity {
+    instructionId: number = 1;
+
+    static schema: Schema = new Map([
+        [
+            RegisterCommunity,
+            {
+                kind: 'struct',
+                fields: [['instructionId', 'u8']]
+            }
+        ]
+    ]);
+
+    constructor() {}
+}

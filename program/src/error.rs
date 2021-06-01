@@ -54,6 +54,10 @@ pub enum StakingError {
     #[error("Secondary Associated Invalid Account")]
     SecondaryAssociatedInvalidAccount,
 
+    /// Community Creator Signature Missing
+    #[error("Community Creator Signature Missing")]
+    CommunityCreatorSignatureMissing,
+
     /// placeholder
     #[error("placeholder")]
     Placeholder,

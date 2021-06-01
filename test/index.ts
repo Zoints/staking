@@ -14,14 +14,17 @@ import {
     AccountMeta,
     PublicKey,
     SYSVAR_RENT_PUBKEY,
-    sendAndConfirmTransaction,
-    SystemProgram
+    SystemProgram,
+    SYSVAR_CLOCK_PUBKEY
 } from '@solana/web3.js';
 import { Connection } from '@solana/web3.js';
 import * as fs from 'fs';
 import * as borsh from 'borsh';
-import { Initialize } from './instructions';
+import { Initialize, RegisterCommunity } from './instructions';
+import { sendAndConfirmTransaction } from './util';
 import BN from 'bn.js';
+
+const zeroKey = new PublicKey(Buffer.alloc(0, 32));
 
 const connection = new Connection('http://localhost:8899');
 const funder = new Keypair();
@@ -135,4 +138,112 @@ function am(
         authority
     ]);
     console.log(`Initialized: ${init_sig}`);
+
+    //////////
+    ////////// USER COMMUNITY 1
+    //////////
+
+    const user_1 = new Keypair();
+    const user_1_community = new Keypair();
+
+    const user_1_assoc = await token.getOrCreateAssociatedAccountInfo(
+        user_1.publicKey
+    );
+    await token.mintTo(user_1_assoc.address, mint_authority, [], 20_000);
+
+    const user_1_instruction = new RegisterCommunity();
+    const user_1_data = borsh.serialize(
+        RegisterCommunity.schema,
+        user_1_instruction
+    );
+
+    const user_1_primary = new Keypair();
+    const user_1_primary_assoc = await token.getOrCreateAssociatedAccountInfo(
+        user_1_primary.publicKey
+    );
+    const user_1_referrer = new Keypair();
+
+    const user_1_keys: AccountMeta[] = [
+        am(funder.publicKey, true, false),
+        am(user_1.publicKey, true, false),
+        am(settings_id, false, false),
+        am(user_1_community.publicKey, true, true),
+        am(user_1_primary.publicKey, false, false),
+        am(user_1_primary_assoc.address, false, true),
+        am(zeroKey, false, false),
+        am(zeroKey, false, false),
+        am(user_1_referrer.publicKey, false, false),
+        am(SYSVAR_RENT_PUBKEY, false, false),
+        am(SYSVAR_CLOCK_PUBKEY, false, false),
+        am(SystemProgram.programId, false, false)
+    ];
+
+    const user_1_trans = new Transaction().add(
+        new TransactionInstruction({
+            keys: user_1_keys,
+            programId,
+            data: Buffer.from(user_1_data)
+        })
+    );
+    sendAndConfirmTransaction(connection, user_1_trans, [
+        funder,
+        user_1,
+        user_1_community
+    ])
+        .then((sig) => console.log(`User 1 community registered: ${sig}`))
+        .catch((e) => console.log(e));
+
+    //////////
+    ////////// ZOINTS COMMUNITY 1
+    //////////
+
+    const zoints_1 = new Keypair();
+    const zoints_1_community = new Keypair();
+
+    const zoints_1_assoc = await token.getOrCreateAssociatedAccountInfo(
+        zoints_1.publicKey
+    );
+    await token.mintTo(zoints_1_assoc.address, mint_authority, [], 20_000);
+
+    const zoints_1_instruction = new RegisterCommunity();
+    const zoints_1_data = borsh.serialize(
+        RegisterCommunity.schema,
+        zoints_1_instruction
+    );
+
+    const zoints_1_primary = new Keypair();
+    const zoints_1_primary_assoc = await token.getOrCreateAssociatedAccountInfo(
+        zoints_1_primary.publicKey
+    );
+    const zoints_1_referrer = zeroKey;
+
+    const zoints_1_keys: AccountMeta[] = [
+        am(funder.publicKey, true, false),
+        am(zoints_1.publicKey, true, false),
+        am(settings_id, false, false),
+        am(zoints_1_community.publicKey, true, true),
+        am(zoints_1_primary.publicKey, false, false),
+        am(zoints_1_primary_assoc.address, false, true),
+        am(zoints_1.publicKey, false, false),
+        am(zoints_1_assoc.address, false, false),
+        am(zoints_1_referrer, false, false),
+        am(SYSVAR_RENT_PUBKEY, false, false),
+        am(SYSVAR_CLOCK_PUBKEY, false, false),
+        am(SystemProgram.programId, false, false)
+    ];
+
+    const zoints_1_trans = new Transaction().add(
+        new TransactionInstruction({
+            keys: zoints_1_keys,
+            programId,
+            data: Buffer.from(zoints_1_data)
+        })
+    );
+    sendAndConfirmTransaction(connection, zoints_1_trans, [
+        funder,
+        zoints_1,
+        zoints_1_community
+    ])
+        .then((sig) => console.log(`Zoints 1 community registered: ${sig}`))
+        .catch((e) => console.log(e));
 })();
