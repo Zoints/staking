@@ -7,6 +7,7 @@ pub enum StakingInstruction {
     RegisterCommunity,
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
     #[test]

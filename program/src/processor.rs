@@ -4,7 +4,7 @@ use solana_program::{
     clock::Clock,
     entrypoint::ProgramResult,
     msg,
-    program::invoke,
+    program::{invoke, invoke_signed},
     program_error::ProgramError,
     program_pack::Pack,
     pubkey::Pubkey,
@@ -61,7 +61,7 @@ impl Processor {
             return Err(StakingError::ProgramAlreadyInitialized.into());
         }
 
-        Settings::verify_program_address(settings_info.key, program_id)?;
+        let seed = Settings::verify_program_address(settings_info.key, program_id)?;
         Mint::unpack(&token_info.data.borrow()).map_err(|_| StakingError::TokenNotSPLToken)?;
 
         let settings = Settings {
@@ -75,7 +75,7 @@ impl Processor {
         let space = data.len();
         let lamports = rent.minimum_balance(space);
 
-        invoke(
+        invoke_signed(
             &create_account(
                 funder_info.key,
                 settings_info.key,
@@ -84,6 +84,7 @@ impl Processor {
                 program_id,
             ),
             &[funder_info.clone(), settings_info.clone()],
+            &[&[b"settings", &[seed]]],
         )?;
 
         settings_info.data.borrow_mut().copy_from_slice(&data);

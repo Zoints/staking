@@ -118,7 +118,8 @@ function am(
         am(authority.publicKey, true, false),
         am(settings_id, false, true),
         am(token_id.publicKey, false, false),
-        am(SYSVAR_RENT_PUBKEY, false, false)
+        am(SYSVAR_RENT_PUBKEY, false, false),
+        am(SystemProgram.programId, false, false)
     ];
 
     const init_trans = new Transaction().add(
