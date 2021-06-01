@@ -58,6 +58,14 @@ pub enum StakingError {
     #[error("Community Creator Signature Missing")]
     CommunityCreatorSignatureMissing,
 
+    /// Invalid Stake Account
+    #[error("Invalid Stake Account")]
+    InvalidStakeAccount,
+
+    /// Missing Stake Signature
+    #[error("Missing Stake Signature")]
+    MissingStakeSignature,
+
     /// placeholder
     #[error("placeholder")]
     Placeholder,

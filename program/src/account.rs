@@ -1,4 +1,5 @@
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use solana_program::account_info::AccountInfo;
 use solana_program::clock::UnixTimestamp;
 use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 
@@ -18,13 +19,22 @@ impl Settings {
     }
 
     pub fn verify_program_address(
-        &address: &Pubkey,
+        address: &Pubkey,
         program_id: &Pubkey,
     ) -> Result<u8, ProgramError> {
         match Self::program_address(program_id) {
-            (real, seed) if real == address => Ok(seed),
+            (real, seed) if real == *address => Ok(seed),
             _ => Err(StakingError::InvalidSettingsAccount.into()),
         }
+    }
+
+    pub fn from_account_info(
+        info: &AccountInfo,
+        program_id: &Pubkey,
+    ) -> Result<Settings, ProgramError> {
+        Self::verify_program_address(info.key, program_id)?;
+        Self::try_from_slice(&info.data.borrow())
+            .map_err(|_| StakingError::ProgramNotInitialized.into())
     }
 }
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSchema, BorshSerialize, Clone, Copy, Eq)]
@@ -43,4 +53,42 @@ pub struct Beneficiary {
     pub authority: Pubkey,
     pub address: Pubkey,
     pub unclaimed: u64,
+}
+
+#[derive(Debug, PartialEq, BorshDeserialize, BorshSchema, BorshSerialize, Clone, Copy, Eq)]
+pub struct Stake {
+    creation_date: UnixTimestamp,
+    total_stake: u64,
+    self_stake: u64,
+    primary_stake: u64,
+    secondary_stake: u64,
+    last_action: UnixTimestamp,
+    unclaimed: u64,
+    unbonding_start: UnixTimestamp,
+    unbonding_amount: u64,
+}
+
+impl Stake {
+    pub fn program_address(
+        community: &Pubkey,
+        staker: &Pubkey,
+        program_id: &Pubkey,
+    ) -> (Pubkey, u8) {
+        Pubkey::find_program_address(
+            &[b"stake", &community.to_bytes(), &staker.to_bytes()],
+            program_id,
+        )
+    }
+
+    pub fn verify_program_address(
+        address: &Pubkey,
+        community: &Pubkey,
+        staker: &Pubkey,
+        program_id: &Pubkey,
+    ) -> Result<u8, ProgramError> {
+        match Self::program_address(community, staker, program_id) {
+            (real, seed) if real == *address => Ok(seed),
+            _ => Err(StakingError::InvalidStakeAccount.into()),
+        }
+    }
 }

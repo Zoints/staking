@@ -15,7 +15,7 @@ use solana_program::{
 use spl_token::state::{Account, Mint};
 
 use crate::{
-    account::{Beneficiary, Community, Settings},
+    account::{Beneficiary, Community, Settings, Stake},
     error::StakingError,
     instruction::StakingInstruction,
     ZERO_KEY,
@@ -35,6 +35,9 @@ impl Processor {
             }
             StakingInstruction::RegisterCommunity => {
                 Self::process_register_community(program_id, accounts)
+            }
+            StakingInstruction::Stake { amount } => {
+                Self::process_stake(program_id, accounts, amount)
             }
         }
     }
@@ -114,11 +117,7 @@ impl Processor {
         let rent = Rent::from_account_info(rent_info)?;
         let clock = Clock::from_account_info(clock_info)?;
 
-        if settings_info.data_len() == 0 {
-            return Err(StakingError::ProgramNotInitialized.into());
-        }
-        Settings::verify_program_address(settings_info.key, program_id)?;
-        let settings = Settings::try_from_slice(&settings_info.data.borrow())?;
+        let settings = Settings::from_account_info(settings_info, program_id)?;
 
         if !community_info.data_is_empty() {
             return Err(StakingError::CommunityAccountAlreadyExists.into());
@@ -193,6 +192,31 @@ impl Processor {
         )?;
 
         community_info.data.borrow_mut().copy_from_slice(&data);
+
+        Ok(())
+    }
+
+    pub fn process_stake(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        amount: u64,
+    ) -> ProgramResult {
+        let iter = &mut accounts.iter();
+        let funder_info = next_account_info(iter)?;
+        let staker_info = next_account_info(iter)?;
+        let staker_associated_info = next_account_info(iter)?;
+        let community_info = next_account_info(iter)?;
+        let settings_info = next_account_info(iter)?;
+        let rent_info = next_account_info(iter)?;
+        let clock_info = next_account_info(iter)?;
+
+        let rent = Rent::from_account_info(rent_info)?;
+        let clock = Clock::from_account_info(clock_info)?;
+        let settings = Settings::from_account_info(settings_info, program_id)?;
+
+        if !staker_info.is_signer {
+            return Err(StakingError::MissingStakeSignature.into());
+        }
 
         Ok(())
     }
