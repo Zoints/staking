@@ -106,3 +106,53 @@ impl Stake {
         }
     }
 }
+
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, Eq, PartialOrd, Ord)]
+pub struct StakePayout(u128);
+
+impl StakePayout {
+    pub const SCALE: u128 = 10_000_000_000_000_000_000;
+
+    pub fn new(amount: u64) -> Self {
+        StakePayout(amount as u128 * Self::SCALE)
+    }
+
+    pub fn get(&self) -> u64 {
+        (self.0 / Self::SCALE) as u64
+    }
+
+    pub fn remainder(&self) -> u64 {
+        (self.0 % Self::SCALE) as u64
+    }
+}
+
+impl std::ops::Div<u128> for StakePayout {
+    type Output = StakePayout;
+    fn div(self, other: u128) -> Self::Output {
+        StakePayout(self.0 / other)
+    }
+}
+
+impl std::ops::DivAssign<u128> for StakePayout {
+    fn div_assign(&mut self, other: u128) {
+        self.0 /= other;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    pub fn test_stake_amount() {
+        let mut stake = StakePayout::new(5_000);
+        stake /= 365 * 24 * 3600 * 10;
+
+        assert_eq!(stake, StakePayout(158548959918822));
+        assert_eq!(stake.get(), 0);
+        assert_eq!(stake.remainder(), 158548959918822);
+
+        println!("{:0>1}.{:0>19}", stake.get(), stake.remainder());
+    }
+}

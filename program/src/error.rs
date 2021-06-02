@@ -82,6 +82,10 @@ pub enum StakingError {
     #[error("Staker Associated Invalid Account")]
     StakerAssociatedInvalidAccount,
 
+    /// Staker Balance Too Low
+    #[error("Staker Balance Too Low")]
+    StakerBalanceTooLow,
+
     /// placeholder
     #[error("placeholder")]
     Placeholder,

@@ -6,6 +6,7 @@ pub enum StakingInstruction {
     Initialize { sponsor_fee: u64 },
     RegisterCommunity,
     InitializeStake,
+    Stake { amount: u64 },
 }
 
 #[cfg(test)]

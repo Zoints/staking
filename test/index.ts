@@ -267,16 +267,6 @@ function am(
         )
     )[0];
 
-    /*
-        let funder_info = next_account_info(iter)?;
-        let staker_info = next_account_info(iter)?;
-        let staker_associated_info = next_account_info(iter)?;
-        let community_info = next_account_info(iter)?;
-        let settings_info = next_account_info(iter)?;
-        let stake_info = next_account_info(iter)?;
-        let rent_info = next_account_info(iter)?;
-        let clock_info = next_account_info(iter)?;
-        */
     const staker_1_keys: AccountMeta[] = [
         am(funder.publicKey, true, false),
         am(staker_1.publicKey, true, false),
