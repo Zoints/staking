@@ -109,34 +109,40 @@ impl Stake {
 
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, Eq, PartialOrd, Ord)]
-pub struct StakePayout(u128);
+pub struct StakePayout {
+    amount: u128,
+}
 
 impl StakePayout {
     pub const SCALE: u128 = 10_000_000_000_000_000_000;
 
     pub fn new(amount: u64) -> Self {
-        StakePayout(amount as u128 * Self::SCALE)
+        StakePayout {
+            amount: amount as u128 * Self::SCALE,
+        }
     }
 
     pub fn get(&self) -> u64 {
-        (self.0 / Self::SCALE) as u64
+        (self.amount / Self::SCALE) as u64
     }
 
     pub fn remainder(&self) -> u64 {
-        (self.0 % Self::SCALE) as u64
+        (self.amount % Self::SCALE) as u64
     }
 }
 
-impl std::ops::Div<u128> for StakePayout {
+impl std::ops::Div<u64> for StakePayout {
     type Output = StakePayout;
-    fn div(self, other: u128) -> Self::Output {
-        StakePayout(self.0 / other)
+    fn div(self, other: u64) -> Self::Output {
+        StakePayout {
+            amount: self.amount / other as u128,
+        }
     }
 }
 
-impl std::ops::DivAssign<u128> for StakePayout {
-    fn div_assign(&mut self, other: u128) {
-        self.0 /= other;
+impl std::ops::DivAssign<u64> for StakePayout {
+    fn div_assign(&mut self, other: u64) {
+        self.amount /= other as u128;
     }
 }
 
@@ -145,14 +151,42 @@ mod tests {
     use super::*;
 
     #[test]
-    pub fn test_stake_amount() {
+    pub fn test_stake_payout_amount() {
         let mut stake = StakePayout::new(5_000);
         stake /= 365 * 24 * 3600 * 10;
 
-        assert_eq!(stake, StakePayout(158548959918822));
+        assert_eq!(
+            stake,
+            StakePayout {
+                amount: 158548959918822
+            }
+        );
         assert_eq!(stake.get(), 0);
         assert_eq!(stake.remainder(), 158548959918822);
 
         println!("{:0>1}.{:0>19}", stake.get(), stake.remainder());
+
+        stake = StakePayout::new(5_000_000_000);
+        stake /= 365 * 24 * 3600 * 10;
+
+        assert_eq!(
+            stake,
+            StakePayout {
+                amount: 158548959918822932521
+            }
+        );
+        assert_eq!(stake.get(), 15);
+        assert_eq!(stake.remainder(), 8548959918822932521);
+
+        println!("{:0>1}.{:0>19}", stake.get(), stake.remainder());
+    }
+
+    #[test]
+    pub fn test_stake_payout_serialization() {
+        let spo = StakePayout::new(984643132) / 9234238;
+        let data = spo.try_to_vec().unwrap();
+        assert_eq!(data, 1066296030056838474381u128.to_le_bytes());
+        let back = StakePayout::try_from_slice(&data).unwrap();
+        assert_eq!(spo, back);
     }
 }
