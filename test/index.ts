@@ -246,4 +246,60 @@ function am(
     ])
         .then((sig) => console.log(`Zoints 1 community registered: ${sig}`))
         .catch((e) => console.log(e));
+
+    //////////
+    ////////// STAKER 1
+    //////////
+    const staker_1 = new Keypair();
+    const staker_1_associated = await token.getOrCreateAssociatedAccountInfo(
+        staker_1.publicKey
+    );
+    await token.mintTo(staker_1_associated.address, mint_authority, [], 20_000);
+
+    const staker_1_stake = (
+        await PublicKey.findProgramAddress(
+            [
+                Buffer.from('stake'),
+                user_1_community.publicKey.toBuffer(),
+                staker_1.publicKey.toBuffer()
+            ],
+            programId
+        )
+    )[0];
+
+    /*
+        let funder_info = next_account_info(iter)?;
+        let staker_info = next_account_info(iter)?;
+        let staker_associated_info = next_account_info(iter)?;
+        let community_info = next_account_info(iter)?;
+        let settings_info = next_account_info(iter)?;
+        let stake_info = next_account_info(iter)?;
+        let rent_info = next_account_info(iter)?;
+        let clock_info = next_account_info(iter)?;
+        */
+    const staker_1_keys: AccountMeta[] = [
+        am(funder.publicKey, true, false),
+        am(staker_1.publicKey, true, false),
+        am(staker_1_associated.address, false, false),
+        am(user_1_community.publicKey, false, false),
+        am(settings_id, false, false),
+        am(staker_1_stake, false, true),
+        am(SYSVAR_RENT_PUBKEY, false, false),
+        am(SYSVAR_CLOCK_PUBKEY, false, false),
+        am(SystemProgram.programId, false, false)
+    ];
+    const staker_1_data = Buffer.alloc(1, 2);
+    const staker_1_trans = new Transaction().add(
+        new TransactionInstruction({
+            keys: staker_1_keys,
+            programId,
+            data: staker_1_data
+        })
+    );
+    const staker_1_sig = await sendAndConfirmTransaction(
+        connection,
+        staker_1_trans,
+        [funder, staker_1]
+    );
+    console.log(`Staker_1/user_community_1 stake created: ${staker_1_sig}`);
 })();
