@@ -126,6 +126,8 @@ function am(
         am(pool_id, false, true),
         am(token_id.publicKey, false, false),
         am(SYSVAR_RENT_PUBKEY, false, false),
+        am(TOKEN_PROGRAM_ID, false, false),
+        am(programId, false, false),
         am(SystemProgram.programId, false, false)
     ];
 

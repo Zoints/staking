@@ -64,6 +64,8 @@ impl Processor {
         let pool_info = next_account_info(iter)?;
         let token_info = next_account_info(iter)?;
         let rent_info = next_account_info(iter)?;
+        let token_program_info = next_account_info(iter)?;
+        let program_info = next_account_info(iter)?;
 
         let rent = Rent::from_account_info(rent_info)?;
 
@@ -131,8 +133,8 @@ impl Processor {
                 pool_info.clone(),
                 token_info.clone(),
                 rent_info.clone(),
-                // this program??
-                //        token_program_info.clone(),
+                program_info.clone(),
+                token_program_info.clone(),
             ],
         )?;
 
