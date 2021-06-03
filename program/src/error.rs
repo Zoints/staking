@@ -22,6 +22,10 @@ pub enum StakingError {
     #[error("Invalid Settings Account")]
     InvalidSettingsAccount,
 
+    /// Invalid Pool Account
+    #[error("Invalid Pool Account")]
+    InvalidPoolAccount,
+
     /// Token is not a valid SPL token
     #[error("Token is not a valid SPL token")]
     TokenNotSPLToken,
@@ -93,6 +97,14 @@ pub enum StakingError {
     /// Staker Withdrawing Too Much
     #[error("Staker Withdrawing Too Much")]
     StakerWithdrawingTooMuch,
+
+    /// Withdraw Nothing to withdraw
+    #[error("Withdraw Nothing to withdraw")]
+    WithdrawNothingtowithdraw,
+
+    /// Withdraw Unbonding Time Not Over Yet
+    #[error("Withdraw Unbonding Time Not Over Yet")]
+    WithdrawUnbondingTimeNotOverYet,
 
     /// placeholder
     #[error("placeholder")]

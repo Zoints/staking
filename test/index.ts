@@ -115,11 +115,15 @@ function am(
     const settings_id = (
         await PublicKey.findProgramAddress([Buffer.from('settings')], programId)
     )[0];
+    const pool_id = (
+        await PublicKey.findProgramAddress([Buffer.from('pool')], programId)
+    )[0];
 
     const init_keys: AccountMeta[] = [
         am(funder.publicKey, true, false),
         am(authority.publicKey, true, false),
         am(settings_id, false, true),
+        am(pool_id, false, true),
         am(token_id.publicKey, false, false),
         am(SYSVAR_RENT_PUBKEY, false, false),
         am(SystemProgram.programId, false, false)
@@ -138,6 +142,8 @@ function am(
         authority
     ]);
     console.log(`Initialized: ${init_sig}`);
+
+    await token.mintTo(pool_id, mint_authority, [], 100_000_000);
 
     //////////
     ////////// USER COMMUNITY 1

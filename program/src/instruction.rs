@@ -8,6 +8,7 @@ pub enum StakingInstruction {
     InitializeStake,
     Stake { amount: u64 },
     Unstake { amount: u64 },
+    WithdrawUnbond,
 }
 
 #[cfg(test)]

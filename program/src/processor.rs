@@ -46,6 +46,9 @@ impl Processor {
             StakingInstruction::Unstake { amount } => {
                 Self::process_stake(program_id, accounts, amount)
             }
+            StakingInstruction::WithdrawUnbond => {
+                Self::process_withdraw_unbond(program_id, accounts)
+            }
         }
     }
 
@@ -58,6 +61,7 @@ impl Processor {
         let funder_info = next_account_info(iter)?;
         let authority_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
+        let pool_info = next_account_info(iter)?;
         let token_info = next_account_info(iter)?;
         let rent_info = next_account_info(iter)?;
 
@@ -73,6 +77,8 @@ impl Processor {
 
         let seed = Settings::verify_program_address(settings_info.key, program_id)?;
         Mint::unpack(&token_info.data.borrow()).map_err(|_| StakingError::TokenNotSPLToken)?;
+
+        let pool_seed = Settings::verify_pool_address(pool_info.key, program_id)?;
 
         let settings = Settings {
             sponsor_fee,
@@ -99,6 +105,37 @@ impl Processor {
         )?;
 
         settings_info.data.borrow_mut().copy_from_slice(&data);
+
+        let lamports = rent.minimum_balance(Account::LEN);
+        let space = Account::LEN as u64;
+        invoke_signed(
+            &create_account(
+                funder_info.key,
+                pool_info.key,
+                lamports,
+                space,
+                &spl_token::id(),
+            ),
+            &[funder_info.clone(), pool_info.clone()],
+            &[&[b"pool", &[pool_seed]]],
+        )?;
+
+        invoke(
+            &spl_token::instruction::initialize_account(
+                &spl_token::id(),
+                pool_info.key,
+                token_info.key,
+                program_id,
+            )?,
+            &[
+                pool_info.clone(),
+                token_info.clone(),
+                rent_info.clone(),
+                // this program??
+                //        token_program_info.clone(),
+            ],
+        )?;
+
         Ok(())
     }
     pub fn process_register_community(
@@ -438,6 +475,52 @@ impl Processor {
             .data
             .borrow_mut()
             .copy_from_slice(&community.try_to_vec()?);
+
+        Ok(())
+    }
+
+    pub fn process_withdraw_unbond(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+        let iter = &mut accounts.iter();
+        let _funder_info = next_account_info(iter)?;
+        let staker_info = next_account_info(iter)?;
+        let staker_associated_info = next_account_info(iter)?;
+        let community_info = next_account_info(iter)?;
+        let settings_info = next_account_info(iter)?;
+        let stake_info = next_account_info(iter)?;
+        let clock_info = next_account_info(iter)?;
+
+        let clock = Clock::from_account_info(clock_info)?;
+        let settings = Settings::from_account_info(settings_info, program_id)?;
+        // not verifying community, we just need an existing pubkey to check stake program address
+
+        if !staker_info.is_signer {
+            return Err(StakingError::MissingStakeSignature.into());
+        }
+
+        let staker_assoc = Account::unpack(&staker_associated_info.data.borrow())
+            .map_err(|_| StakingError::StakerAssociatedInvalidAccount)?;
+        if staker_assoc.mint != settings.token {
+            return Err(StakingError::StakerAssociatedInvalidToken.into());
+        }
+        if staker_assoc.owner != *staker_info.key {
+            return Err(StakingError::StakerAssociatedInvalidOwner.into());
+        }
+
+        Stake::verify_program_address(
+            stake_info.key,
+            community_info.key,
+            staker_info.key,
+            program_id,
+        )?;
+
+        let stake = Stake::try_from_slice(&stake_info.data.borrow())?;
+        if stake.unbonding_amount == 0 {
+            return Err(StakingError::WithdrawNothingtowithdraw.into());
+        }
+
+        if clock.unix_timestamp - stake.unbonding_start < crate::UNBONDING_PERIOD {
+            return Err(StakingError::WithdrawUnbondingTimeNotOverYet.into());
+        }
 
         Ok(())
     }

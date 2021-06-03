@@ -30,6 +30,16 @@ impl Settings {
         }
     }
 
+    pub fn pool_address(program_id: &Pubkey) -> (Pubkey, u8) {
+        Pubkey::find_program_address(&[b"pool"], program_id)
+    }
+    pub fn verify_pool_address(address: &Pubkey, program_id: &Pubkey) -> Result<u8, ProgramError> {
+        match Self::pool_address(program_id) {
+            (real, seed) if real == *address => Ok(seed),
+            _ => Err(StakingError::InvalidPoolAccount.into()),
+        }
+    }
+
     pub fn from_account_info(
         info: &AccountInfo,
         program_id: &Pubkey,
