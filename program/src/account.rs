@@ -4,6 +4,7 @@ use solana_program::clock::UnixTimestamp;
 use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 
 use crate::error::StakingError;
+use crate::split_stake;
 
 #[repr(C)]
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSchema, BorshSerialize, Clone, Copy, Eq)]
@@ -11,6 +12,7 @@ pub struct Settings {
     pub token: Pubkey,
     pub authority: Pubkey,
     pub sponsor_fee: u64,
+    pub total_stake: u64,
 }
 
 impl Settings {
@@ -52,7 +54,7 @@ pub struct Beneficiary {
     pub staked: u64,
     pub authority: Pubkey,
     pub address: Pubkey,
-    pub unclaimed: u64,
+    pub unclaimed: StakePayout,
 }
 
 impl Community {
@@ -67,6 +69,22 @@ impl Community {
         Self::try_from_slice(&info.data.borrow())
             .map_err(|_| StakingError::InvalidCommunityAccount.into())
     }
+
+    pub fn update_payout(&mut self, current_time: UnixTimestamp) {
+        if self.last_action == current_time {
+            return;
+        }
+
+        let primary_payout =
+            crate::calculate_payout(self.last_action, current_time, self.primary.staked);
+        self.primary.unclaimed.add(primary_payout);
+
+        let secondary_payout =
+            crate::calculate_payout(self.last_action, current_time, self.secondary.staked);
+        self.secondary.unclaimed.add(secondary_payout);
+
+        self.last_action = current_time;
+    }
 }
 
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSchema, BorshSerialize, Clone, Copy, Eq)]
@@ -77,7 +95,7 @@ pub struct Stake {
     pub primary_stake: u64,
     pub secondary_stake: u64,
     pub last_action: UnixTimestamp,
-    pub unclaimed: u64,
+    pub unclaimed: StakePayout,
     pub unbonding_start: UnixTimestamp,
     pub unbonding_amount: u64,
 }
@@ -105,10 +123,34 @@ impl Stake {
             _ => Err(StakingError::InvalidStakeAccount.into()),
         }
     }
+
+    pub fn add_stake(&mut self, amount: u64) -> (u64, u64) {
+        self.total_stake += amount;
+        let split = split_stake(self.total_stake);
+        // a bigger split is always >=, this difference should be safe
+        //let d_self = split.0 - self.self_stake;
+        let d_primary = split.1 - self.primary_stake;
+        let d_secondary = split.2 - self.secondary_stake;
+        self.self_stake = split.0;
+        self.primary_stake = split.1;
+        self.secondary_stake = split.2;
+        (d_primary, d_secondary)
+    }
 }
 
 #[repr(C)]
-#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, Eq, PartialOrd, Ord)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    BorshSerialize,
+    BorshDeserialize,
+    BorshSchema,
+    Eq,
+    PartialOrd,
+    Ord,
+    Copy,
+)]
 pub struct StakePayout {
     amount: u128,
 }
@@ -129,20 +171,20 @@ impl StakePayout {
     pub fn remainder(&self) -> u64 {
         (self.amount % Self::SCALE) as u64
     }
-}
 
-impl std::ops::Div<u64> for StakePayout {
-    type Output = StakePayout;
-    fn div(self, other: u64) -> Self::Output {
-        StakePayout {
-            amount: self.amount / other as u128,
-        }
+    pub fn add(&mut self, other: StakePayout) {
+        self.amount += other.amount
     }
 }
 
 impl std::ops::DivAssign<u64> for StakePayout {
     fn div_assign(&mut self, other: u64) {
         self.amount /= other as u128;
+    }
+}
+impl std::ops::MulAssign<u64> for StakePayout {
+    fn mul_assign(&mut self, other: u64) {
+        self.amount *= other as u128;
     }
 }
 
@@ -183,7 +225,8 @@ mod tests {
 
     #[test]
     pub fn test_stake_payout_serialization() {
-        let spo = StakePayout::new(984643132) / 9234238;
+        let mut spo = StakePayout::new(984643132);
+        spo /= 9234238;
         let data = spo.try_to_vec().unwrap();
         assert_eq!(data, 1066296030056838474381u128.to_le_bytes());
         let back = StakePayout::try_from_slice(&data).unwrap();

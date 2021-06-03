@@ -15,10 +15,11 @@ use solana_program::{
 use spl_token::state::{Account, Mint};
 
 use crate::{
-    account::{Beneficiary, Community, Settings, Stake},
+    account::{Beneficiary, Community, Settings, Stake, StakePayout},
+    calculate_payout,
     error::StakingError,
     instruction::StakingInstruction,
-    ZERO_KEY,
+    MINIMUM_STAKE, ZERO_KEY,
 };
 
 pub struct Processor {}
@@ -74,6 +75,7 @@ impl Processor {
             sponsor_fee,
             authority: *authority_info.key,
             token: *token_info.key,
+            total_stake: 0,
         };
 
         let data = settings.try_to_vec()?;
@@ -139,7 +141,7 @@ impl Processor {
             staked: 0,
             authority: *primary_info.key,
             address: *primary_associated_info.key,
-            unclaimed: 0,
+            unclaimed: StakePayout::new(0),
         };
 
         let secondary = if *secondary_info.key != ZERO_KEY {
@@ -156,7 +158,7 @@ impl Processor {
                 staked: 0,
                 authority: *secondary_info.key,
                 address: *secondary_associated_info.key,
-                unclaimed: 0,
+                unclaimed: StakePayout::new(0),
             }
         } else {
             msg!("No secondary account, enabling sponsor");
@@ -164,7 +166,7 @@ impl Processor {
                 staked: 0,
                 authority: ZERO_KEY,
                 address: ZERO_KEY,
-                unclaimed: 0,
+                unclaimed: StakePayout::new(0),
             }
         };
 
@@ -245,7 +247,7 @@ impl Processor {
             primary_stake: 0,
             secondary_stake: 0,
             last_action: clock.unix_timestamp,
-            unclaimed: 0,
+            unclaimed: StakePayout::new(0),
             unbonding_start: clock.unix_timestamp,
             unbonding_amount: 0,
         };
@@ -285,13 +287,11 @@ impl Processor {
         let community_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
-        let rent_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
-        let _rent = Rent::from_account_info(rent_info)?;
-        let _clock = Clock::from_account_info(clock_info)?;
-        let settings = Settings::from_account_info(settings_info, program_id)?;
-        let _community = Community::from_account_info(community_info, program_id)?;
+        let clock = Clock::from_account_info(clock_info)?;
+        let mut settings = Settings::from_account_info(settings_info, program_id)?;
+        let mut community = Community::from_account_info(community_info, program_id)?;
 
         if !staker_info.is_signer {
             return Err(StakingError::MissingStakeSignature.into());
@@ -309,14 +309,46 @@ impl Processor {
             return Err(StakingError::StakerBalanceTooLow.into());
         }
 
-        let _seed = Stake::verify_program_address(
+        Stake::verify_program_address(
             stake_info.key,
             community_info.key,
             staker_info.key,
             program_id,
         )?;
 
-        let _stake = Stake::try_from_slice(&stake_info.data.borrow())?;
+        // update settings
+        settings.total_stake += amount;
+
+        // update staker
+        let mut stake = Stake::try_from_slice(&stake_info.data.borrow())?;
+        if stake.total_stake + amount < MINIMUM_STAKE {
+            return Err(StakingError::StakerMinimumBalanceNotMet.into());
+        }
+
+        let staker_payout =
+            calculate_payout(stake.last_action, clock.unix_timestamp, stake.self_stake);
+        stake.unclaimed.add(staker_payout);
+        stake.last_action = clock.unix_timestamp;
+
+        let (d_primary, d_secondary) = stake.add_stake(amount);
+
+        // update primary + secondary
+        community.update_payout(clock.unix_timestamp);
+        community.primary.staked += d_primary;
+        community.secondary.staked += d_secondary;
+
+        settings_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&settings.try_to_vec()?);
+        stake_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&stake.try_to_vec()?);
+        community_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&community.try_to_vec()?);
 
         Ok(())
     }
