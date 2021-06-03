@@ -7,6 +7,7 @@ pub enum StakingInstruction {
     RegisterCommunity,
     InitializeStake,
     Stake { amount: u64 },
+    Unstake { amount: u64 },
 }
 
 #[cfg(test)]

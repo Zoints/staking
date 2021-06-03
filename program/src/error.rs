@@ -90,6 +90,10 @@ pub enum StakingError {
     #[error("Staker Minimum Balance Not Met")]
     StakerMinimumBalanceNotMet,
 
+    /// Staker Withdrawing Too Much
+    #[error("Staker Withdrawing Too Much")]
+    StakerWithdrawingTooMuch,
+
     /// placeholder
     #[error("placeholder")]
     Placeholder,

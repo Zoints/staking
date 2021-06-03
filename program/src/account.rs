@@ -128,9 +128,20 @@ impl Stake {
         self.total_stake += amount;
         let split = split_stake(self.total_stake);
         // a bigger split is always >=, this difference should be safe
-        //let d_self = split.0 - self.self_stake;
         let d_primary = split.1 - self.primary_stake;
         let d_secondary = split.2 - self.secondary_stake;
+        self.self_stake = split.0;
+        self.primary_stake = split.1;
+        self.secondary_stake = split.2;
+        (d_primary, d_secondary)
+    }
+
+    pub fn remove_stake(&mut self, amount: u64) -> (u64, u64) {
+        self.total_stake -= amount;
+        let split = split_stake(self.total_stake);
+        // a smaller split is always <=, this difference should be safe
+        let d_primary = self.primary_stake - split.1;
+        let d_secondary = self.secondary_stake - split.2;
         self.self_stake = split.0;
         self.primary_stake = split.1;
         self.secondary_stake = split.2;
@@ -164,8 +175,11 @@ impl StakePayout {
         }
     }
 
-    pub fn get(&self) -> u64 {
+    pub fn whole(&self) -> u64 {
         (self.amount / Self::SCALE) as u64
+    }
+    pub fn clear_whole(&mut self) {
+        self.amount %= Self::SCALE;
     }
 
     pub fn remainder(&self) -> u64 {
@@ -203,10 +217,10 @@ mod tests {
                 amount: 158548959918822
             }
         );
-        assert_eq!(stake.get(), 0);
+        assert_eq!(stake.whole(), 0);
         assert_eq!(stake.remainder(), 158548959918822);
 
-        println!("{:0>1}.{:0>19}", stake.get(), stake.remainder());
+        println!("{:0>1}.{:0>19}", stake.whole(), stake.remainder());
 
         stake = StakePayout::new(5_000_000_000);
         stake /= 365 * 24 * 3600 * 10;
@@ -217,10 +231,10 @@ mod tests {
                 amount: 158548959918822932521
             }
         );
-        assert_eq!(stake.get(), 15);
+        assert_eq!(stake.whole(), 15);
         assert_eq!(stake.remainder(), 8548959918822932521);
 
-        println!("{:0>1}.{:0>19}", stake.get(), stake.remainder());
+        println!("{:0>1}.{:0>19}", stake.whole(), stake.remainder());
     }
 
     #[test]

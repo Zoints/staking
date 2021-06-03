@@ -58,11 +58,23 @@ mod tests {
     // (it does)
     pub fn _test_split_increase() {
         let mut prev: (u64, u64, u64) = (0, 0, 0);
-        for i in 0..10_000_000_000u64 {
+        for i in 0..1_000_000_000u64 {
             let split = split_stake(i);
             assert!(split.0 >= prev.0);
             assert!(split.1 >= prev.1);
             assert!(split.2 >= prev.2);
+            prev = split
+        }
+    }
+    //#[test]
+    // reverse of the above
+    pub fn _test_split_decrease() {
+        let mut prev: (u64, u64, u64) = split_stake(1_000_000_001);
+        for i in (0..1_000_000_000u64).rev() {
+            let split = split_stake(i);
+            assert!(split.0 <= prev.0);
+            assert!(split.1 <= prev.1);
+            assert!(split.2 <= prev.2);
             prev = split
         }
     }

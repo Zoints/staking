@@ -43,6 +43,9 @@ impl Processor {
             StakingInstruction::Stake { amount } => {
                 Self::process_stake(program_id, accounts, amount)
             }
+            StakingInstruction::Unstake { amount } => {
+                Self::process_stake(program_id, accounts, amount)
+            }
         }
     }
 
@@ -336,6 +339,92 @@ impl Processor {
         community.update_payout(clock.unix_timestamp);
         community.primary.staked += d_primary;
         community.secondary.staked += d_secondary;
+
+        settings_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&settings.try_to_vec()?);
+        stake_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&stake.try_to_vec()?);
+        community_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&community.try_to_vec()?);
+
+        Ok(())
+    }
+
+    pub fn process_unstake(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        amount: u64,
+    ) -> ProgramResult {
+        let iter = &mut accounts.iter();
+        let _funder_info = next_account_info(iter)?;
+        let staker_info = next_account_info(iter)?;
+        let staker_associated_info = next_account_info(iter)?;
+        let community_info = next_account_info(iter)?;
+        let settings_info = next_account_info(iter)?;
+        let stake_info = next_account_info(iter)?;
+        let clock_info = next_account_info(iter)?;
+
+        let clock = Clock::from_account_info(clock_info)?;
+        let mut settings = Settings::from_account_info(settings_info, program_id)?;
+        let mut community = Community::from_account_info(community_info, program_id)?;
+
+        if !staker_info.is_signer {
+            return Err(StakingError::MissingStakeSignature.into());
+        }
+
+        let staker_assoc = Account::unpack(&staker_associated_info.data.borrow())
+            .map_err(|_| StakingError::StakerAssociatedInvalidAccount)?;
+        if staker_assoc.mint != settings.token {
+            return Err(StakingError::StakerAssociatedInvalidToken.into());
+        }
+        if staker_assoc.owner != *staker_info.key {
+            return Err(StakingError::StakerAssociatedInvalidOwner.into());
+        }
+
+        Stake::verify_program_address(
+            stake_info.key,
+            community_info.key,
+            staker_info.key,
+            program_id,
+        )?;
+
+        // update staker
+        let mut stake = Stake::try_from_slice(&stake_info.data.borrow())?;
+
+        if amount > stake.total_stake {
+            return Err(StakingError::StakerWithdrawingTooMuch.into());
+        }
+
+        // allow them to withdraw everything
+        if stake.total_stake - amount > 0 && stake.total_stake - amount < MINIMUM_STAKE {
+            return Err(StakingError::StakerMinimumBalanceNotMet.into());
+        }
+
+        // update settings
+        settings.total_stake -= amount;
+
+        let staker_payout =
+            calculate_payout(stake.last_action, clock.unix_timestamp, stake.self_stake);
+        stake.unclaimed.add(staker_payout);
+        stake.last_action = clock.unix_timestamp;
+
+        // move payout to unbond
+        stake.unbonding_start = clock.unix_timestamp;
+        stake.unbonding_amount += stake.unclaimed.whole();
+        stake.unclaimed.clear_whole();
+
+        let (d_primary, d_secondary) = stake.remove_stake(amount);
+
+        // update primary + secondary
+        community.update_payout(clock.unix_timestamp);
+        community.primary.staked -= d_primary;
+        community.secondary.staked -= d_secondary;
 
         settings_info
             .data
