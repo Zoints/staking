@@ -488,12 +488,14 @@ impl Processor {
         let staker_associated_info = next_account_info(iter)?;
         let community_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
+        let pool_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
         let clock = Clock::from_account_info(clock_info)?;
         let settings = Settings::from_account_info(settings_info, program_id)?;
         // not verifying community, we just need an existing pubkey to check stake program address
+        let pool_seed = Settings::verify_pool_address(pool_info.key, program_id)?;
 
         if !staker_info.is_signer {
             return Err(StakingError::MissingStakeSignature.into());
@@ -515,7 +517,7 @@ impl Processor {
             program_id,
         )?;
 
-        let stake = Stake::try_from_slice(&stake_info.data.borrow())?;
+        let mut stake = Stake::try_from_slice(&stake_info.data.borrow())?;
         if stake.unbonding_amount == 0 {
             return Err(StakingError::WithdrawNothingtowithdraw.into());
         }
@@ -523,6 +525,27 @@ impl Processor {
         if clock.unix_timestamp - stake.unbonding_start < crate::UNBONDING_PERIOD {
             return Err(StakingError::WithdrawUnbondingTimeNotOverYet.into());
         }
+
+        invoke_signed(
+            &spl_token::instruction::transfer(
+                &spl_token::id(),
+                pool_info.key,
+                staker_associated_info.key,
+                program_id,
+                &[],
+                stake.unbonding_amount,
+            )?,
+            &[staker_associated_info.clone(), pool_info.clone()],
+            &[&[b"pool", &[pool_seed]]],
+        )?;
+
+        stake.unbonding_amount = 0;
+        stake.unbonding_start = clock.unix_timestamp;
+
+        stake_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&stake.try_to_vec()?);
 
         Ok(())
     }
