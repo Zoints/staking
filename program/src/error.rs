@@ -74,17 +74,17 @@ pub enum StakingError {
     #[error("Missing Stake Signature")]
     MissingStakeSignature,
 
-    /// Staker Associated Invalid Owner
-    #[error("Staker Associated Invalid Owner")]
-    StakerAssociatedInvalidOwner,
+    /// Associated Invalid Owner
+    #[error("Associated Invalid Owner")]
+    AssociatedInvalidOwner,
 
-    /// Staker Associated Invalid Token
-    #[error("Staker Associated Invalid Token")]
-    StakerAssociatedInvalidToken,
+    /// Associated Invalid Token
+    #[error("Associated Invalid Token")]
+    AssociatedInvalidToken,
 
-    /// Staker Associated Invalid Account
-    #[error("Staker Associated Invalid Account")]
-    StakerAssociatedInvalidAccount,
+    /// Associated Invalid Account
+    #[error("Associated Invalid Account")]
+    AssociatedInvalidAccount,
 
     /// Staker Balance Too Low
     #[error("Staker Balance Too Low")]

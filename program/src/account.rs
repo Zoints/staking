@@ -1,6 +1,7 @@
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::account_info::AccountInfo;
 use solana_program::clock::UnixTimestamp;
+
 use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 
 use crate::error::StakingError;
@@ -30,16 +31,6 @@ impl Settings {
         }
     }
 
-    pub fn pool_address(program_id: &Pubkey) -> (Pubkey, u8) {
-        Pubkey::find_program_address(&[b"pool"], program_id)
-    }
-    pub fn verify_pool_address(address: &Pubkey, program_id: &Pubkey) -> Result<u8, ProgramError> {
-        match Self::pool_address(program_id) {
-            (real, seed) if real == *address => Ok(seed),
-            _ => Err(StakingError::InvalidPoolAccount.into()),
-        }
-    }
-
     pub fn from_account_info(
         info: &AccountInfo,
         program_id: &Pubkey,
@@ -49,6 +40,66 @@ impl Settings {
             .map_err(|_| StakingError::ProgramNotInitialized.into())
     }
 }
+
+/// Transfer ZEE from Pool
+///
+/// The recipient has to be verified to be ZEE before this is used.
+#[macro_export]
+macro_rules! pool_transfer {
+    ($pool:expr, $recipient:expr, $program:expr, $amount:expr) => {
+        match Pool::verify_program_address($pool.key, $program) {
+            Ok(seed) => invoke_signed(
+                &spl_token::instruction::transfer(
+                    &spl_token::id(),
+                    $pool.key,
+                    $recipient.key,
+                    $program,
+                    &[],
+                    $amount,
+                )?,
+                &[$pool.clone(), $recipient.clone()],
+                &[&[b"pool", &[seed]]],
+            ),
+            Err(err) => Err(err),
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! verify_associated {
+    ($assoc:expr, $token:expr, $owner:expr) => {
+        match Account::unpack(&$assoc.data.borrow()) {
+            Ok(account) => {
+                if account.mint != $token {
+                    Err(StakingError::AssociatedInvalidToken.into())
+                } else if account.owner != $owner {
+                    Err(StakingError::AssociatedInvalidOwner.into())
+                } else {
+                    Ok(account)
+                }
+            }
+            _ => Err(StakingError::AssociatedInvalidAccount),
+        }
+    };
+}
+
+#[derive(Debug, PartialEq, Clone, Copy, Eq)]
+pub struct Pool {}
+impl Pool {
+    pub fn program_address(program_id: &Pubkey) -> (Pubkey, u8) {
+        Pubkey::find_program_address(&[b"pool"], program_id)
+    }
+    pub fn verify_program_address(
+        address: &Pubkey,
+        program_id: &Pubkey,
+    ) -> Result<u8, ProgramError> {
+        match Self::program_address(program_id) {
+            (real, seed) if real == *address => Ok(seed),
+            _ => Err(StakingError::InvalidPoolAccount.into()),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSchema, BorshSerialize, Clone, Copy, Eq)]
 pub struct Community {
     pub creation_date: UnixTimestamp,

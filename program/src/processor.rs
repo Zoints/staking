@@ -15,11 +15,11 @@ use solana_program::{
 use spl_token::state::{Account, Mint};
 
 use crate::{
-    account::{Beneficiary, Community, Settings, Stake, StakePayout},
+    account::{Beneficiary, Community, Pool, Settings, Stake, StakePayout},
     calculate_payout,
     error::StakingError,
     instruction::StakingInstruction,
-    MINIMUM_STAKE, ZERO_KEY,
+    pool_transfer, verify_associated, MINIMUM_STAKE, ZERO_KEY,
 };
 
 pub struct Processor {}
@@ -49,6 +49,7 @@ impl Processor {
             StakingInstruction::WithdrawUnbond => {
                 Self::process_withdraw_unbond(program_id, accounts)
             }
+            StakingInstruction::ClaimYield => Self::process_claim_yield(program_id, accounts),
         }
     }
 
@@ -80,7 +81,7 @@ impl Processor {
         let seed = Settings::verify_program_address(settings_info.key, program_id)?;
         Mint::unpack(&token_info.data.borrow()).map_err(|_| StakingError::TokenNotSPLToken)?;
 
-        let pool_seed = Settings::verify_pool_address(pool_info.key, program_id)?;
+        let pool_seed = Pool::verify_program_address(pool_info.key, program_id)?;
 
         let settings = Settings {
             sponsor_fee,
@@ -266,14 +267,7 @@ impl Processor {
             return Err(StakingError::MissingStakeSignature.into());
         }
 
-        let staker_assoc = Account::unpack(&staker_associated_info.data.borrow())
-            .map_err(|_| StakingError::StakerAssociatedInvalidAccount)?;
-        if staker_assoc.mint != settings.token {
-            return Err(StakingError::StakerAssociatedInvalidToken.into());
-        }
-        if staker_assoc.owner != *staker_info.key {
-            return Err(StakingError::StakerAssociatedInvalidOwner.into());
-        }
+        verify_associated!(staker_associated_info, settings.token, *staker_info.key)?;
 
         let seed = Stake::verify_program_address(
             stake_info.key,
@@ -339,14 +333,8 @@ impl Processor {
             return Err(StakingError::MissingStakeSignature.into());
         }
 
-        let staker_assoc = Account::unpack(&staker_associated_info.data.borrow())
-            .map_err(|_| StakingError::StakerAssociatedInvalidAccount)?;
-        if staker_assoc.mint != settings.token {
-            return Err(StakingError::StakerAssociatedInvalidToken.into());
-        }
-        if staker_assoc.owner != *staker_info.key {
-            return Err(StakingError::StakerAssociatedInvalidOwner.into());
-        }
+        let staker_assoc =
+            verify_associated!(staker_associated_info, settings.token, *staker_info.key)?;
         if staker_assoc.amount < amount {
             return Err(StakingError::StakerBalanceTooLow.into());
         }
@@ -417,14 +405,8 @@ impl Processor {
             return Err(StakingError::MissingStakeSignature.into());
         }
 
-        let staker_assoc = Account::unpack(&staker_associated_info.data.borrow())
-            .map_err(|_| StakingError::StakerAssociatedInvalidAccount)?;
-        if staker_assoc.mint != settings.token {
-            return Err(StakingError::StakerAssociatedInvalidToken.into());
-        }
-        if staker_assoc.owner != *staker_info.key {
-            return Err(StakingError::StakerAssociatedInvalidOwner.into());
-        }
+        let _staker_assoc =
+            verify_associated!(staker_associated_info, settings.token, *staker_info.key)?;
 
         Stake::verify_program_address(
             stake_info.key,
@@ -495,20 +477,20 @@ impl Processor {
         let clock = Clock::from_account_info(clock_info)?;
         let settings = Settings::from_account_info(settings_info, program_id)?;
         // not verifying community, we just need an existing pubkey to check stake program address
-        let pool_seed = Settings::verify_pool_address(pool_info.key, program_id)?;
 
         if !staker_info.is_signer {
             return Err(StakingError::MissingStakeSignature.into());
         }
 
-        let staker_assoc = Account::unpack(&staker_associated_info.data.borrow())
-            .map_err(|_| StakingError::StakerAssociatedInvalidAccount)?;
+        verify_associated!(staker_associated_info, settings.token, *staker_info.key)?;
+        /*        let staker_assoc = Account::unpack(&staker_associated_info.data.borrow())
+            .map_err(|_| StakingError::AssociatedInvalidAccount)?;
         if staker_assoc.mint != settings.token {
-            return Err(StakingError::StakerAssociatedInvalidToken.into());
+            return Err(StakingError::AssociatedInvalidToken.into());
         }
         if staker_assoc.owner != *staker_info.key {
-            return Err(StakingError::StakerAssociatedInvalidOwner.into());
-        }
+            return Err(StakingError::AssociatedInvalidOwner.into());
+        }*/
 
         Stake::verify_program_address(
             stake_info.key,
@@ -526,17 +508,11 @@ impl Processor {
             return Err(StakingError::WithdrawUnbondingTimeNotOverYet.into());
         }
 
-        invoke_signed(
-            &spl_token::instruction::transfer(
-                &spl_token::id(),
-                pool_info.key,
-                staker_associated_info.key,
-                program_id,
-                &[],
-                stake.unbonding_amount,
-            )?,
-            &[staker_associated_info.clone(), pool_info.clone()],
-            &[&[b"pool", &[pool_seed]]],
+        pool_transfer!(
+            pool_info,
+            staker_associated_info,
+            program_id,
+            stake.unbonding_amount
         )?;
 
         stake.unbonding_amount = 0;
@@ -546,6 +522,25 @@ impl Processor {
             .data
             .borrow_mut()
             .copy_from_slice(&stake.try_to_vec()?);
+
+        Ok(())
+    }
+
+    pub fn process_claim_yield(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+        let iter = &mut accounts.iter();
+        let _funder_info = next_account_info(iter)?;
+        let staker_info = next_account_info(iter)?;
+        let staker_associated_info = next_account_info(iter)?;
+        let community_info = next_account_info(iter)?;
+        let settings_info = next_account_info(iter)?;
+        let pool_info = next_account_info(iter)?;
+        let stake_info = next_account_info(iter)?;
+        let clock_info = next_account_info(iter)?;
+
+        let clock = Clock::from_account_info(clock_info)?;
+        let settings = Settings::from_account_info(settings_info, program_id)?;
+        // not verifying community, we just need an existing pubkey to check stake program address
+        let pool_seed = Pool::verify_program_address(pool_info.key, program_id)?;
 
         Ok(())
     }
