@@ -50,6 +50,8 @@ impl Processor {
                 Self::process_withdraw_unbond(program_id, accounts)
             }
             StakingInstruction::ClaimYield => Self::process_claim_yield(program_id, accounts),
+            StakingInstruction::ClaimPrimary => Self::process_claim_yield(program_id, accounts),
+            StakingInstruction::ClaimSecondary => Self::process_claim_yield(program_id, accounts),
         }
     }
 
@@ -563,6 +565,108 @@ impl Processor {
             .data
             .borrow_mut()
             .copy_from_slice(&stake.try_to_vec()?);
+
+        Ok(())
+    }
+
+    pub fn process_claim_primary(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+        let iter = &mut accounts.iter();
+        let _funder_info = next_account_info(iter)?;
+        let primary_info = next_account_info(iter)?;
+        let primary_associated_info = next_account_info(iter)?;
+        let community_info = next_account_info(iter)?;
+        let settings_info = next_account_info(iter)?;
+        let pool_info = next_account_info(iter)?;
+        let clock_info = next_account_info(iter)?;
+
+        let clock = Clock::from_account_info(clock_info)?;
+        let settings = Settings::from_account_info(settings_info, program_id)?;
+        let mut community = Community::from_account_info(community_info, program_id)?;
+
+        if !primary_info.is_signer {
+            return Err(StakingError::PrimarySignatureMissing.into());
+        }
+
+        if community.primary.last_action == clock.unix_timestamp {
+            // adjust if minimum tick time changes
+            return Err(StakingError::NothingtoWithdraw.into());
+        }
+
+        let amount = calculate_payout(
+            community.primary.last_action,
+            clock.unix_timestamp,
+            community.primary.staked,
+        );
+        community.primary.unclaimed.add(amount);
+
+        let whole = community.primary.unclaimed.whole();
+        if whole == 0 {
+            return Err(StakingError::NothingtoWithdraw.into());
+        }
+
+        verify_associated!(primary_associated_info, settings.token, *primary_info.key)?;
+        pool_transfer!(pool_info, primary_associated_info, program_id, whole)?;
+
+        community.primary.unclaimed.clear_whole();
+        community.primary.last_action = clock.unix_timestamp;
+
+        community_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&community.try_to_vec()?);
+
+        Ok(())
+    }
+
+    pub fn process_claim_secondary(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+        let iter = &mut accounts.iter();
+        let _funder_info = next_account_info(iter)?;
+        let secondary_info = next_account_info(iter)?;
+        let secondary_associated_info = next_account_info(iter)?;
+        let community_info = next_account_info(iter)?;
+        let settings_info = next_account_info(iter)?;
+        let pool_info = next_account_info(iter)?;
+        let clock_info = next_account_info(iter)?;
+
+        let clock = Clock::from_account_info(clock_info)?;
+        let settings = Settings::from_account_info(settings_info, program_id)?;
+        let mut community = Community::from_account_info(community_info, program_id)?;
+
+        if !secondary_info.is_signer {
+            return Err(StakingError::SecondarySignatureMissing.into());
+        }
+
+        if community.secondary.last_action == clock.unix_timestamp {
+            // adjust if minimum tick time changes
+            return Err(StakingError::NothingtoWithdraw.into());
+        }
+
+        let amount = calculate_payout(
+            community.secondary.last_action,
+            clock.unix_timestamp,
+            community.secondary.staked,
+        );
+        community.secondary.unclaimed.add(amount);
+
+        let whole = community.secondary.unclaimed.whole();
+        if whole == 0 {
+            return Err(StakingError::NothingtoWithdraw.into());
+        }
+
+        verify_associated!(
+            secondary_associated_info,
+            settings.token,
+            *secondary_info.key
+        )?;
+        pool_transfer!(pool_info, secondary_associated_info, program_id, whole)?;
+
+        community.secondary.unclaimed.clear_whole();
+        community.secondary.last_action = clock.unix_timestamp;
+
+        community_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&community.try_to_vec()?);
 
         Ok(())
     }

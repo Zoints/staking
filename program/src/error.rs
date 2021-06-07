@@ -34,6 +34,10 @@ pub enum StakingError {
     #[error("Community Account Already Exists")]
     CommunityAccountAlreadyExists,
 
+    /// Primary Signature Missing
+    #[error("Primary Signature Missing")]
+    PrimarySignatureMissing,
+
     /// Primary Associated Invalid Account
     #[error("Primary Associated Invalid Account")]
     PrimaryAssociatedInvalidAccount,
@@ -45,6 +49,10 @@ pub enum StakingError {
     /// Primary Associated Invalid Token
     #[error("Primary Associated Invalid Token")]
     PrimaryAssociatedInvalidToken,
+
+    /// Secondary Signature Missing
+    #[error("Secondary Signature Missing")]
+    SecondarySignatureMissing,
 
     /// Secondary Associated Invalid Owner
     #[error("Secondary Associated Invalid Owner")]

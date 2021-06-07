@@ -10,6 +10,8 @@ pub enum StakingInstruction {
     Unstake { amount: u64 },
     WithdrawUnbond,
     ClaimYield,
+    ClaimPrimary,
+    ClaimSecondary,
 }
 
 #[cfg(test)]
