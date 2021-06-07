@@ -1,0 +1,9 @@
+# docker-compose.yml
+version: '3'
+
+services:
+    solana:
+        image: solanalabs/solana:beta
+        ports:
+            - 8899:8899
+            - 8900:8900
