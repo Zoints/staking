@@ -86,6 +86,10 @@ pub enum StakingError {
     #[error("Associated Invalid Account")]
     AssociatedInvalidAccount,
 
+    /// Invalid Stake Account
+    #[error("Invalid Stake Account")]
+    StakerInvalidStakeAccount,
+
     /// Staker Balance Too Low
     #[error("Staker Balance Too Low")]
     StakerBalanceTooLow,
@@ -105,6 +109,10 @@ pub enum StakingError {
     /// Withdraw Unbonding Time Not Over Yet
     #[error("Withdraw Unbonding Time Not Over Yet")]
     WithdrawUnbondingTimeNotOverYet,
+
+    /// Nothing to Withdraw
+    #[error("Nothing to Withdraw")]
+    NothingtoWithdraw,
 
     /// placeholder
     #[error("placeholder")]

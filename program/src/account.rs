@@ -185,6 +185,17 @@ impl Stake {
         }
     }
 
+    pub fn from_account_info(
+        info: &AccountInfo,
+        community: &Pubkey,
+        staker: &Pubkey,
+        program_id: &Pubkey,
+    ) -> Result<Stake, ProgramError> {
+        Stake::verify_program_address(info.key, community, staker, program_id)?;
+        Stake::try_from_slice(&info.data.borrow())
+            .map_err(|_| StakingError::StakerInvalidStakeAccount.into())
+    }
+
     pub fn add_stake(&mut self, amount: u64) -> (u64, u64) {
         self.total_stake += amount;
         let split = split_stake(self.total_stake);

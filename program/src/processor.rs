@@ -483,23 +483,10 @@ impl Processor {
         }
 
         verify_associated!(staker_associated_info, settings.token, *staker_info.key)?;
-        /*        let staker_assoc = Account::unpack(&staker_associated_info.data.borrow())
-            .map_err(|_| StakingError::AssociatedInvalidAccount)?;
-        if staker_assoc.mint != settings.token {
-            return Err(StakingError::AssociatedInvalidToken.into());
-        }
-        if staker_assoc.owner != *staker_info.key {
-            return Err(StakingError::AssociatedInvalidOwner.into());
-        }*/
 
-        Stake::verify_program_address(
-            stake_info.key,
-            community_info.key,
-            staker_info.key,
-            program_id,
-        )?;
+        let mut stake =
+            Stake::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
 
-        let mut stake = Stake::try_from_slice(&stake_info.data.borrow())?;
         if stake.unbonding_amount == 0 {
             return Err(StakingError::WithdrawNothingtowithdraw.into());
         }
@@ -539,8 +526,39 @@ impl Processor {
 
         let clock = Clock::from_account_info(clock_info)?;
         let settings = Settings::from_account_info(settings_info, program_id)?;
-        // not verifying community, we just need an existing pubkey to check stake program address
-        let pool_seed = Pool::verify_program_address(pool_info.key, program_id)?;
+        // community is irrelevant, just need a valid pubkey to generate stake program id
+        //let community = Community::from_account_info(community_info, program_id)?;
+
+        if !staker_info.is_signer {
+            return Err(StakingError::MissingStakeSignature.into());
+        }
+
+        let mut stake =
+            Stake::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
+
+        if stake.last_action == clock.unix_timestamp {
+            // adjust if minimum tick time changes
+            return Err(StakingError::NothingtoWithdraw.into());
+        }
+
+        let amount = calculate_payout(stake.last_action, clock.unix_timestamp, stake.self_stake);
+        stake.unclaimed.add(amount);
+
+        let whole = stake.unclaimed.whole();
+        if whole == 0 {
+            return Err(StakingError::NothingtoWithdraw.into());
+        }
+
+        verify_associated!(staker_associated_info, settings.token, *staker_info.key)?;
+        pool_transfer!(pool_info, staker_associated_info, program_id, whole)?;
+
+        stake.unclaimed.clear_whole();
+        stake.last_action = clock.unix_timestamp;
+
+        stake_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&stake.try_to_vec()?);
 
         Ok(())
     }
