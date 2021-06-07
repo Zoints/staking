@@ -103,7 +103,6 @@ impl Pool {
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSchema, BorshSerialize, Clone, Copy, Eq)]
 pub struct Community {
     pub creation_date: UnixTimestamp,
-    pub last_action: UnixTimestamp,
     pub authority: Pubkey,
     pub primary: Beneficiary,
     pub secondary: Beneficiary,
@@ -115,6 +114,7 @@ pub struct Beneficiary {
     pub staked: u64,
     pub authority: Pubkey,
     pub address: Pubkey,
+    pub last_action: UnixTimestamp,
     pub unclaimed: StakePayout,
 }
 
@@ -130,19 +130,16 @@ impl Community {
         Self::try_from_slice(&info.data.borrow())
             .map_err(|_| StakingError::InvalidCommunityAccount.into())
     }
+}
 
+impl Beneficiary {
     pub fn update_payout(&mut self, current_time: UnixTimestamp) {
         if self.last_action == current_time {
             return;
         }
 
-        let primary_payout =
-            crate::calculate_payout(self.last_action, current_time, self.primary.staked);
-        self.primary.unclaimed.add(primary_payout);
-
-        let secondary_payout =
-            crate::calculate_payout(self.last_action, current_time, self.secondary.staked);
-        self.secondary.unclaimed.add(secondary_payout);
+        let payout = crate::calculate_payout(self.last_action, current_time, self.staked);
+        self.unclaimed.add(payout);
 
         self.last_action = current_time;
     }

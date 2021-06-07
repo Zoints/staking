@@ -184,6 +184,7 @@ impl Processor {
             staked: 0,
             authority: *primary_info.key,
             address: *primary_associated_info.key,
+            last_action: clock.unix_timestamp,
             unclaimed: StakePayout::new(0),
         };
 
@@ -201,6 +202,7 @@ impl Processor {
                 staked: 0,
                 authority: *secondary_info.key,
                 address: *secondary_associated_info.key,
+                last_action: clock.unix_timestamp,
                 unclaimed: StakePayout::new(0),
             }
         } else {
@@ -209,13 +211,13 @@ impl Processor {
                 staked: 0,
                 authority: ZERO_KEY,
                 address: ZERO_KEY,
+                last_action: clock.unix_timestamp,
                 unclaimed: StakePayout::new(0),
             }
         };
 
         let community = Community {
             creation_date: clock.unix_timestamp,
-            last_action: clock.unix_timestamp,
             authority: *creator_info.key,
             primary,
             secondary,
@@ -363,7 +365,8 @@ impl Processor {
         let (d_primary, d_secondary) = stake.add_stake(amount);
 
         // update primary + secondary
-        community.update_payout(clock.unix_timestamp);
+        community.primary.update_payout(clock.unix_timestamp);
+        community.secondary.update_payout(clock.unix_timestamp);
         community.primary.staked += d_primary;
         community.secondary.staked += d_secondary;
 
@@ -443,7 +446,8 @@ impl Processor {
         let (d_primary, d_secondary) = stake.remove_stake(amount);
 
         // update primary + secondary
-        community.update_payout(clock.unix_timestamp);
+        community.primary.update_payout(clock.unix_timestamp);
+        community.secondary.update_payout(clock.unix_timestamp);
         community.primary.staked -= d_primary;
         community.secondary.staked -= d_secondary;
 
