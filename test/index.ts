@@ -20,27 +20,46 @@ import {
 import { Connection } from '@solana/web3.js';
 import * as fs from 'fs';
 import * as borsh from 'borsh';
-import { Initialize, RegisterCommunity } from './instructions';
+import { Initialize, RegisterCommunity, Stake } from './instructions';
 import { sendAndConfirmTransaction } from './util';
-import BN from 'bn.js';
 
 const zeroKey = new PublicKey(Buffer.alloc(0, 32));
 
+const config = {
+    funder: new Keypair(),
+    deploy_key: new Keypair(),
+
+    authority: new Keypair(),
+
+    mint_id: new Keypair(),
+    mint_authority: new Keypair(),
+
+    user_community: [
+        {
+            authority: new Keypair(),
+            community: new Keypair()
+        }
+    ],
+
+    zoints_community: [
+        {
+            authority: new Keypair(),
+            community: new Keypair(),
+            primary: new Keypair()
+        }
+    ],
+
+    staker: [new Keypair()]
+};
+
 const connection = new Connection('http://localhost:8899');
-const funder = new Keypair();
-
-const token_id = new Keypair();
-const authority = new Keypair();
-
-const mint_authority = new Keypair();
-const deploy_key = new Keypair();
-const programId = deploy_key.publicKey;
+const programId = config.deploy_key.publicKey;
 
 const token = new Token(
     connection,
-    token_id.publicKey,
+    config.mint_id.publicKey,
     TOKEN_PROGRAM_ID,
-    funder
+    config.funder
 );
 
 function am(
@@ -52,20 +71,20 @@ function am(
 }
 
 (async () => {
-    console.log(`Funding ${funder.publicKey.toBase58()} with 20 SOL`);
+    console.log(`Funding ${config.funder.publicKey.toBase58()} with 20 SOL`);
     let sig = await connection.requestAirdrop(
-        funder.publicKey,
+        config.funder.publicKey,
         20 * LAMPORTS_PER_SOL
     );
     await connection.confirmTransaction(sig);
 
-    console.log(`Deploy BPF to ${deploy_key.publicKey.toBase58()}`);
+    console.log(`Deploy BPF to ${programId.toBase58()}`);
     const programdata = fs.readFileSync('../program/target/deploy/staking.so');
     if (
         !(await BpfLoader.load(
             connection,
-            funder,
-            deploy_key,
+            config.funder,
+            config.deploy_key,
             programdata,
             BPF_LOADER_PROGRAM_ID
         ))
@@ -74,7 +93,9 @@ function am(
         process.exit(1);
     }
 
-    console.log(`Creating new SPL Token ${token_id.publicKey.toBase58()}`);
+    console.log(
+        `Creating new SPL Token ${config.mint_id.publicKey.toBase58()}`
+    );
 
     // doing it manually since the library doesn't accept pre-defined pubkeys
     const balanceNeeded = await Token.getMinBalanceRentForExemptMint(
@@ -84,8 +105,8 @@ function am(
     const transaction = new Transaction();
     transaction.add(
         SystemProgram.createAccount({
-            fromPubkey: funder.publicKey,
-            newAccountPubkey: token_id.publicKey,
+            fromPubkey: config.funder.publicKey,
+            newAccountPubkey: config.mint_id.publicKey,
             lamports: balanceNeeded,
             space: MintLayout.span,
             programId: TOKEN_PROGRAM_ID
@@ -95,16 +116,16 @@ function am(
     transaction.add(
         Token.createInitMintInstruction(
             TOKEN_PROGRAM_ID,
-            token_id.publicKey,
+            config.mint_id.publicKey,
             0,
-            mint_authority.publicKey,
+            config.mint_authority.publicKey,
             null
         )
     );
 
     await sendAndConfirmTransaction(connection, transaction, [
-        funder,
-        token_id
+        config.funder,
+        config.mint_id
     ]);
 
     console.log(`Attempting to initialize`);
@@ -120,11 +141,11 @@ function am(
     )[0];
 
     const init_keys: AccountMeta[] = [
-        am(funder.publicKey, true, false),
-        am(authority.publicKey, true, false),
+        am(config.funder.publicKey, true, false),
+        am(config.authority.publicKey, true, false),
         am(settings_id, false, true),
         am(pool_id, false, true),
-        am(token_id.publicKey, false, false),
+        am(config.mint_id.publicKey, false, false),
         am(SYSVAR_RENT_PUBKEY, false, false),
         am(TOKEN_PROGRAM_ID, false, false),
         am(programId, false, false),
@@ -140,24 +161,24 @@ function am(
     );
 
     const init_sig = await sendAndConfirmTransaction(connection, init_trans, [
-        funder,
-        authority
+        config.funder,
+        config.authority
     ]);
     console.log(`Initialized: ${init_sig}`);
 
-    await token.mintTo(pool_id, mint_authority, [], 100_000_000);
+    await token.mintTo(pool_id, config.mint_authority, [], 100_000_000);
 
     //////////
     ////////// USER COMMUNITY 1
     //////////
 
-    const user_1 = new Keypair();
-    const user_1_community = new Keypair();
+    const user_1 = config.user_community[0].authority;
+    const user_1_community = config.user_community[0].community;
 
     const user_1_assoc = await token.getOrCreateAssociatedAccountInfo(
         user_1.publicKey
     );
-    await token.mintTo(user_1_assoc.address, mint_authority, [], 20_000);
+    await token.mintTo(user_1_assoc.address, config.mint_authority, [], 20_000);
 
     const user_1_instruction = new RegisterCommunity();
     const user_1_data = borsh.serialize(
@@ -172,7 +193,7 @@ function am(
     const user_1_referrer = new Keypair();
 
     const user_1_keys: AccountMeta[] = [
-        am(funder.publicKey, true, false),
+        am(config.funder.publicKey, true, false),
         am(user_1.publicKey, true, false),
         am(settings_id, false, false),
         am(user_1_community.publicKey, true, true),
@@ -194,7 +215,7 @@ function am(
         })
     );
     sendAndConfirmTransaction(connection, user_1_trans, [
-        funder,
+        config.funder,
         user_1,
         user_1_community
     ])
@@ -205,13 +226,18 @@ function am(
     ////////// ZOINTS COMMUNITY 1
     //////////
 
-    const zoints_1 = new Keypair();
-    const zoints_1_community = new Keypair();
+    const zoints_1 = config.zoints_community[0].authority;
+    const zoints_1_community = config.zoints_community[0].community;
 
     const zoints_1_assoc = await token.getOrCreateAssociatedAccountInfo(
         zoints_1.publicKey
     );
-    await token.mintTo(zoints_1_assoc.address, mint_authority, [], 20_000);
+    await token.mintTo(
+        zoints_1_assoc.address,
+        config.mint_authority,
+        [],
+        20_000
+    );
 
     const zoints_1_instruction = new RegisterCommunity();
     const zoints_1_data = borsh.serialize(
@@ -219,14 +245,14 @@ function am(
         zoints_1_instruction
     );
 
-    const zoints_1_primary = new Keypair();
+    const zoints_1_primary = config.zoints_community[0].primary;
     const zoints_1_primary_assoc = await token.getOrCreateAssociatedAccountInfo(
         zoints_1_primary.publicKey
     );
     const zoints_1_referrer = zeroKey;
 
     const zoints_1_keys: AccountMeta[] = [
-        am(funder.publicKey, true, false),
+        am(config.funder.publicKey, true, false),
         am(zoints_1.publicKey, true, false),
         am(settings_id, false, false),
         am(zoints_1_community.publicKey, true, true),
@@ -248,7 +274,7 @@ function am(
         })
     );
     sendAndConfirmTransaction(connection, zoints_1_trans, [
-        funder,
+        config.funder,
         zoints_1,
         zoints_1_community
     ])
@@ -258,11 +284,10 @@ function am(
     //////////
     ////////// STAKER 1
     //////////
-    const staker_1 = new Keypair();
+    const staker_1 = config.staker[0];
     const staker_1_associated = await token.getOrCreateAssociatedAccountInfo(
         staker_1.publicKey
     );
-    await token.mintTo(staker_1_associated.address, mint_authority, [], 20_000);
 
     const staker_1_stake = (
         await PublicKey.findProgramAddress(
@@ -276,7 +301,7 @@ function am(
     )[0];
 
     const staker_1_keys: AccountMeta[] = [
-        am(funder.publicKey, true, false),
+        am(config.funder.publicKey, true, false),
         am(staker_1.publicKey, true, false),
         am(staker_1_associated.address, false, false),
         am(user_1_community.publicKey, false, false),
@@ -297,7 +322,44 @@ function am(
     const staker_1_sig = await sendAndConfirmTransaction(
         connection,
         staker_1_trans,
-        [funder, staker_1]
+        [config.funder, staker_1]
     );
     console.log(`Staker_1/user_community_1 stake created: ${staker_1_sig}`);
+
+    await token.mintTo(
+        staker_1_associated.address,
+        config.mint_authority,
+        [],
+        20_000
+    );
+
+    //////////
+    ////////// ADD STAKE
+    //////////
+
+    const stake_1_keys: AccountMeta[] = [
+        am(config.funder.publicKey, true, false),
+        am(staker_1.publicKey, true, false),
+        am(staker_1_associated.address, false, true),
+        am(user_1_community.publicKey, false, true),
+        am(settings_id, false, false),
+        am(staker_1_stake, false, true),
+        am(SYSVAR_CLOCK_PUBKEY, false, false)
+    ];
+    const stake_1_instruction = new Stake(20_000);
+    const stake_1_data = borsh.serialize(Stake.schema, stake_1_instruction);
+    const stake_1_trans = new Transaction().add(
+        new TransactionInstruction({
+            keys: stake_1_keys,
+            programId,
+            data: Buffer.from(stake_1_data)
+        })
+    );
+
+    const stake_1_sig = await sendAndConfirmTransaction(
+        connection,
+        stake_1_trans,
+        [config.funder, staker_1]
+    );
+    console.log(`user1/comm1 Staked 20,000 ZEE: ${stake_1_sig}`);
 })();

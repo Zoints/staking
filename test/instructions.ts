@@ -38,3 +38,25 @@ export class RegisterCommunity {
 
     constructor() {}
 }
+
+export class Stake {
+    instructionId: number = 3;
+    amount: number;
+
+    static schema: Schema = new Map([
+        [
+            Stake,
+            {
+                kind: 'struct',
+                fields: [
+                    ['instructionId', 'u8'],
+                    ['amount', 'u64']
+                ]
+            }
+        ]
+    ]);
+
+    constructor(amount: number) {
+        this.amount = amount;
+    }
+}
