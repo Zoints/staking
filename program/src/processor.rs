@@ -34,9 +34,7 @@ impl Processor {
         msg!("Staking Instruction :: {:?}", instruction);
 
         match instruction {
-            StakingInstruction::Initialize { sponsor_fee } => {
-                Self::process_initialize(program_id, accounts, sponsor_fee)
-            }
+            StakingInstruction::Initialize => Self::process_initialize(program_id, accounts),
             StakingInstruction::RegisterCommunity => {
                 Self::process_register_community(program_id, accounts)
             }
@@ -59,11 +57,7 @@ impl Processor {
         }
     }
 
-    pub fn process_initialize(
-        program_id: &Pubkey,
-        accounts: &[AccountInfo],
-        sponsor_fee: u64,
-    ) -> ProgramResult {
+    pub fn process_initialize(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let iter = &mut accounts.iter();
         let funder_info = next_account_info(iter)?;
         let authority_info = next_account_info(iter)?;
@@ -366,6 +360,8 @@ impl Processor {
         let staker_info = next_account_info(iter)?;
         let staker_associated_info = next_account_info(iter)?;
         let community_info = next_account_info(iter)?;
+        let stake_pool_info = next_account_info(iter)?;
+        let reward_fund_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
@@ -391,27 +387,7 @@ impl Processor {
             program_id,
         )?;
 
-        // update settings
-        //settings.total_stake += amount;
-
-        // update staker
         let mut stake = Stake::try_from_slice(&stake_info.data.borrow())?;
-        if stake.total_stake + amount < MINIMUM_STAKE {
-            return Err(StakingError::StakerMinimumBalanceNotMet.into());
-        }
-
-        let staker_payout =
-            calculate_payout(stake.last_action, clock.unix_timestamp, stake.self_stake);
-        stake.unclaimed.add(staker_payout);
-        stake.last_action = clock.unix_timestamp;
-
-        let (d_primary, d_secondary) = stake.add_stake(amount);
-
-        // update primary + secondary
-        community.primary.update_payout(clock.unix_timestamp);
-        community.secondary.update_payout(clock.unix_timestamp);
-        community.primary.staked += d_primary;
-        community.secondary.staked += d_secondary;
 
         settings_info
             .data
