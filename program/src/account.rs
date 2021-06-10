@@ -41,13 +41,13 @@ impl Settings {
     }
 }
 
-/// Transfer ZEE from Pool
+/// Transfer ZEE from Stake Pool
 ///
 /// The recipient has to be verified to be ZEE before this is used.
 #[macro_export]
-macro_rules! pool_transfer {
+macro_rules! stake_pool_transfer {
     ($pool:expr, $recipient:expr, $program:expr, $amount:expr) => {
-        match Pool::verify_program_address($pool.key, $program) {
+        match StakePool::verify_program_address($pool.key, $program) {
             Ok(seed) => invoke_signed(
                 &spl_token::instruction::transfer(
                     &spl_token::id(),
@@ -58,7 +58,30 @@ macro_rules! pool_transfer {
                     $amount,
                 )?,
                 &[$pool.clone(), $recipient.clone()],
-                &[&[b"pool", &[seed]]],
+                &[&[b"stakepool", &[seed]]],
+            ),
+            Err(err) => Err(err),
+        }
+    };
+}
+/// Transfer ZEE from Reward Fund
+///
+/// The recipient has to be verified to be ZEE before this is used.
+#[macro_export]
+macro_rules! reward_fund_transfer {
+    ($fund:expr, $recipient:expr, $program:expr, $amount:expr) => {
+        match RewardFund::verify_program_address($fund.key, $program) {
+            Ok(seed) => invoke_signed(
+                &spl_token::instruction::transfer(
+                    &spl_token::id(),
+                    $fund.key,
+                    $recipient.key,
+                    $program,
+                    &[],
+                    $amount,
+                )?,
+                &[$fund.clone(), $recipient.clone()],
+                &[&[b"rewardfund", &[seed]]],
             ),
             Err(err) => Err(err),
         }
@@ -84,10 +107,10 @@ macro_rules! verify_associated {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy, Eq)]
-pub struct Pool {}
-impl Pool {
+pub struct StakePool {}
+impl StakePool {
     pub fn program_address(program_id: &Pubkey) -> (Pubkey, u8) {
-        Pubkey::find_program_address(&[b"pool"], program_id)
+        Pubkey::find_program_address(&[b"stakepool"], program_id)
     }
     pub fn verify_program_address(
         address: &Pubkey,
@@ -95,7 +118,24 @@ impl Pool {
     ) -> Result<u8, ProgramError> {
         match Self::program_address(program_id) {
             (real, seed) if real == *address => Ok(seed),
-            _ => Err(StakingError::InvalidPoolAccount.into()),
+            _ => Err(StakingError::InvalidStakePoolAccount.into()),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Copy, Eq)]
+pub struct RewardFund {}
+impl RewardFund {
+    pub fn program_address(program_id: &Pubkey) -> (Pubkey, u8) {
+        Pubkey::find_program_address(&[b"rewardfund"], program_id)
+    }
+    pub fn verify_program_address(
+        address: &Pubkey,
+        program_id: &Pubkey,
+    ) -> Result<u8, ProgramError> {
+        match Self::program_address(program_id) {
+            (real, seed) if real == *address => Ok(seed),
+            _ => Err(StakingError::InvalidRewardFundAccount.into()),
         }
     }
 }

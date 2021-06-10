@@ -22,9 +22,13 @@ pub enum StakingError {
     #[error("Invalid Settings Account")]
     InvalidSettingsAccount,
 
-    /// Invalid Pool Account
-    #[error("Invalid Pool Account")]
-    InvalidPoolAccount,
+    /// Invalid Reward Fund Account
+    #[error("Invalid Reward Fund Account")]
+    InvalidRewardFundAccount,
+
+    /// Invalid Stake Pool Account
+    #[error("Invalid Stake Pool Account")]
+    InvalidStakePoolAccount,
 
     /// Token is not a valid SPL token
     #[error("Token is not a valid SPL token")]

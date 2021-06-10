@@ -15,11 +15,11 @@ use solana_program::{
 use spl_token::state::{Account, Mint};
 
 use crate::{
-    account::{Beneficiary, Community, Pool, Settings, Stake, StakePayout},
+    account::{Beneficiary, Community, RewardFund, Settings, Stake, StakePayout, StakePool},
     calculate_payout,
     error::StakingError,
     instruction::StakingInstruction,
-    pool_transfer, verify_associated, MINIMUM_STAKE, ZERO_KEY,
+    reward_fund_transfer, stake_pool_transfer, verify_associated, MINIMUM_STAKE, ZERO_KEY,
 };
 
 pub struct Processor {}
@@ -49,9 +49,10 @@ impl Processor {
             StakingInstruction::WithdrawUnbond => {
                 Self::process_withdraw_unbond(program_id, accounts)
             }
-            StakingInstruction::ClaimYield => Self::process_claim_yield(program_id, accounts),
-            StakingInstruction::ClaimPrimary => Self::process_claim_yield(program_id, accounts),
-            StakingInstruction::ClaimSecondary => Self::process_claim_yield(program_id, accounts),
+            StakingInstruction::ClaimPrimary => Self::process_claim_primary(program_id, accounts),
+            StakingInstruction::ClaimSecondary => {
+                Self::process_claim_secondary(program_id, accounts)
+            }
         }
     }
 
@@ -64,7 +65,7 @@ impl Processor {
         let funder_info = next_account_info(iter)?;
         let authority_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
-        let pool_info = next_account_info(iter)?;
+        let stake_pool_info = next_account_info(iter)?;
         let token_info = next_account_info(iter)?;
         let rent_info = next_account_info(iter)?;
         let token_program_info = next_account_info(iter)?;
@@ -83,7 +84,7 @@ impl Processor {
         let seed = Settings::verify_program_address(settings_info.key, program_id)?;
         Mint::unpack(&token_info.data.borrow()).map_err(|_| StakingError::TokenNotSPLToken)?;
 
-        let pool_seed = Pool::verify_program_address(pool_info.key, program_id)?;
+        let pool_seed = StakePool::verify_program_address(stake_pool_info.key, program_id)?;
 
         let settings = Settings {
             sponsor_fee,
@@ -116,24 +117,24 @@ impl Processor {
         invoke_signed(
             &create_account(
                 funder_info.key,
-                pool_info.key,
+                stake_pool_info.key,
                 lamports,
                 space,
                 &spl_token::id(),
             ),
-            &[funder_info.clone(), pool_info.clone()],
+            &[funder_info.clone(), stake_pool_info.clone()],
             &[&[b"pool", &[pool_seed]]],
         )?;
 
         invoke(
             &spl_token::instruction::initialize_account(
                 &spl_token::id(),
-                pool_info.key,
+                stake_pool_info.key,
                 token_info.key,
                 program_id,
             )?,
             &[
-                pool_info.clone(),
+                stake_pool_info.clone(),
                 token_info.clone(),
                 rent_info.clone(),
                 program_info.clone(),
@@ -501,7 +502,7 @@ impl Processor {
             return Err(StakingError::WithdrawUnbondingTimeNotOverYet.into());
         }
 
-        pool_transfer!(
+        stake_pool_transfer!(
             pool_info,
             staker_associated_info,
             program_id,
@@ -510,56 +511,6 @@ impl Processor {
 
         stake.unbonding_amount = 0;
         stake.unbonding_start = clock.unix_timestamp;
-
-        stake_info
-            .data
-            .borrow_mut()
-            .copy_from_slice(&stake.try_to_vec()?);
-
-        Ok(())
-    }
-
-    pub fn process_claim_yield(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
-        let iter = &mut accounts.iter();
-        let _funder_info = next_account_info(iter)?;
-        let staker_info = next_account_info(iter)?;
-        let staker_associated_info = next_account_info(iter)?;
-        let community_info = next_account_info(iter)?;
-        let settings_info = next_account_info(iter)?;
-        let pool_info = next_account_info(iter)?;
-        let stake_info = next_account_info(iter)?;
-        let clock_info = next_account_info(iter)?;
-
-        let clock = Clock::from_account_info(clock_info)?;
-        let settings = Settings::from_account_info(settings_info, program_id)?;
-        // community is irrelevant, just need a valid pubkey to generate stake program id
-        //let community = Community::from_account_info(community_info, program_id)?;
-
-        if !staker_info.is_signer {
-            return Err(StakingError::MissingStakeSignature.into());
-        }
-
-        let mut stake =
-            Stake::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
-
-        if stake.last_action == clock.unix_timestamp {
-            // adjust if minimum tick time changes
-            return Err(StakingError::NothingtoWithdraw.into());
-        }
-
-        let amount = calculate_payout(stake.last_action, clock.unix_timestamp, stake.self_stake);
-        stake.unclaimed.add(amount);
-
-        let whole = stake.unclaimed.whole();
-        if whole == 0 {
-            return Err(StakingError::NothingtoWithdraw.into());
-        }
-
-        verify_associated!(staker_associated_info, settings.token, *staker_info.key)?;
-        pool_transfer!(pool_info, staker_associated_info, program_id, whole)?;
-
-        stake.unclaimed.clear_whole();
-        stake.last_action = clock.unix_timestamp;
 
         stake_info
             .data
@@ -605,7 +556,7 @@ impl Processor {
         }
 
         verify_associated!(primary_associated_info, settings.token, *primary_info.key)?;
-        pool_transfer!(pool_info, primary_associated_info, program_id, whole)?;
+        reward_fund_transfer!(pool_info, primary_associated_info, program_id, whole)?;
 
         community.primary.unclaimed.clear_whole();
         community.primary.last_action = clock.unix_timestamp;
@@ -658,7 +609,7 @@ impl Processor {
             settings.token,
             *secondary_info.key
         )?;
-        pool_transfer!(pool_info, secondary_associated_info, program_id, whole)?;
+        reward_fund_transfer!(pool_info, secondary_associated_info, program_id, whole)?;
 
         community.secondary.unclaimed.clear_whole();
         community.secondary.last_action = clock.unix_timestamp;
