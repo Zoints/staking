@@ -6,9 +6,44 @@ use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 
 use crate::error::StakingError;
 use crate::split_stake;
+use bigint::U256 as OrigU256;
+use std::io::Read;
+use std::io::{Result as IOResult, Write};
+
+#[repr(transparent)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq)]
+pub struct U256(OrigU256);
+impl BorshSerialize for U256 {
+    fn serialize<W: Write>(&self, writer: &mut W) -> IOResult<()> {
+        let mut buf = [0u8; 32];
+        self.0.to_little_endian(&mut buf);
+        writer.write(&buf)?;
+        Ok(())
+    }
+}
+impl BorshDeserialize for U256 {
+    fn deserialize(buf: &mut &[u8]) -> IOResult<Self> {
+        let mut ubuf = [0u8; 32];
+        buf.read_exact(&mut ubuf)?;
+        Ok(U256(OrigU256::from_little_endian(&ubuf)))
+    }
+}
+
+impl From<u64> for U256 {
+    fn from(a: u64) -> Self {
+        U256(OrigU256::from(a))
+    }
+}
 
 #[repr(C)]
-#[derive(Debug, PartialEq, BorshDeserialize, BorshSchema, BorshSerialize, Clone, Copy, Eq)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq, BorshDeserialize, BorshSerialize)]
+pub struct Variables {
+    pub reward_per_share: U256,
+    pub last_reward: UnixTimestamp,
+}
+
+#[repr(C)]
+#[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
 pub struct Settings {
     pub token: Pubkey,
     pub authority: Pubkey,
@@ -313,6 +348,7 @@ impl std::ops::MulAssign<u64> for StakePayout {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[test]
@@ -354,5 +390,18 @@ mod tests {
         assert_eq!(data, 1066296030056838474381u128.to_le_bytes());
         let back = StakePayout::try_from_slice(&data).unwrap();
         assert_eq!(spo, back);
+    }
+
+    #[test]
+    pub fn test_variable_serialization() {
+        let v = Variables {
+            reward_per_share: U256::from(348923452348342394u64),
+            last_reward: 293458234234,
+        };
+
+        let data = v.try_to_vec().unwrap();
+        let ret = Variables::try_from_slice(&data).unwrap();
+
+        assert_eq!(v, ret);
     }
 }
