@@ -66,6 +66,7 @@ impl Processor {
         let authority_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
         let stake_pool_info = next_account_info(iter)?;
+        let reward_fund_info = next_account_info(iter)?;
         let token_info = next_account_info(iter)?;
         let rent_info = next_account_info(iter)?;
         let token_program_info = next_account_info(iter)?;
@@ -83,8 +84,6 @@ impl Processor {
 
         let seed = Settings::verify_program_address(settings_info.key, program_id)?;
         Mint::unpack(&token_info.data.borrow()).map_err(|_| StakingError::TokenNotSPLToken)?;
-
-        let pool_seed = StakePool::verify_program_address(stake_pool_info.key, program_id)?;
 
         let settings = Settings {
             sponsor_fee,
@@ -109,8 +108,10 @@ impl Processor {
             &[funder_info.clone(), settings_info.clone()],
             &[&[b"settings", &[seed]]],
         )?;
-
         settings_info.data.borrow_mut().copy_from_slice(&data);
+
+        // create stake pool
+        let stake_pool_seed = StakePool::verify_program_address(stake_pool_info.key, program_id)?;
 
         let lamports = rent.minimum_balance(Account::LEN);
         let space = Account::LEN as u64;
@@ -123,7 +124,7 @@ impl Processor {
                 &spl_token::id(),
             ),
             &[funder_info.clone(), stake_pool_info.clone()],
-            &[&[b"pool", &[pool_seed]]],
+            &[&[b"pool", &[stake_pool_seed]]],
         )?;
 
         invoke(
@@ -142,8 +143,39 @@ impl Processor {
             ],
         )?;
 
-        Ok(())
+        // create reward fund
+        let reward_fund_seed =
+            RewardFund::verify_program_address(reward_fund_info.key, program_id)?;
+
+        invoke_signed(
+            &create_account(
+                funder_info.key,
+                reward_fund_info.key,
+                lamports, // same lamports/space as prev account
+                space,
+                &spl_token::id(),
+            ),
+            &[funder_info.clone(), reward_fund_info.clone()],
+            &[&[b"rewardfund", &[reward_fund_seed]]],
+        )?;
+
+        invoke(
+            &spl_token::instruction::initialize_account(
+                &spl_token::id(),
+                reward_fund_info.key,
+                token_info.key,
+                program_id,
+            )?,
+            &[
+                reward_fund_info.clone(),
+                token_info.clone(),
+                rent_info.clone(),
+                program_info.clone(),
+                token_program_info.clone(),
+            ],
+        )
     }
+
     pub fn process_register_community(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
