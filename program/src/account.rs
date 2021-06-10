@@ -38,6 +38,7 @@ impl From<u64> for U256 {
 #[repr(C)]
 #[derive(Debug, PartialEq, Clone, Copy, Eq, BorshDeserialize, BorshSerialize)]
 pub struct Variables {
+    pub total_stake: u64,
     pub reward_per_share: U256,
     pub last_reward: UnixTimestamp,
 }
@@ -47,8 +48,7 @@ pub struct Variables {
 pub struct Settings {
     pub token: Pubkey,
     pub authority: Pubkey,
-    pub sponsor_fee: u64,
-    pub total_stake: u64,
+    pub vars: Variables,
 }
 
 impl Settings {
@@ -397,6 +397,7 @@ mod tests {
         let v = Variables {
             reward_per_share: U256::from(348923452348342394u64),
             last_reward: 293458234234,
+            total_stake: 9821429382935u64,
         };
 
         let data = v.try_to_vec().unwrap();

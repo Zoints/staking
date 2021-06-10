@@ -15,7 +15,10 @@ use solana_program::{
 use spl_token::state::{Account, Mint};
 
 use crate::{
-    account::{Beneficiary, Community, RewardFund, Settings, Stake, StakePayout, StakePool},
+    account::{
+        Beneficiary, Community, RewardFund, Settings, Stake, StakePayout, StakePool, Variables,
+        U256,
+    },
     calculate_payout,
     error::StakingError,
     instruction::StakingInstruction,
@@ -69,10 +72,12 @@ impl Processor {
         let reward_fund_info = next_account_info(iter)?;
         let token_info = next_account_info(iter)?;
         let rent_info = next_account_info(iter)?;
+        let clock_info = next_account_info(iter)?;
         let token_program_info = next_account_info(iter)?;
         let program_info = next_account_info(iter)?;
 
         let rent = Rent::from_account_info(rent_info)?;
+        let clock = Clock::from_account_info(clock_info)?;
 
         if !authority_info.is_signer {
             return Err(StakingError::MissingAuthoritySignature.into());
@@ -86,10 +91,13 @@ impl Processor {
         Mint::unpack(&token_info.data.borrow()).map_err(|_| StakingError::TokenNotSPLToken)?;
 
         let settings = Settings {
-            sponsor_fee,
             authority: *authority_info.key,
             token: *token_info.key,
-            total_stake: 0,
+            vars: Variables {
+                reward_per_share: U256::from(0),
+                last_reward: clock.unix_timestamp,
+                total_stake: 0,
+            },
         };
 
         let data = settings.try_to_vec()?;
@@ -384,7 +392,7 @@ impl Processor {
         )?;
 
         // update settings
-        settings.total_stake += amount;
+        //settings.total_stake += amount;
 
         // update staker
         let mut stake = Stake::try_from_slice(&stake_info.data.borrow())?;
@@ -466,7 +474,7 @@ impl Processor {
         }
 
         // update settings
-        settings.total_stake -= amount;
+        //settings.total_stake -= amount;
 
         let staker_payout =
             calculate_payout(stake.last_action, clock.unix_timestamp, stake.self_stake);
