@@ -2,6 +2,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::account_info::AccountInfo;
 use solana_program::clock::UnixTimestamp;
 
+use solana_program::msg;
 use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 
 use crate::error::StakingError;
@@ -93,6 +94,11 @@ impl Settings {
         }
 
         self.last_reward = now;
+        msg!(
+            "updated pool rewards: last_reward = {}, reward_per_share = {}",
+            self.last_reward,
+            self.reward_per_share.0
+        );
     }
 }
 

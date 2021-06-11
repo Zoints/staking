@@ -87,6 +87,8 @@ impl Processor {
             total_stake: 0,
         };
 
+        msg!("Settings: {:?}", settings);
+
         let data = settings.try_to_vec()?;
 
         let space = data.len();
@@ -105,6 +107,8 @@ impl Processor {
         )?;
         settings_info.data.borrow_mut().copy_from_slice(&data);
 
+        msg!("Settings account created");
+
         // create stake pool
         let stake_pool_seed = StakePool::verify_program_address(stake_pool_info.key, program_id)?;
 
@@ -119,8 +123,10 @@ impl Processor {
                 &spl_token::id(),
             ),
             &[funder_info.clone(), stake_pool_info.clone()],
-            &[&[b"pool", &[stake_pool_seed]]],
+            &[&[b"stakepool", &[stake_pool_seed]]],
         )?;
+
+        msg!("stake pool account created");
 
         invoke(
             &spl_token::instruction::initialize_account(
@@ -138,6 +144,8 @@ impl Processor {
             ],
         )?;
 
+        msg!("stake pool account initialized");
+
         // create reward fund
         let reward_fund_seed =
             RewardFund::verify_program_address(reward_fund_info.key, program_id)?;
@@ -153,6 +161,7 @@ impl Processor {
             &[funder_info.clone(), reward_fund_info.clone()],
             &[&[b"rewardfund", &[reward_fund_seed]]],
         )?;
+        msg!("reward fund account created");
 
         invoke(
             &spl_token::instruction::initialize_account(

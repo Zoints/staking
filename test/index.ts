@@ -130,23 +130,48 @@ function am(
 
     console.log(`Attempting to initialize`);
 
-    const init_instruction = new Initialize(20_000);
-    const init_data = borsh.serialize(Initialize.schema, init_instruction);
+    const init_instruction = new Initialize();
+    const init_data = Buffer.alloc(1, 0);
 
     const settings_id = (
         await PublicKey.findProgramAddress([Buffer.from('settings')], programId)
     )[0];
-    const pool_id = (
-        await PublicKey.findProgramAddress([Buffer.from('pool')], programId)
+    const stake_pool_id = (
+        await PublicKey.findProgramAddress(
+            [Buffer.from('stakepool')],
+            programId
+        )
     )[0];
+
+    const reward_fund_id = (
+        await PublicKey.findProgramAddress(
+            [Buffer.from('rewardfund')],
+            programId
+        )
+    )[0];
+
+    /*
+        let funder_info = next_account_info(iter)?;
+        let authority_info = next_account_info(iter)?;
+        let settings_info = next_account_info(iter)?;
+        let stake_pool_info = next_account_info(iter)?;
+        let reward_fund_info = next_account_info(iter)?;
+        let token_info = next_account_info(iter)?;
+        let rent_info = next_account_info(iter)?;
+        let clock_info = next_account_info(iter)?;
+        let token_program_info = next_account_info(iter)?;
+        let program_info = next_account_info(iter)?;
+        */
 
     const init_keys: AccountMeta[] = [
         am(config.funder.publicKey, true, false),
         am(config.authority.publicKey, true, false),
         am(settings_id, false, true),
-        am(pool_id, false, true),
+        am(stake_pool_id, false, true),
+        am(reward_fund_id, false, true),
         am(config.mint_id.publicKey, false, false),
         am(SYSVAR_RENT_PUBKEY, false, false),
+        am(SYSVAR_CLOCK_PUBKEY, false, false),
         am(TOKEN_PROGRAM_ID, false, false),
         am(programId, false, false),
         am(SystemProgram.programId, false, false)
@@ -156,7 +181,7 @@ function am(
         new TransactionInstruction({
             keys: init_keys,
             programId,
-            data: Buffer.from(init_data)
+            data: init_data
         })
     );
 
@@ -166,7 +191,7 @@ function am(
     ]);
     console.log(`Initialized: ${init_sig}`);
 
-    await token.mintTo(pool_id, config.mint_authority, [], 100_000_000);
+    await token.mintTo(reward_fund_id, config.mint_authority, [], 100_000_000);
 
     //////////
     ////////// USER COMMUNITY 1
@@ -192,6 +217,20 @@ function am(
     );
     const user_1_referrer = new Keypair();
 
+    /*
+        let iter = &mut accounts.iter();
+        let funder_info = next_account_info(iter)?;
+        let creator_info = next_account_info(iter)?;
+        let settings_info = next_account_info(iter)?;
+        let community_info = next_account_info(iter)?;
+        let primary_info = next_account_info(iter)?;
+        let primary_associated_info = next_account_info(iter)?;
+        let secondary_info = next_account_info(iter)?;
+        let secondary_associated_info = next_account_info(iter)?;
+        let rent_info = next_account_info(iter)?;
+        let clock_info = next_account_info(iter)?;
+        */
+
     const user_1_keys: AccountMeta[] = [
         am(config.funder.publicKey, true, false),
         am(user_1.publicKey, true, false),
@@ -201,7 +240,6 @@ function am(
         am(user_1_primary_assoc.address, false, true),
         am(zeroKey, false, false),
         am(zeroKey, false, false),
-        am(user_1_referrer.publicKey, false, false),
         am(SYSVAR_RENT_PUBKEY, false, false),
         am(SYSVAR_CLOCK_PUBKEY, false, false),
         am(SystemProgram.programId, false, false)
@@ -249,8 +287,20 @@ function am(
     const zoints_1_primary_assoc = await token.getOrCreateAssociatedAccountInfo(
         zoints_1_primary.publicKey
     );
-    const zoints_1_referrer = zeroKey;
 
+    /*
+        let iter = &mut accounts.iter();
+        let funder_info = next_account_info(iter)?;
+        let creator_info = next_account_info(iter)?;
+        let settings_info = next_account_info(iter)?;
+        let community_info = next_account_info(iter)?;
+        let primary_info = next_account_info(iter)?;
+        let primary_associated_info = next_account_info(iter)?;
+        let secondary_info = next_account_info(iter)?;
+        let secondary_associated_info = next_account_info(iter)?;
+        let rent_info = next_account_info(iter)?;
+        let clock_info = next_account_info(iter)?;
+        */
     const zoints_1_keys: AccountMeta[] = [
         am(config.funder.publicKey, true, false),
         am(zoints_1.publicKey, true, false),
@@ -260,7 +310,6 @@ function am(
         am(zoints_1_primary_assoc.address, false, true),
         am(zoints_1.publicKey, false, false),
         am(zoints_1_assoc.address, false, false),
-        am(zoints_1_referrer, false, false),
         am(SYSVAR_RENT_PUBKEY, false, false),
         am(SYSVAR_CLOCK_PUBKEY, false, false),
         am(SystemProgram.programId, false, false)
@@ -300,6 +349,16 @@ function am(
         )
     )[0];
 
+    /*
+        let funder_info = next_account_info(iter)?;
+        let staker_info = next_account_info(iter)?;
+        let staker_associated_info = next_account_info(iter)?;
+        let community_info = next_account_info(iter)?;
+        let settings_info = next_account_info(iter)?;
+        let stake_info = next_account_info(iter)?;
+        let rent_info = next_account_info(iter)?;
+        let clock_info = next_account_info(iter)?;
+    */
     const staker_1_keys: AccountMeta[] = [
         am(config.funder.publicKey, true, false),
         am(staker_1.publicKey, true, false),
@@ -337,12 +396,26 @@ function am(
     ////////// ADD STAKE
     //////////
 
+    /*
+        let _funder_info = next_account_info(iter)?;
+        let staker_info = next_account_info(iter)?;
+        let staker_associated_info = next_account_info(iter)?;
+        let community_info = next_account_info(iter)?;
+        let stake_pool_info = next_account_info(iter)?;
+        let reward_fund_info = next_account_info(iter)?;
+        let settings_info = next_account_info(iter)?;
+        let stake_info = next_account_info(iter)?;
+        let clock_info = next_account_info(iter)?;
+        */
+
     const stake_1_keys: AccountMeta[] = [
         am(config.funder.publicKey, true, false),
         am(staker_1.publicKey, true, false),
         am(staker_1_associated.address, false, true),
         am(user_1_community.publicKey, false, true),
-        am(settings_id, false, false),
+        am(stake_pool_id, false, true),
+        am(reward_fund_id, false, true),
+        am(settings_id, false, true),
         am(staker_1_stake, false, true),
         am(SYSVAR_CLOCK_PUBKEY, false, false)
     ];
