@@ -213,8 +213,8 @@ impl Processor {
         let primary = Beneficiary {
             staked: 0,
             authority: *primary_info.key,
-            address: *primary_associated_info.key,
-            reward_debt: U256::from(0),
+            reward_debt: 0,
+            pending_reward: 0,
         };
 
         let secondary = if *secondary_info.key != ZERO_KEY {
@@ -230,16 +230,16 @@ impl Processor {
             Beneficiary {
                 staked: 0,
                 authority: *secondary_info.key,
-                address: *secondary_associated_info.key,
-                reward_debt: U256::from(0),
+                reward_debt: 0,
+                pending_reward: 0,
             }
         } else {
             msg!("No secondary account");
             Beneficiary {
                 staked: 0,
                 authority: ZERO_KEY,
-                address: ZERO_KEY,
-                reward_debt: U256::from(0),
+                reward_debt: 0,
+                pending_reward: 0,
             }
         };
 
@@ -307,10 +307,14 @@ impl Processor {
         let stake = Stake {
             creation_date: clock.unix_timestamp,
             total_stake: 0,
-            self_stake: 0,
             primary_stake: 0,
             secondary_stake: 0,
-            reward_debt: U256::from(0),
+            beneficiary: Beneficiary {
+                authority: *staker_info.key,
+                staked: 0,
+                reward_debt: 0,
+                pending_reward: 0,
+            },
             unbonding_start: clock.unix_timestamp,
             unbonding_amount: 0,
         };
@@ -523,19 +527,6 @@ impl Processor {
         if !primary_info.is_signer {
             return Err(StakingError::PrimarySignatureMissing.into());
         }
-
-        /*        if community.primary.last_action == clock.unix_timestamp {
-            // adjust if minimum tick time changes
-            return Err(StakingError::NothingtoWithdraw.into());
-        }*/
-
-        //        verify_associated!(primary_associated_info, settings.token, *primary_info.key)?;
-        //       reward_fund_transfer!(pool_info, primary_associated_info, program_id, whole)?;
-
-        community_info
-            .data
-            .borrow_mut()
-            .copy_from_slice(&community.try_to_vec()?);
 
         Ok(())
     }

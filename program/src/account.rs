@@ -5,7 +5,7 @@ use solana_program::clock::UnixTimestamp;
 use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 
 use crate::error::StakingError;
-use crate::split_stake;
+use crate::PRECISION;
 use bigint::U256 as OrigU256;
 use std::io::Read;
 use std::io::{Result as IOResult, Write};
@@ -187,15 +187,6 @@ pub struct Community {
     pub secondary: Beneficiary,
 }
 
-#[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
-pub struct Beneficiary {
-    pub authority: Pubkey,
-    pub address: Pubkey,
-
-    pub staked: u64,
-    pub reward_debt: U256,
-}
-
 impl Community {
     pub fn from_account_info(
         info: &AccountInfo,
@@ -211,14 +202,29 @@ impl Community {
 }
 
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
+pub struct Beneficiary {
+    pub authority: Pubkey,
+
+    pub staked: u64,
+    pub reward_debt: u64,
+    pub pending_reward: u64,
+}
+
+impl Beneficiary {
+    pub fn calculate_reward(&self, reward_per_share: U256) -> u64 {
+        (OrigU256::from(self.staked) * reward_per_share.0 / OrigU256::from(PRECISION)).as_u64()
+    }
+}
+
+#[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
 pub struct Stake {
     pub creation_date: UnixTimestamp,
 
     pub total_stake: u64,
-    pub self_stake: u64,
     pub primary_stake: u64,
     pub secondary_stake: u64,
-    pub reward_debt: U256,
+
+    pub beneficiary: Beneficiary,
 
     pub unbonding_start: UnixTimestamp,
     pub unbonding_amount: u64,
@@ -257,30 +263,6 @@ impl Stake {
         Stake::verify_program_address(info.key, community, staker, program_id)?;
         Stake::try_from_slice(&info.data.borrow())
             .map_err(|_| StakingError::StakerInvalidStakeAccount.into())
-    }
-
-    pub fn add_stake(&mut self, amount: u64) -> (u64, u64) {
-        self.total_stake += amount;
-        let split = split_stake(self.total_stake);
-        // a bigger split is always >=, this difference should be safe
-        let d_primary = split.1 - self.primary_stake;
-        let d_secondary = split.2 - self.secondary_stake;
-        self.self_stake = split.0;
-        self.primary_stake = split.1;
-        self.secondary_stake = split.2;
-        (d_primary, d_secondary)
-    }
-
-    pub fn remove_stake(&mut self, amount: u64) -> (u64, u64) {
-        self.total_stake -= amount;
-        let split = split_stake(self.total_stake);
-        // a smaller split is always <=, this difference should be safe
-        let d_primary = self.primary_stake - split.1;
-        let d_secondary = self.secondary_stake - split.2;
-        self.self_stake = split.0;
-        self.primary_stake = split.1;
-        self.secondary_stake = split.2;
-        (d_primary, d_secondary)
     }
 }
 
