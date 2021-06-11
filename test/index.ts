@@ -405,6 +405,7 @@ function am(
         let reward_fund_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
+        let program_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
         */
 
@@ -417,6 +418,7 @@ function am(
         am(reward_fund_id, false, true),
         am(settings_id, false, true),
         am(staker_1_stake, false, true),
+        am(programId, false, false),
         am(SYSVAR_CLOCK_PUBKEY, false, false)
     ];
     const stake_1_instruction = new Stake(20_000);

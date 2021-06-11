@@ -108,17 +108,17 @@ impl Settings {
 #[macro_export]
 macro_rules! stake_pool_transfer {
     ($pool:expr, $recipient:expr, $program:expr, $amount:expr) => {
-        match StakePool::verify_program_address($pool.key, $program) {
+        match StakePool::verify_program_address($pool.key, $program.key) {
             Ok(seed) => invoke_signed(
                 &spl_token::instruction::transfer(
                     &spl_token::id(),
                     $pool.key,
                     $recipient.key,
-                    $program,
+                    $program.key,
                     &[],
                     $amount,
                 )?,
-                &[$pool.clone(), $recipient.clone()],
+                &[$pool.clone(), $recipient.clone(), $program.clone()],
                 &[&[b"stakepool", &[seed]]],
             ),
             Err(err) => Err(err),
@@ -131,17 +131,17 @@ macro_rules! stake_pool_transfer {
 #[macro_export]
 macro_rules! reward_fund_transfer {
     ($fund:expr, $recipient:expr, $program:expr, $amount:expr) => {
-        match RewardFund::verify_program_address($fund.key, $program) {
+        match RewardFund::verify_program_address($fund.key, $program.key) {
             Ok(seed) => invoke_signed(
                 &spl_token::instruction::transfer(
                     &spl_token::id(),
                     $fund.key,
                     $recipient.key,
-                    $program,
+                    $program.key,
                     &[],
                     $amount,
                 )?,
-                &[$fund.clone(), $recipient.clone()],
+                &[$fund.clone(), $recipient.clone(), $program.clone()],
                 &[&[b"rewardfund", &[seed]]],
             ),
             Err(err) => Err(err),

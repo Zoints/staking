@@ -362,6 +362,7 @@ impl Processor {
         let reward_fund_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
+        let program_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
         let clock = Clock::from_account_info(clock_info)?;
@@ -411,7 +412,7 @@ impl Processor {
         reward_fund_transfer!(
             reward_fund_info,
             staker_associated_info,
-            program_id,
+            program_info,
             stake.beneficiary.pending_reward
         )?;
         stake.beneficiary.pending_reward = 0;
@@ -464,6 +465,7 @@ impl Processor {
         let reward_fund_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
+        let program_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
         let clock = Clock::from_account_info(clock_info)?;
@@ -508,7 +510,7 @@ impl Processor {
         reward_fund_transfer!(
             reward_fund_info,
             staker_associated_info,
-            program_id,
+            program_info,
             stake.beneficiary.pending_reward
         )?;
         stake.beneficiary.pending_reward = 0;
@@ -543,6 +545,7 @@ impl Processor {
         let settings_info = next_account_info(iter)?;
         let pool_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
+        let program_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
         let clock = Clock::from_account_info(clock_info)?;
@@ -569,7 +572,7 @@ impl Processor {
         stake_pool_transfer!(
             pool_info,
             staker_associated_info,
-            program_id,
+            program_info,
             stake.unbonding_amount
         )?;
 
@@ -596,6 +599,7 @@ impl Processor {
         let community_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
         let reward_fund_info = next_account_info(iter)?;
+        let program_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
         let clock = Clock::from_account_info(clock_info)?;
@@ -630,7 +634,7 @@ impl Processor {
         reward_fund_transfer!(
             reward_fund_info,
             authority_associated_info,
-            program_id,
+            program_info,
             beneficiary.pending_reward
         )?;
         beneficiary.pending_reward = 0;
