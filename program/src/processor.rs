@@ -454,6 +454,7 @@ impl Processor {
         let staker_info = next_account_info(iter)?;
         let staker_associated_info = next_account_info(iter)?;
         let community_info = next_account_info(iter)?;
+        let reward_fund_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
@@ -466,29 +467,49 @@ impl Processor {
             return Err(StakingError::MissingStakeSignature.into());
         }
 
-        let _staker_assoc =
-            verify_associated!(staker_associated_info, settings.token, *staker_info.key)?;
-
-        Stake::verify_program_address(
-            stake_info.key,
-            community_info.key,
-            staker_info.key,
-            program_id,
-        )?;
-
-        // update staker
-        let mut stake = Stake::try_from_slice(&stake_info.data.borrow())?;
-
+        let mut stake =
+            Stake::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
         if amount > stake.staked {
             return Err(StakingError::StakerWithdrawingTooMuch.into());
-        }
-
-        // allow them to withdraw everything
-        if stake.staked - amount > 0 && stake.staked - amount < MINIMUM_STAKE {
+        } else if amount < stake.staked && stake.staked - amount < MINIMUM_STAKE {
+            // allow them to withdraw everything
             return Err(StakingError::StakerMinimumBalanceNotMet.into());
         }
 
-        settings.total_stake += amount;
+        settings.update_rewards(clock.unix_timestamp);
+
+        stake.staked -= amount;
+        let (staker_share, primary, secondary) = split_stake(stake.staked);
+
+        // PROCESS STAKER'S REWARD
+
+        stake
+            .beneficiary
+            .pay_out(staker_share, settings.reward_per_share);
+
+        // primary + secondary
+        community
+            .primary
+            .pay_out(primary, settings.reward_per_share);
+        if !community.secondary.is_empty() {
+            community
+                .secondary
+                .pay_out(secondary, settings.reward_per_share);
+        }
+
+        // pay out pending reward
+        reward_fund_transfer!(
+            reward_fund_info,
+            staker_associated_info,
+            program_id,
+            stake.beneficiary.pending_reward
+        )?;
+        stake.beneficiary.pending_reward = 0;
+
+        stake.unbonding_amount += amount;
+        stake.unbonding_start = clock.unix_timestamp;
+
+        settings.total_stake -= amount;
 
         settings_info
             .data
