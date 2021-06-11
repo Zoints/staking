@@ -1,4 +1,3 @@
-use account::StakePayout;
 use solana_program::{clock::UnixTimestamp, pubkey::Pubkey};
 
 pub mod account;
@@ -13,8 +12,9 @@ pub const SPONSOR_UNLOCK: UnixTimestamp = 48 * 60 * 60; // 2 days
 pub const ZERO_KEY: Pubkey = Pubkey::new_from_array([0; 32]);
 
 pub const MINIMUM_STAKE: u64 = 1_000;
-pub const STAKE_APY: u64 = 10; // this is 100 / <desired percentage>
 pub const SECONDS_PER_YEAR: u64 = 365 * 24 * 3600;
+
+pub const PRECISION: u64 = 1_000_000_000_000_000_000;
 
 /// Split Stake
 ///
@@ -25,19 +25,6 @@ pub fn split_stake(amount: u64) -> (u64, u64, u64) {
     let secondary = amount / 20;
     let primary = (amount - secondary) / 2;
     (amount - primary - secondary, primary, secondary)
-}
-
-/// Calculate Payout
-///
-/// Calculate the amount of yield during the given period for a certain stake
-pub fn calculate_payout(start: UnixTimestamp, end: UnixTimestamp, stake: u64) -> StakePayout {
-    let seconds = (end - start) as u64;
-
-    let mut payout = StakePayout::new(stake);
-    payout /= STAKE_APY;
-    payout /= SECONDS_PER_YEAR;
-    payout *= seconds;
-    payout
 }
 
 #[cfg(test)]

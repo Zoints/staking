@@ -1,4 +1,4 @@
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::account_info::AccountInfo;
 use solana_program::clock::UnixTimestamp;
 
@@ -36,19 +36,15 @@ impl From<u64> for U256 {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Clone, Copy, Eq, BorshDeserialize, BorshSerialize)]
-pub struct Variables {
-    pub total_stake: u64,
-    pub reward_per_share: U256,
-    pub last_reward: UnixTimestamp,
-}
-
-#[repr(C)]
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
 pub struct Settings {
     pub token: Pubkey,
     pub authority: Pubkey,
-    pub vars: Variables,
+
+    // tokenomics variables
+    pub total_stake: u64,
+    pub reward_per_share: U256,
+    pub last_reward: UnixTimestamp,
 }
 
 impl Settings {
@@ -141,6 +137,11 @@ macro_rules! verify_associated {
     };
 }
 
+/// Stake Pool
+///
+/// The stake pool is the token address that all ZEE are stored at when they are
+/// staked by users. The ZEE is returned when someone withdraws their stake but
+/// is not touched otherwise.
 #[derive(Debug, PartialEq, Clone, Copy, Eq)]
 pub struct StakePool {}
 impl StakePool {
@@ -158,6 +159,9 @@ impl StakePool {
     }
 }
 
+/// Reward Fund
+///
+/// The reward fund is the token address that pays out yield.
 #[derive(Debug, PartialEq, Clone, Copy, Eq)]
 pub struct RewardFund {}
 impl RewardFund {
@@ -175,22 +179,21 @@ impl RewardFund {
     }
 }
 
-#[derive(Debug, PartialEq, BorshDeserialize, BorshSchema, BorshSerialize, Clone, Copy, Eq)]
+#[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
 pub struct Community {
     pub creation_date: UnixTimestamp,
     pub authority: Pubkey,
     pub primary: Beneficiary,
     pub secondary: Beneficiary,
-    pub referrer: Pubkey,
 }
 
-#[derive(Debug, PartialEq, BorshDeserialize, BorshSchema, BorshSerialize, Clone, Copy, Eq)]
+#[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
 pub struct Beneficiary {
-    pub staked: u64,
     pub authority: Pubkey,
     pub address: Pubkey,
-    pub last_action: UnixTimestamp,
-    pub unclaimed: StakePayout,
+
+    pub staked: u64,
+    pub reward_debt: U256,
 }
 
 impl Community {
@@ -207,28 +210,16 @@ impl Community {
     }
 }
 
-impl Beneficiary {
-    pub fn update_payout(&mut self, current_time: UnixTimestamp) {
-        if self.last_action == current_time {
-            return;
-        }
-
-        let payout = crate::calculate_payout(self.last_action, current_time, self.staked);
-        self.unclaimed.add(payout);
-
-        self.last_action = current_time;
-    }
-}
-
-#[derive(Debug, PartialEq, BorshDeserialize, BorshSchema, BorshSerialize, Clone, Copy, Eq)]
+#[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
 pub struct Stake {
     pub creation_date: UnixTimestamp,
+
     pub total_stake: u64,
     pub self_stake: u64,
     pub primary_stake: u64,
     pub secondary_stake: u64,
-    pub last_action: UnixTimestamp,
-    pub unclaimed: StakePayout,
+    pub reward_debt: U256,
+
     pub unbonding_start: UnixTimestamp,
     pub unbonding_amount: u64,
 }
@@ -293,115 +284,24 @@ impl Stake {
     }
 }
 
-#[repr(C)]
-#[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    BorshSerialize,
-    BorshDeserialize,
-    BorshSchema,
-    Eq,
-    PartialOrd,
-    Ord,
-    Copy,
-)]
-pub struct StakePayout {
-    amount: u128,
-}
-
-impl StakePayout {
-    pub const SCALE: u128 = 10_000_000_000_000_000_000;
-
-    pub fn new(amount: u64) -> Self {
-        StakePayout {
-            amount: amount as u128 * Self::SCALE,
-        }
-    }
-
-    pub fn whole(&self) -> u64 {
-        (self.amount / Self::SCALE) as u64
-    }
-    pub fn clear_whole(&mut self) {
-        self.amount %= Self::SCALE;
-    }
-
-    pub fn remainder(&self) -> u64 {
-        (self.amount % Self::SCALE) as u64
-    }
-
-    pub fn add(&mut self, other: StakePayout) {
-        self.amount += other.amount
-    }
-}
-
-impl std::ops::DivAssign<u64> for StakePayout {
-    fn div_assign(&mut self, other: u64) {
-        self.amount /= other as u128;
-    }
-}
-impl std::ops::MulAssign<u64> for StakePayout {
-    fn mul_assign(&mut self, other: u64) {
-        self.amount *= other as u128;
-    }
-}
-
 #[cfg(test)]
 mod tests {
 
     use super::*;
 
     #[test]
-    pub fn test_stake_payout_amount() {
-        let mut stake = StakePayout::new(5_000);
-        stake /= 365 * 24 * 3600 * 10;
+    pub fn test_settings_serialization() {
+        let v = Settings {
+            token: Pubkey::new_unique(),
+            authority: Pubkey::new_unique(),
 
-        assert_eq!(
-            stake,
-            StakePayout {
-                amount: 158548959918822
-            }
-        );
-        assert_eq!(stake.whole(), 0);
-        assert_eq!(stake.remainder(), 158548959918822);
-
-        println!("{:0>1}.{:0>19}", stake.whole(), stake.remainder());
-
-        stake = StakePayout::new(5_000_000_000);
-        stake /= 365 * 24 * 3600 * 10;
-
-        assert_eq!(
-            stake,
-            StakePayout {
-                amount: 158548959918822932521
-            }
-        );
-        assert_eq!(stake.whole(), 15);
-        assert_eq!(stake.remainder(), 8548959918822932521);
-
-        println!("{:0>1}.{:0>19}", stake.whole(), stake.remainder());
-    }
-
-    #[test]
-    pub fn test_stake_payout_serialization() {
-        let mut spo = StakePayout::new(984643132);
-        spo /= 9234238;
-        let data = spo.try_to_vec().unwrap();
-        assert_eq!(data, 1066296030056838474381u128.to_le_bytes());
-        let back = StakePayout::try_from_slice(&data).unwrap();
-        assert_eq!(spo, back);
-    }
-
-    #[test]
-    pub fn test_variable_serialization() {
-        let v = Variables {
             reward_per_share: U256::from(348923452348342394u64),
             last_reward: 293458234234,
             total_stake: 9821429382935u64,
         };
 
         let data = v.try_to_vec().unwrap();
-        let ret = Variables::try_from_slice(&data).unwrap();
+        let ret = Settings::try_from_slice(&data).unwrap();
 
         assert_eq!(v, ret);
     }

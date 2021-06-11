@@ -15,11 +15,7 @@ use solana_program::{
 use spl_token::state::{Account, Mint};
 
 use crate::{
-    account::{
-        Beneficiary, Community, RewardFund, Settings, Stake, StakePayout, StakePool, Variables,
-        U256,
-    },
-    calculate_payout,
+    account::{Beneficiary, Community, RewardFund, Settings, Stake, StakePool, U256},
     error::StakingError,
     instruction::StakingInstruction,
     reward_fund_transfer, stake_pool_transfer, verify_associated, MINIMUM_STAKE, ZERO_KEY,
@@ -87,11 +83,9 @@ impl Processor {
         let settings = Settings {
             authority: *authority_info.key,
             token: *token_info.key,
-            vars: Variables {
-                reward_per_share: U256::from(0),
-                last_reward: clock.unix_timestamp,
-                total_stake: 0,
-            },
+            reward_per_share: U256::from(0),
+            last_reward: clock.unix_timestamp,
+            total_stake: 0,
         };
 
         let data = settings.try_to_vec()?;
@@ -191,7 +185,6 @@ impl Processor {
         let primary_associated_info = next_account_info(iter)?;
         let secondary_info = next_account_info(iter)?;
         let secondary_associated_info = next_account_info(iter)?;
-        let referrer_info = next_account_info(iter)?;
         let rent_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
@@ -221,8 +214,7 @@ impl Processor {
             staked: 0,
             authority: *primary_info.key,
             address: *primary_associated_info.key,
-            last_action: clock.unix_timestamp,
-            unclaimed: StakePayout::new(0),
+            reward_debt: U256::from(0),
         };
 
         let secondary = if *secondary_info.key != ZERO_KEY {
@@ -239,17 +231,15 @@ impl Processor {
                 staked: 0,
                 authority: *secondary_info.key,
                 address: *secondary_associated_info.key,
-                last_action: clock.unix_timestamp,
-                unclaimed: StakePayout::new(0),
+                reward_debt: U256::from(0),
             }
         } else {
-            msg!("No secondary account, enabling sponsor");
+            msg!("No secondary account");
             Beneficiary {
                 staked: 0,
                 authority: ZERO_KEY,
                 address: ZERO_KEY,
-                last_action: clock.unix_timestamp,
-                unclaimed: StakePayout::new(0),
+                reward_debt: U256::from(0),
             }
         };
 
@@ -258,7 +248,6 @@ impl Processor {
             authority: *creator_info.key,
             primary,
             secondary,
-            referrer: *referrer_info.key,
         };
 
         let data = community.try_to_vec()?;
@@ -321,8 +310,7 @@ impl Processor {
             self_stake: 0,
             primary_stake: 0,
             secondary_stake: 0,
-            last_action: clock.unix_timestamp,
-            unclaimed: StakePayout::new(0),
+            reward_debt: U256::from(0),
             unbonding_start: clock.unix_timestamp,
             unbonding_amount: 0,
         };
@@ -452,24 +440,6 @@ impl Processor {
         // update settings
         //settings.total_stake -= amount;
 
-        let staker_payout =
-            calculate_payout(stake.last_action, clock.unix_timestamp, stake.self_stake);
-        stake.unclaimed.add(staker_payout);
-        stake.last_action = clock.unix_timestamp;
-
-        // move payout to unbond
-        stake.unbonding_start = clock.unix_timestamp;
-        stake.unbonding_amount += stake.unclaimed.whole();
-        stake.unclaimed.clear_whole();
-
-        let (d_primary, d_secondary) = stake.remove_stake(amount);
-
-        // update primary + secondary
-        community.primary.update_payout(clock.unix_timestamp);
-        community.secondary.update_payout(clock.unix_timestamp);
-        community.primary.staked -= d_primary;
-        community.secondary.staked -= d_secondary;
-
         settings_info
             .data
             .borrow_mut()
@@ -554,28 +524,13 @@ impl Processor {
             return Err(StakingError::PrimarySignatureMissing.into());
         }
 
-        if community.primary.last_action == clock.unix_timestamp {
+        /*        if community.primary.last_action == clock.unix_timestamp {
             // adjust if minimum tick time changes
             return Err(StakingError::NothingtoWithdraw.into());
-        }
+        }*/
 
-        let amount = calculate_payout(
-            community.primary.last_action,
-            clock.unix_timestamp,
-            community.primary.staked,
-        );
-        community.primary.unclaimed.add(amount);
-
-        let whole = community.primary.unclaimed.whole();
-        if whole == 0 {
-            return Err(StakingError::NothingtoWithdraw.into());
-        }
-
-        verify_associated!(primary_associated_info, settings.token, *primary_info.key)?;
-        reward_fund_transfer!(pool_info, primary_associated_info, program_id, whole)?;
-
-        community.primary.unclaimed.clear_whole();
-        community.primary.last_action = clock.unix_timestamp;
+        //        verify_associated!(primary_associated_info, settings.token, *primary_info.key)?;
+        //       reward_fund_transfer!(pool_info, primary_associated_info, program_id, whole)?;
 
         community_info
             .data
@@ -598,42 +553,6 @@ impl Processor {
         let clock = Clock::from_account_info(clock_info)?;
         let settings = Settings::from_account_info(settings_info, program_id)?;
         let mut community = Community::from_account_info(community_info, program_id)?;
-
-        if !secondary_info.is_signer {
-            return Err(StakingError::SecondarySignatureMissing.into());
-        }
-
-        if community.secondary.last_action == clock.unix_timestamp {
-            // adjust if minimum tick time changes
-            return Err(StakingError::NothingtoWithdraw.into());
-        }
-
-        let amount = calculate_payout(
-            community.secondary.last_action,
-            clock.unix_timestamp,
-            community.secondary.staked,
-        );
-        community.secondary.unclaimed.add(amount);
-
-        let whole = community.secondary.unclaimed.whole();
-        if whole == 0 {
-            return Err(StakingError::NothingtoWithdraw.into());
-        }
-
-        verify_associated!(
-            secondary_associated_info,
-            settings.token,
-            *secondary_info.key
-        )?;
-        reward_fund_transfer!(pool_info, secondary_associated_info, program_id, whole)?;
-
-        community.secondary.unclaimed.clear_whole();
-        community.secondary.last_action = clock.unix_timestamp;
-
-        community_info
-            .data
-            .borrow_mut()
-            .copy_from_slice(&community.try_to_vec()?);
 
         Ok(())
     }
