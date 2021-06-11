@@ -6,14 +6,16 @@ use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 
 use crate::error::StakingError;
 use crate::PRECISION;
-use bigint::U256 as OrigU256;
+use crate::REWARD_PER_HOUR;
+use crate::ZERO_KEY;
+use bigint::U256;
 use std::io::Read;
 use std::io::{Result as IOResult, Write};
 
-#[repr(transparent)]
+#[repr(C)]
 #[derive(Debug, PartialEq, Clone, Copy, Eq)]
-pub struct U256(OrigU256);
-impl BorshSerialize for U256 {
+pub struct BorshU256(U256);
+impl BorshSerialize for BorshU256 {
     fn serialize<W: Write>(&self, writer: &mut W) -> IOResult<()> {
         let mut buf = [0u8; 32];
         self.0.to_little_endian(&mut buf);
@@ -21,17 +23,17 @@ impl BorshSerialize for U256 {
         Ok(())
     }
 }
-impl BorshDeserialize for U256 {
+impl BorshDeserialize for BorshU256 {
     fn deserialize(buf: &mut &[u8]) -> IOResult<Self> {
         let mut ubuf = [0u8; 32];
         buf.read_exact(&mut ubuf)?;
-        Ok(U256(OrigU256::from_little_endian(&ubuf)))
+        Ok(BorshU256(U256::from_little_endian(&ubuf)))
     }
 }
 
-impl From<u64> for U256 {
+impl From<u64> for BorshU256 {
     fn from(a: u64) -> Self {
-        U256(OrigU256::from(a))
+        BorshU256(U256::from(a))
     }
 }
 
@@ -42,9 +44,11 @@ pub struct Settings {
     pub authority: Pubkey,
 
     // tokenomics variables
-    pub total_stake: u64,
-    pub reward_per_share: U256,
-    pub last_reward: UnixTimestamp,
+    // for a more detailed explanation of the algorithm and variables
+    // see https://www.mathcha.io/editor/j4V1YiODsYQu8dee0NiO39Z05cePQvk0f9qPex6
+    pub total_stake: u64,            // total amount of ZEE that has been staked
+    pub reward_per_share: BorshU256, // contains PRECISION
+    pub last_reward: UnixTimestamp,  // last time the pool was updated
 }
 
 impl Settings {
@@ -69,6 +73,26 @@ impl Settings {
         Self::verify_program_address(info.key, program_id)?;
         Self::try_from_slice(&info.data.borrow())
             .map_err(|_| StakingError::ProgramNotInitialized.into())
+    }
+
+    pub fn update_rewards(&mut self, now: UnixTimestamp) {
+        if self.last_reward >= now {
+            return;
+        }
+
+        if self.total_stake > 0 {
+            let seconds = U256::from(now - self.last_reward);
+            // The formula is:
+            // <time elapsed> * <rewards per second> / <total amount staked>
+            // rearranged to make all the multiplications first
+            let reward = seconds * U256::from(PRECISION) * U256::from(REWARD_PER_HOUR)
+                / U256::from(3600)
+                / U256::from(self.total_stake);
+
+            self.reward_per_share.0 = self.reward_per_share.0 + reward;
+        }
+
+        self.last_reward = now;
     }
 }
 
@@ -211,8 +235,20 @@ pub struct Beneficiary {
 }
 
 impl Beneficiary {
-    pub fn calculate_reward(&self, reward_per_share: U256) -> u64 {
-        (OrigU256::from(self.staked) * reward_per_share.0 / OrigU256::from(PRECISION)).as_u64()
+    pub fn is_empty(&self) -> bool {
+        self.authority == ZERO_KEY
+    }
+
+    pub fn calculate_pending_reward(&self, reward_per_share: BorshU256) -> u64 {
+        (U256::from(self.staked) * reward_per_share.0 / U256::from(PRECISION)).as_u64()
+    }
+
+    pub fn pay_out(&mut self, new_stake: u64, reward_per_share: BorshU256) {
+        let pending = self.calculate_pending_reward(reward_per_share) - self.reward_debt;
+
+        self.staked = new_stake;
+        self.pending_reward = self.calculate_pending_reward(reward_per_share);
+        self.pending_reward += pending;
     }
 }
 
@@ -220,9 +256,7 @@ impl Beneficiary {
 pub struct Stake {
     pub creation_date: UnixTimestamp,
 
-    pub total_stake: u64,
-    pub primary_stake: u64,
-    pub secondary_stake: u64,
+    pub staked: u64,
 
     pub beneficiary: Beneficiary,
 
@@ -277,7 +311,7 @@ mod tests {
             token: Pubkey::new_unique(),
             authority: Pubkey::new_unique(),
 
-            reward_per_share: U256::from(348923452348342394u64),
+            reward_per_share: BorshU256::from(348923452348342394u64),
             last_reward: 293458234234,
             total_stake: 9821429382935u64,
         };

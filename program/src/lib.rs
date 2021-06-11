@@ -8,11 +8,10 @@ pub mod instruction;
 pub mod processor;
 
 pub const UNBONDING_PERIOD: UnixTimestamp = 10 * 24 * 60 * 60; // 10 days
-pub const SPONSOR_UNLOCK: UnixTimestamp = 48 * 60 * 60; // 2 days
 pub const ZERO_KEY: Pubkey = Pubkey::new_from_array([0; 32]);
 
 pub const MINIMUM_STAKE: u64 = 1_000;
-pub const SECONDS_PER_YEAR: u64 = 365 * 24 * 3600;
+pub const REWARD_PER_HOUR: u64 = 5_000;
 
 pub const PRECISION: u64 = 1_000_000_000_000_000_000;
 

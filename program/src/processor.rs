@@ -15,10 +15,11 @@ use solana_program::{
 use spl_token::state::{Account, Mint};
 
 use crate::{
-    account::{Beneficiary, Community, RewardFund, Settings, Stake, StakePool, U256},
+    account::{Beneficiary, BorshU256, Community, RewardFund, Settings, Stake, StakePool},
     error::StakingError,
     instruction::StakingInstruction,
-    reward_fund_transfer, stake_pool_transfer, verify_associated, MINIMUM_STAKE, ZERO_KEY,
+    reward_fund_transfer, split_stake, stake_pool_transfer, verify_associated, MINIMUM_STAKE,
+    ZERO_KEY,
 };
 
 pub struct Processor {}
@@ -83,7 +84,7 @@ impl Processor {
         let settings = Settings {
             authority: *authority_info.key,
             token: *token_info.key,
-            reward_per_share: U256::from(0),
+            reward_per_share: BorshU256::from(0),
             last_reward: clock.unix_timestamp,
             total_stake: 0,
         };
@@ -306,9 +307,7 @@ impl Processor {
 
         let stake = Stake {
             creation_date: clock.unix_timestamp,
-            total_stake: 0,
-            primary_stake: 0,
-            secondary_stake: 0,
+            staked: 0,
             beneficiary: Beneficiary {
                 authority: *staker_info.key,
                 staked: 0,
@@ -368,18 +367,66 @@ impl Processor {
 
         let staker_assoc =
             verify_associated!(staker_associated_info, settings.token, *staker_info.key)?;
-        if staker_assoc.amount < amount {
+
+        let mut stake =
+            Stake::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
+        if stake.staked + amount < MINIMUM_STAKE {
+            return Err(StakingError::StakerMinimumBalanceNotMet.into());
+        }
+
+        settings.update_rewards(clock.unix_timestamp);
+
+        stake.staked += amount;
+        let (staker_share, primary, secondary) = split_stake(stake.staked);
+
+        // PROCESS STAKER'S REWARD
+
+        stake
+            .beneficiary
+            .pay_out(staker_share, settings.reward_per_share);
+
+        // allow them to re-stake their pending reward immediately
+        if staker_assoc.amount + stake.beneficiary.pending_reward < amount {
             return Err(StakingError::StakerBalanceTooLow.into());
         }
 
-        Stake::verify_program_address(
-            stake_info.key,
-            community_info.key,
-            staker_info.key,
+        // primary + secondary
+        community
+            .primary
+            .pay_out(primary, settings.reward_per_share);
+        if !community.secondary.is_empty() {
+            community
+                .secondary
+                .pay_out(secondary, settings.reward_per_share);
+        }
+
+        // pay out pending reward first
+        reward_fund_transfer!(
+            reward_fund_info,
+            staker_associated_info,
             program_id,
+            stake.beneficiary.pending_reward
+        )?;
+        stake.beneficiary.pending_reward = 0;
+
+        // transfer the new staked amount to stake pool
+        invoke(
+            &spl_token::instruction::transfer(
+                &spl_token::id(),
+                staker_associated_info.key,
+                stake_pool_info.key,
+                staker_info.key,
+                &[],
+                amount,
+            )?,
+            &[
+                staker_associated_info.clone(),
+                stake_pool_info.clone(),
+                staker_info.clone(),
+            ],
         )?;
 
-        let mut stake = Stake::try_from_slice(&stake_info.data.borrow())?;
+        settings.total_stake += amount;
 
         settings_info
             .data
@@ -432,17 +479,16 @@ impl Processor {
         // update staker
         let mut stake = Stake::try_from_slice(&stake_info.data.borrow())?;
 
-        if amount > stake.total_stake {
+        if amount > stake.staked {
             return Err(StakingError::StakerWithdrawingTooMuch.into());
         }
 
         // allow them to withdraw everything
-        if stake.total_stake - amount > 0 && stake.total_stake - amount < MINIMUM_STAKE {
+        if stake.staked - amount > 0 && stake.staked - amount < MINIMUM_STAKE {
             return Err(StakingError::StakerMinimumBalanceNotMet.into());
         }
 
-        // update settings
-        //settings.total_stake -= amount;
+        settings.total_stake += amount;
 
         settings_info
             .data
