@@ -47,10 +47,8 @@ impl Processor {
             StakingInstruction::WithdrawUnbond => {
                 Self::process_withdraw_unbond(program_id, accounts)
             }
-            StakingInstruction::ClaimPrimary => Self::process_claim_primary(program_id, accounts),
-            StakingInstruction::ClaimSecondary => {
-                Self::process_claim_secondary(program_id, accounts)
-            }
+            StakingInstruction::ClaimPrimary => Self::process_claim(program_id, accounts, true),
+            StakingInstruction::ClaimSecondary => Self::process_claim(program_id, accounts, false),
         }
     }
 
@@ -577,40 +575,65 @@ impl Processor {
         Ok(())
     }
 
-    pub fn process_claim_primary(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    pub fn process_claim(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        primary: bool,
+    ) -> ProgramResult {
         let iter = &mut accounts.iter();
         let _funder_info = next_account_info(iter)?;
-        let primary_info = next_account_info(iter)?;
-        let primary_associated_info = next_account_info(iter)?;
+        let authority_info = next_account_info(iter)?;
+        let authority_associated_info = next_account_info(iter)?;
         let community_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
-        let pool_info = next_account_info(iter)?;
+        let reward_fund_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
         let clock = Clock::from_account_info(clock_info)?;
-        let settings = Settings::from_account_info(settings_info, program_id)?;
+        let mut settings = Settings::from_account_info(settings_info, program_id)?;
         let mut community = Community::from_account_info(community_info, program_id)?;
 
-        if !primary_info.is_signer {
-            return Err(StakingError::PrimarySignatureMissing.into());
+        if !authority_info.is_signer {
+            return Err(StakingError::AuthorizedSignatureMissing.into());
         }
 
-        Ok(())
-    }
+        let beneficiary = if primary {
+            &mut community.primary
+        } else {
+            &mut community.secondary
+        };
 
-    pub fn process_claim_secondary(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
-        let iter = &mut accounts.iter();
-        let _funder_info = next_account_info(iter)?;
-        let secondary_info = next_account_info(iter)?;
-        let secondary_associated_info = next_account_info(iter)?;
-        let community_info = next_account_info(iter)?;
-        let settings_info = next_account_info(iter)?;
-        let pool_info = next_account_info(iter)?;
-        let clock_info = next_account_info(iter)?;
+        if beneficiary.authority != *authority_info.key {
+            return Err(StakingError::AuthorizedSignatureMissing.into());
+        }
 
-        let clock = Clock::from_account_info(clock_info)?;
-        let settings = Settings::from_account_info(settings_info, program_id)?;
-        let mut community = Community::from_account_info(community_info, program_id)?;
+        verify_associated!(
+            authority_associated_info,
+            settings.token,
+            *authority_info.key
+        )?;
+
+        settings.update_rewards(clock.unix_timestamp);
+
+        // the stake amount doesn't change, so there's no need to update staker/secondary at the same time
+        beneficiary.pay_out(beneficiary.staked, settings.reward_per_share);
+        // pay out pending reward
+        reward_fund_transfer!(
+            reward_fund_info,
+            authority_associated_info,
+            program_id,
+            beneficiary.pending_reward
+        )?;
+        beneficiary.pending_reward = 0;
+
+        settings_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&settings.try_to_vec()?);
+        community_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&community.try_to_vec()?);
 
         Ok(())
     }
