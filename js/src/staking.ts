@@ -1,10 +1,22 @@
-import { PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { Settings } from './accounts';
+import * as borsh from 'borsh';
 
 export class Staking {
     programId: PublicKey;
+    connection: Connection;
 
-    constructor(programId: PublicKey) {
+    constructor(programId: PublicKey, connection: Connection) {
         this.programId = programId;
+        this.connection = connection;
+    }
+
+    public async getSettings(): Promise<Settings> {
+        const settingsId = await Staking.settingsId(this.programId);
+        const account = await this.connection.getAccountInfo(settingsId);
+        if (account === null) throw new Error('Unable to find settings account');
+
+        return borsh.deserialize(Settings.schema, Settings, account.data);
     }
 
     static async settingsId(programId: PublicKey): Promise<PublicKey> {

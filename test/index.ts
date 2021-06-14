@@ -1,21 +1,12 @@
-import {
-    Token,
-    TOKEN_PROGRAM_ID,
-    MintLayout,
-    ASSOCIATED_TOKEN_PROGRAM_ID
-} from '@solana/spl-token';
+import { Token, TOKEN_PROGRAM_ID, MintLayout } from '@solana/spl-token';
 import {
     BPF_LOADER_PROGRAM_ID,
     BpfLoader,
     Keypair,
     LAMPORTS_PER_SOL,
     Transaction,
-    TransactionInstruction,
-    AccountMeta,
     PublicKey,
-    SYSVAR_RENT_PUBKEY,
-    SystemProgram,
-    SYSVAR_CLOCK_PUBKEY
+    SystemProgram
 } from '@solana/web3.js';
 import { Connection } from '@solana/web3.js';
 import * as fs from 'fs';
@@ -27,8 +18,6 @@ import {
     InitializeStake,
     Stake
 } from '../js/src/index';
-
-const zeroKey = new PublicKey(Buffer.alloc(0, 32));
 
 const config = {
     funder: new Keypair(),
@@ -67,15 +56,7 @@ const token = new Token(
     config.funder
 );
 
-const staking = new Staking(programId);
-
-function am(
-    pubkey: PublicKey,
-    isSigner: boolean,
-    isWritable: boolean
-): AccountMeta {
-    return { pubkey, isSigner, isWritable };
-}
+const staking = new Staking(programId, connection);
 
 (async () => {
     console.log(`Funding ${config.funder.publicKey.toBase58()} with 20 SOL`);
@@ -137,24 +118,6 @@ function am(
 
     console.log(`Attempting to initialize`);
 
-    const settings_id = (
-        await PublicKey.findProgramAddress([Buffer.from('settings')], programId)
-    )[0];
-
-    const pool_authority_id = (
-        await PublicKey.findProgramAddress(
-            [Buffer.from('poolauthority')],
-            programId
-        )
-    )[0];
-
-    const stake_pool_id = (
-        await PublicKey.findProgramAddress(
-            [Buffer.from('stakepool')],
-            programId
-        )
-    )[0];
-
     const reward_pool_id = (
         await PublicKey.findProgramAddress(
             [Buffer.from('rewardpool')],
@@ -176,6 +139,9 @@ function am(
         config.authority
     ]);
     console.log(`Initialized: ${init_sig}`);
+
+    const settings = await staking.getSettings();
+    console.log(`Settings account: ${settings}`);
 
     await token.mintTo(reward_pool_id, config.mint_authority, [], 100_000_000);
 
