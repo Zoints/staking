@@ -1,4 +1,8 @@
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import {
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    Token,
+    TOKEN_PROGRAM_ID
+} from '@solana/spl-token';
 import {
     AccountMeta,
     PublicKey,
@@ -7,7 +11,7 @@ import {
     SYSVAR_RENT_PUBKEY,
     TransactionInstruction
 } from '@solana/web3.js';
-import { Staking } from './';
+import { Staking, ZERO_KEY } from './';
 import * as borsh from 'borsh';
 
 export enum Instructions {
@@ -87,13 +91,54 @@ export async function Initialize(
         am(SystemProgram.programId, false, false)
     ];
 
-    const simple = new SimpleSchema(Instructions.Initialize);
-    const data = borsh.serialize(SimpleSchema.schema, simple);
+    const instruction = new SimpleSchema(Instructions.Initialize);
+    const instructionData = borsh.serialize(SimpleSchema.schema, instruction);
 
     return new TransactionInstruction({
         keys: keys,
         programId,
-        data: Buffer.from(data)
+        data: Buffer.from(instructionData)
+    });
+}
+
+export async function RegisterCommunity(
+    funder: PublicKey,
+    owner: PublicKey,
+    community: PublicKey,
+    programId: PublicKey,
+    primary: PublicKey,
+    primaryAssociated: PublicKey,
+    secondary?: PublicKey,
+    secondaryAssociated?: PublicKey
+): Promise<TransactionInstruction> {
+    const settingsId = await Staking.settingsId(programId);
+
+    if (secondary === undefined || secondaryAssociated === undefined) {
+        secondary = ZERO_KEY;
+        secondaryAssociated = ZERO_KEY;
+    }
+
+    const user_1_keys: AccountMeta[] = [
+        am(funder, true, false),
+        am(owner, true, false),
+        am(settingsId, false, false),
+        am(community, true, true),
+        am(primary, false, false),
+        am(primaryAssociated, false, true),
+        am(secondary, false, false),
+        am(secondaryAssociated, false, false),
+        am(SYSVAR_RENT_PUBKEY, false, false),
+        am(SYSVAR_CLOCK_PUBKEY, false, false),
+        am(SystemProgram.programId, false, false)
+    ];
+
+    const instruction = new SimpleSchema(Instructions.RegisterCommunity);
+    const instructionData = borsh.serialize(SimpleSchema.schema, instruction);
+
+    return new TransactionInstruction({
+        keys: user_1_keys,
+        programId,
+        data: Buffer.from(instructionData)
     });
 }
 
