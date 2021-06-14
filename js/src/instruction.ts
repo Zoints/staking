@@ -107,26 +107,18 @@ export async function RegisterCommunity(
     owner: PublicKey,
     community: PublicKey,
     primary: PublicKey,
-    primaryAssociated: PublicKey,
     secondary?: PublicKey,
-    secondaryAssociated?: PublicKey
 ): Promise<TransactionInstruction> {
-    const settingsId = await Staking.settingsId(programId);
-
-    if (secondary === undefined || secondaryAssociated === undefined) {
+    if (secondary === undefined) {
         secondary = ZERO_KEY;
-        secondaryAssociated = ZERO_KEY;
     }
 
     const keys: AccountMeta[] = [
         am(funder, true, false),
         am(owner, true, false),
-        am(settingsId, false, false),
         am(community, true, true),
         am(primary, false, false),
-        am(primaryAssociated, false, true),
         am(secondary, false, false),
-        am(secondaryAssociated, false, false),
         am(SYSVAR_RENT_PUBKEY, false, false),
         am(SYSVAR_CLOCK_PUBKEY, false, false),
         am(SystemProgram.programId, false, false)

@@ -20,7 +20,7 @@ use crate::{
     },
     error::StakingError,
     instruction::StakingInstruction,
-    pool_transfer, split_stake, verify_associated, MINIMUM_STAKE, ZERO_KEY,
+    pool_transfer, split_stake, verify_associated, MINIMUM_STAKE,
 };
 
 pub struct Processor {}
@@ -188,12 +188,9 @@ impl Processor {
         let iter = &mut accounts.iter();
         let funder_info = next_account_info(iter)?;
         let creator_info = next_account_info(iter)?;
-        let settings_info = next_account_info(iter)?;
         let community_info = next_account_info(iter)?;
         let primary_info = next_account_info(iter)?;
-        let primary_associated_info = next_account_info(iter)?;
         let secondary_info = next_account_info(iter)?;
-        let secondary_associated_info = next_account_info(iter)?;
         let rent_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
@@ -204,19 +201,8 @@ impl Processor {
         let rent = Rent::from_account_info(rent_info)?;
         let clock = Clock::from_account_info(clock_info)?;
 
-        let settings = Settings::from_account_info(settings_info, program_id)?;
-
         if !community_info.data_is_empty() {
             return Err(StakingError::CommunityAccountAlreadyExists.into());
-        }
-
-        let primary_assoc = Account::unpack(&primary_associated_info.data.borrow())
-            .map_err(|_| StakingError::PrimaryAssociatedInvalidAccount)?;
-        if primary_assoc.mint != settings.token {
-            return Err(StakingError::PrimaryAssociatedInvalidToken.into());
-        }
-        if primary_assoc.owner != *primary_info.key {
-            return Err(StakingError::PrimaryAssociatedInvalidOwner.into());
         }
 
         let primary = Beneficiary {
@@ -226,30 +212,11 @@ impl Processor {
             pending_reward: 0,
         };
 
-        let secondary = if *secondary_info.key != ZERO_KEY {
-            let secondary_assoc = Account::unpack(&secondary_associated_info.data.borrow())
-                .map_err(|_| StakingError::SecondaryAssociatedInvalidAccount)?;
-            if secondary_assoc.mint != settings.token {
-                return Err(StakingError::SecondaryAssociatedInvalidToken.into());
-            }
-            if secondary_assoc.owner != *secondary_info.key {
-                return Err(StakingError::SecondaryAssociatedInvalidOwner.into());
-            }
-
-            Beneficiary {
-                staked: 0,
-                authority: *secondary_info.key,
-                reward_debt: 0,
-                pending_reward: 0,
-            }
-        } else {
-            msg!("No secondary account");
-            Beneficiary {
-                staked: 0,
-                authority: ZERO_KEY,
-                reward_debt: 0,
-                pending_reward: 0,
-            }
+        let secondary = Beneficiary {
+            staked: 0,
+            authority: *secondary_info.key,
+            reward_debt: 0,
+            pending_reward: 0,
         };
 
         let community = Community {

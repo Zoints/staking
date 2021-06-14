@@ -19,9 +19,14 @@ import {
 } from '@solana/web3.js';
 import { Connection } from '@solana/web3.js';
 import * as fs from 'fs';
-import * as borsh from 'borsh';
-import { Initialize, RegisterCommunity, Stake } from './instructions';
 import { sendAndConfirmTransaction } from './util';
+import {
+    Staking,
+    Initialize,
+    RegisterCommunity,
+    InitializeStake,
+    Stake
+} from '../js/src/index';
 
 const zeroKey = new PublicKey(Buffer.alloc(0, 32));
 
@@ -61,6 +66,8 @@ const token = new Token(
     TOKEN_PROGRAM_ID,
     config.funder
 );
+
+const staking = new Staking(programId);
 
 function am(
     pubkey: PublicKey,
@@ -130,9 +137,6 @@ function am(
 
     console.log(`Attempting to initialize`);
 
-    const init_instruction = new Initialize();
-    const init_data = Buffer.alloc(1, 0);
-
     const settings_id = (
         await PublicKey.findProgramAddress([Buffer.from('settings')], programId)
     )[0];
@@ -158,39 +162,13 @@ function am(
         )
     )[0];
 
-    /*
-        let funder_info = next_account_info(iter)?;
-        let authority_info = next_account_info(iter)?;
-        let settings_info = next_account_info(iter)?;
-        let stake_pool_info = next_account_info(iter)?;
-        let reward_fund_info = next_account_info(iter)?;
-        let token_info = next_account_info(iter)?;
-        let rent_info = next_account_info(iter)?;
-        let clock_info = next_account_info(iter)?;
-        let token_program_info = next_account_info(iter)?;
-        let program_info = next_account_info(iter)?;
-        */
-
-    const init_keys: AccountMeta[] = [
-        am(config.funder.publicKey, true, false),
-        am(config.authority.publicKey, true, false),
-        am(settings_id, false, true),
-        am(pool_authority_id, false, false),
-        am(stake_pool_id, false, true),
-        am(reward_pool_id, false, true),
-        am(config.mint_id.publicKey, false, false),
-        am(SYSVAR_RENT_PUBKEY, false, false),
-        am(SYSVAR_CLOCK_PUBKEY, false, false),
-        am(TOKEN_PROGRAM_ID, false, false),
-        am(SystemProgram.programId, false, false)
-    ];
-
     const init_trans = new Transaction().add(
-        new TransactionInstruction({
-            keys: init_keys,
+        await Initialize(
             programId,
-            data: init_data
-        })
+            config.funder.publicKey,
+            config.authority.publicKey,
+            config.mint_id.publicKey
+        )
     );
 
     const init_sig = await sendAndConfirmTransaction(connection, init_trans, [
@@ -207,58 +185,16 @@ function am(
 
     const user_1 = config.user_community[0].authority;
     const user_1_community = config.user_community[0].community;
-
-    const user_1_assoc = await token.getOrCreateAssociatedAccountInfo(
-        user_1.publicKey
-    );
-    await token.mintTo(user_1_assoc.address, config.mint_authority, [], 20_000);
-
-    const user_1_instruction = new RegisterCommunity();
-    const user_1_data = borsh.serialize(
-        RegisterCommunity.schema,
-        user_1_instruction
-    );
-
     const user_1_primary = new Keypair();
-    const user_1_primary_assoc = await token.getOrCreateAssociatedAccountInfo(
-        user_1_primary.publicKey
-    );
-    const user_1_referrer = new Keypair();
-
-    /*
-        let iter = &mut accounts.iter();
-        let funder_info = next_account_info(iter)?;
-        let creator_info = next_account_info(iter)?;
-        let settings_info = next_account_info(iter)?;
-        let community_info = next_account_info(iter)?;
-        let primary_info = next_account_info(iter)?;
-        let primary_associated_info = next_account_info(iter)?;
-        let secondary_info = next_account_info(iter)?;
-        let secondary_associated_info = next_account_info(iter)?;
-        let rent_info = next_account_info(iter)?;
-        let clock_info = next_account_info(iter)?;
-        */
-
-    const user_1_keys: AccountMeta[] = [
-        am(config.funder.publicKey, true, false),
-        am(user_1.publicKey, true, false),
-        am(settings_id, false, false),
-        am(user_1_community.publicKey, true, true),
-        am(user_1_primary.publicKey, false, false),
-        am(user_1_primary_assoc.address, false, true),
-        am(zeroKey, false, false),
-        am(zeroKey, false, false),
-        am(SYSVAR_RENT_PUBKEY, false, false),
-        am(SYSVAR_CLOCK_PUBKEY, false, false),
-        am(SystemProgram.programId, false, false)
-    ];
 
     const user_1_trans = new Transaction().add(
-        new TransactionInstruction({
-            keys: user_1_keys,
+        await RegisterCommunity(
             programId,
-            data: Buffer.from(user_1_data)
-        })
+            config.funder.publicKey,
+            user_1.publicKey,
+            user_1_community.publicKey,
+            user_1_primary.publicKey
+        )
     );
     sendAndConfirmTransaction(connection, user_1_trans, [
         config.funder,
@@ -274,61 +210,17 @@ function am(
 
     const zoints_1 = config.zoints_community[0].authority;
     const zoints_1_community = config.zoints_community[0].community;
-
-    const zoints_1_assoc = await token.getOrCreateAssociatedAccountInfo(
-        zoints_1.publicKey
-    );
-    await token.mintTo(
-        zoints_1_assoc.address,
-        config.mint_authority,
-        [],
-        20_000
-    );
-
-    const zoints_1_instruction = new RegisterCommunity();
-    const zoints_1_data = borsh.serialize(
-        RegisterCommunity.schema,
-        zoints_1_instruction
-    );
-
     const zoints_1_primary = config.zoints_community[0].primary;
-    const zoints_1_primary_assoc = await token.getOrCreateAssociatedAccountInfo(
-        zoints_1_primary.publicKey
-    );
-
-    /*
-        let iter = &mut accounts.iter();
-        let funder_info = next_account_info(iter)?;
-        let creator_info = next_account_info(iter)?;
-        let settings_info = next_account_info(iter)?;
-        let community_info = next_account_info(iter)?;
-        let primary_info = next_account_info(iter)?;
-        let primary_associated_info = next_account_info(iter)?;
-        let secondary_info = next_account_info(iter)?;
-        let secondary_associated_info = next_account_info(iter)?;
-        let rent_info = next_account_info(iter)?;
-        let clock_info = next_account_info(iter)?;
-        */
-    const zoints_1_keys: AccountMeta[] = [
-        am(config.funder.publicKey, true, false),
-        am(zoints_1.publicKey, true, false),
-        am(settings_id, false, false),
-        am(zoints_1_community.publicKey, true, true),
-        am(zoints_1_primary.publicKey, false, false),
-        am(zoints_1_primary_assoc.address, false, true),
-        am(zoints_1.publicKey, false, false),
-        am(zoints_1_assoc.address, false, false),
-        am(SYSVAR_RENT_PUBKEY, false, false),
-        am(SYSVAR_CLOCK_PUBKEY, false, false),
-        am(SystemProgram.programId, false, false)
-    ];
 
     const zoints_1_trans = new Transaction().add(
-        new TransactionInstruction({
-            keys: zoints_1_keys,
+        await RegisterCommunity(
             programId,
-            data: Buffer.from(zoints_1_data)
-        })
+            config.funder.publicKey,
+            zoints_1.publicKey,
+            zoints_1_community.publicKey,
+            zoints_1_primary.publicKey,
+            zoints_1.publicKey
+        )
     );
     sendAndConfirmTransaction(connection, zoints_1_trans, [
         config.funder,
@@ -346,43 +238,13 @@ function am(
         staker_1.publicKey
     );
 
-    const staker_1_stake = (
-        await PublicKey.findProgramAddress(
-            [
-                Buffer.from('stake'),
-                user_1_community.publicKey.toBuffer(),
-                staker_1.publicKey.toBuffer()
-            ],
-            programId
-        )
-    )[0];
-
-    /*
-        let funder_info = next_account_info(iter)?;
-        let staker_info = next_account_info(iter)?;
-        let staker_associated_info = next_account_info(iter)?;
-        let community_info = next_account_info(iter)?;
-        let settings_info = next_account_info(iter)?;
-        let stake_info = next_account_info(iter)?;
-        let rent_info = next_account_info(iter)?;
-        let clock_info = next_account_info(iter)?;
-    */
-    const staker_1_keys: AccountMeta[] = [
-        am(config.funder.publicKey, true, false),
-        am(staker_1.publicKey, true, false),
-        am(user_1_community.publicKey, false, false),
-        am(staker_1_stake, false, true),
-        am(SYSVAR_RENT_PUBKEY, false, false),
-        am(SYSVAR_CLOCK_PUBKEY, false, false),
-        am(SystemProgram.programId, false, false)
-    ];
-    const staker_1_data = Buffer.alloc(1, 2);
     const staker_1_trans = new Transaction().add(
-        new TransactionInstruction({
-            keys: staker_1_keys,
+        await InitializeStake(
             programId,
-            data: staker_1_data
-        })
+            config.funder.publicKey,
+            staker_1.publicKey,
+            user_1_community.publicKey
+        )
     );
     const staker_1_sig = await sendAndConfirmTransaction(
         connection,
@@ -402,40 +264,15 @@ function am(
     ////////// ADD STAKE
     //////////
 
-    /*
-        let _funder_info = next_account_info(iter)?;
-        let staker_info = next_account_info(iter)?;
-        let staker_associated_info = next_account_info(iter)?;
-        let community_info = next_account_info(iter)?;
-        let stake_pool_info = next_account_info(iter)?;
-        let reward_fund_info = next_account_info(iter)?;
-        let settings_info = next_account_info(iter)?;
-        let stake_info = next_account_info(iter)?;
-        let program_info = next_account_info(iter)?;
-        let clock_info = next_account_info(iter)?;
-        */
-
-    const stake_1_keys: AccountMeta[] = [
-        am(config.funder.publicKey, true, false),
-        am(staker_1.publicKey, true, false),
-        am(staker_1_associated.address, false, true),
-        am(user_1_community.publicKey, false, true),
-        am(pool_authority_id, false, false),
-        am(stake_pool_id, false, true),
-        am(reward_pool_id, false, true),
-        am(settings_id, false, true),
-        am(staker_1_stake, false, true),
-        am(SYSVAR_CLOCK_PUBKEY, false, false),
-        am(TOKEN_PROGRAM_ID, false, false)
-    ];
-    const stake_1_instruction = new Stake(20_000);
-    const stake_1_data = borsh.serialize(Stake.schema, stake_1_instruction);
     const stake_1_trans = new Transaction().add(
-        new TransactionInstruction({
-            keys: stake_1_keys,
+        await Stake(
             programId,
-            data: Buffer.from(stake_1_data)
-        })
+            config.funder.publicKey,
+            staker_1.publicKey,
+            staker_1_associated.address,
+            user_1_community.publicKey,
+            20_000
+        )
     );
 
     const stake_1_sig = await sendAndConfirmTransaction(
