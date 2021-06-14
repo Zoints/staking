@@ -153,7 +153,7 @@ function am(
 
     const reward_pool_id = (
         await PublicKey.findProgramAddress(
-            [Buffer.from('rewardfund')],
+            [Buffer.from('rewardpool')],
             programId
         )
     )[0];
@@ -175,13 +175,13 @@ function am(
         am(config.funder.publicKey, true, false),
         am(config.authority.publicKey, true, false),
         am(settings_id, false, true),
+        am(pool_authority_id, false, false),
         am(stake_pool_id, false, true),
         am(reward_pool_id, false, true),
         am(config.mint_id.publicKey, false, false),
         am(SYSVAR_RENT_PUBKEY, false, false),
         am(SYSVAR_CLOCK_PUBKEY, false, false),
         am(TOKEN_PROGRAM_ID, false, false),
-        am(programId, false, false),
         am(SystemProgram.programId, false, false)
     ];
 
@@ -422,12 +422,13 @@ function am(
         am(staker_1.publicKey, true, false),
         am(staker_1_associated.address, false, true),
         am(user_1_community.publicKey, false, true),
+        am(pool_authority_id, false, false),
         am(stake_pool_id, false, true),
         am(reward_pool_id, false, true),
         am(settings_id, false, true),
         am(staker_1_stake, false, true),
-        am(programId, false, false),
-        am(SYSVAR_CLOCK_PUBKEY, false, false)
+        am(SYSVAR_CLOCK_PUBKEY, false, false),
+        am(TOKEN_PROGRAM_ID, false, false)
     ];
     const stake_1_instruction = new Stake(20_000);
     const stake_1_data = borsh.serialize(Stake.schema, stake_1_instruction);

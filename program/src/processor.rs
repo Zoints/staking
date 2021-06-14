@@ -43,7 +43,7 @@ impl Processor {
                 Self::process_stake(program_id, accounts, amount)
             }
             StakingInstruction::Unstake { amount } => {
-                Self::process_stake(program_id, accounts, amount)
+                Self::process_unstake(program_id, accounts, amount)
             }
             StakingInstruction::WithdrawUnbond => {
                 Self::process_withdraw_unbond(program_id, accounts)
