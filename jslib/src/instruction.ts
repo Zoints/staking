@@ -208,6 +208,142 @@ export async function Stake(
     });
 }
 
+export async function Unstake(
+    programId: PublicKey,
+    funder: PublicKey,
+    staker: PublicKey,
+    stakerAssociated: PublicKey,
+    community: PublicKey,
+    amount: number
+): Promise<TransactionInstruction> {
+    const settingsId = await Staking.settingsId(programId);
+    const poolAuthorityId = await Staking.poolAuthorityId(programId);
+    const rewardPoolId = await Staking.rewardPoolId(programId);
+    const stakeId = await Staking.stakeAddress(programId, community, staker);
+
+    const keys: AccountMeta[] = [
+        am(funder, true, false),
+        am(staker, true, false),
+        am(stakerAssociated, false, true),
+        am(community, false, true),
+        am(poolAuthorityId, false, false),
+        am(rewardPoolId, false, true),
+        am(settingsId, false, true),
+        am(stakeId, false, true),
+        am(SYSVAR_CLOCK_PUBKEY, false, false),
+        am(TOKEN_PROGRAM_ID, false, false)
+    ];
+
+    const instruction = new AmountSchema(Instructions.Unstake, amount);
+    const instructionData = borsh.serialize(AmountSchema.schema, instruction);
+
+    return new TransactionInstruction({
+        keys: keys,
+        programId,
+        data: Buffer.from(instructionData)
+    });
+}
+
+export async function WithdrawUnbond(
+    programId: PublicKey,
+    funder: PublicKey,
+    staker: PublicKey,
+    stakerAssociated: PublicKey,
+    community: PublicKey
+): Promise<TransactionInstruction> {
+    const settingsId = await Staking.settingsId(programId);
+    const poolAuthorityId = await Staking.poolAuthorityId(programId);
+    const stakePoolId = await Staking.stakePoolId(programId);
+    const stakeId = await Staking.stakeAddress(programId, community, staker);
+
+    const keys: AccountMeta[] = [
+        am(funder, true, false),
+        am(staker, true, false),
+        am(stakerAssociated, false, true),
+        am(community, false, true),
+        am(settingsId, false, true),
+        am(poolAuthorityId, false, false),
+        am(stakePoolId, false, true),
+        am(stakeId, false, true),
+        am(SYSVAR_CLOCK_PUBKEY, false, false),
+        am(TOKEN_PROGRAM_ID, false, false)
+    ];
+
+    const instruction = new SimpleSchema(Instructions.WithdrawUnbond);
+    const instructionData = borsh.serialize(SimpleSchema.schema, instruction);
+
+    return new TransactionInstruction({
+        keys: keys,
+        programId,
+        data: Buffer.from(instructionData)
+    });
+}
+
+export async function ClaimPrimary(
+    programId: PublicKey,
+    funder: PublicKey,
+    authority: PublicKey,
+    authorityAssociated: PublicKey,
+    community: PublicKey
+): Promise<TransactionInstruction> {
+    const settingsId = await Staking.settingsId(programId);
+    const poolAuthorityId = await Staking.poolAuthorityId(programId);
+    const rewardPoolId = await Staking.rewardPoolId(programId);
+
+    const keys: AccountMeta[] = [
+        am(funder, true, false),
+        am(authority, true, false),
+        am(authorityAssociated, false, true),
+        am(community, false, true),
+        am(settingsId, false, true),
+        am(poolAuthorityId, false, false),
+        am(rewardPoolId, false, true),
+        am(SYSVAR_CLOCK_PUBKEY, false, false),
+        am(TOKEN_PROGRAM_ID, false, false)
+    ];
+
+    const instruction = new SimpleSchema(Instructions.ClaimPrimary);
+    const instructionData = borsh.serialize(SimpleSchema.schema, instruction);
+
+    return new TransactionInstruction({
+        keys: keys,
+        programId,
+        data: Buffer.from(instructionData)
+    });
+}
+export async function ClaimSecondary(
+    programId: PublicKey,
+    funder: PublicKey,
+    authority: PublicKey,
+    authorityAssociated: PublicKey,
+    community: PublicKey
+): Promise<TransactionInstruction> {
+    const settingsId = await Staking.settingsId(programId);
+    const poolAuthorityId = await Staking.poolAuthorityId(programId);
+    const rewardPoolId = await Staking.rewardPoolId(programId);
+
+    const keys: AccountMeta[] = [
+        am(funder, true, false),
+        am(authority, true, false),
+        am(authorityAssociated, false, true),
+        am(community, false, true),
+        am(settingsId, false, true),
+        am(poolAuthorityId, false, false),
+        am(rewardPoolId, false, true),
+        am(SYSVAR_CLOCK_PUBKEY, false, false),
+        am(TOKEN_PROGRAM_ID, false, false)
+    ];
+
+    const instruction = new SimpleSchema(Instructions.ClaimSecondary);
+    const instructionData = borsh.serialize(SimpleSchema.schema, instruction);
+
+    return new TransactionInstruction({
+        keys: keys,
+        programId,
+        data: Buffer.from(instructionData)
+    });
+}
+
 function am(
     pubkey: PublicKey,
     isSigner: boolean,
