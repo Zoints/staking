@@ -67,10 +67,10 @@ export class AmountSchema {
 }
 
 export async function Initialize(
+    programId: PublicKey,
     funder: PublicKey,
     authority: PublicKey,
-    mint: PublicKey,
-    programId: PublicKey
+    mint: PublicKey
 ): Promise<TransactionInstruction> {
     const settingsId = await Staking.settingsId(programId);
     const poolAuthorityId = await Staking.poolAuthorityId(programId);
@@ -102,10 +102,10 @@ export async function Initialize(
 }
 
 export async function RegisterCommunity(
+    programId: PublicKey,
     funder: PublicKey,
     owner: PublicKey,
     community: PublicKey,
-    programId: PublicKey,
     primary: PublicKey,
     primaryAssociated: PublicKey,
     secondary?: PublicKey,
@@ -118,7 +118,7 @@ export async function RegisterCommunity(
         secondaryAssociated = ZERO_KEY;
     }
 
-    const user_1_keys: AccountMeta[] = [
+    const keys: AccountMeta[] = [
         am(funder, true, false),
         am(owner, true, false),
         am(settingsId, false, false),
@@ -136,7 +136,35 @@ export async function RegisterCommunity(
     const instructionData = borsh.serialize(SimpleSchema.schema, instruction);
 
     return new TransactionInstruction({
-        keys: user_1_keys,
+        keys: keys,
+        programId,
+        data: Buffer.from(instructionData)
+    });
+}
+
+export async function InitializeStake(
+    programId: PublicKey,
+    funder: PublicKey,
+    owner: PublicKey,
+    community: PublicKey
+): Promise<TransactionInstruction> {
+    const stake = await Staking.stakeAddress(programId, community, owner);
+
+    const keys: AccountMeta[] = [
+        am(funder, true, false),
+        am(owner, true, false),
+        am(community, false, false),
+        am(stake, false, true),
+        am(SYSVAR_RENT_PUBKEY, false, false),
+        am(SYSVAR_CLOCK_PUBKEY, false, false),
+        am(SystemProgram.programId, false, false)
+    ];
+
+    const instruction = new SimpleSchema(Instructions.InitializeStake);
+    const instructionData = borsh.serialize(SimpleSchema.schema, instruction);
+
+    return new TransactionInstruction({
+        keys: keys,
         programId,
         data: Buffer.from(instructionData)
     });

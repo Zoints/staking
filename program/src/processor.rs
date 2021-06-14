@@ -288,23 +288,17 @@ impl Processor {
         let iter = &mut accounts.iter();
         let funder_info = next_account_info(iter)?;
         let staker_info = next_account_info(iter)?;
-        let staker_associated_info = next_account_info(iter)?;
         let community_info = next_account_info(iter)?;
-        let settings_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
         let rent_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
         let rent = Rent::from_account_info(rent_info)?;
         let clock = Clock::from_account_info(clock_info)?;
-        let settings = Settings::from_account_info(settings_info, program_id)?;
-        let _ = Community::from_account_info(community_info, program_id)?;
 
         if !staker_info.is_signer {
             return Err(StakingError::MissingStakeSignature.into());
         }
-
-        verify_associated!(staker_associated_info, settings.token, *staker_info.key)?;
 
         let seed = Stake::verify_program_address(
             stake_info.key,

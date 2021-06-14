@@ -370,9 +370,7 @@ function am(
     const staker_1_keys: AccountMeta[] = [
         am(config.funder.publicKey, true, false),
         am(staker_1.publicKey, true, false),
-        am(staker_1_associated.address, false, false),
         am(user_1_community.publicKey, false, false),
-        am(settings_id, false, false),
         am(staker_1_stake, false, true),
         am(SYSVAR_RENT_PUBKEY, false, false),
         am(SYSVAR_CLOCK_PUBKEY, false, false),

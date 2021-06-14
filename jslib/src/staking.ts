@@ -40,4 +40,17 @@ export class Staking {
             )
         )[0];
     }
+
+    static async stakeAddress(
+        programId: PublicKey,
+        community: PublicKey,
+        owner: PublicKey
+    ): Promise<PublicKey> {
+        return (
+            await PublicKey.findProgramAddress(
+                [Buffer.from('stake'), community.toBuffer(), owner.toBuffer()],
+                programId
+            )
+        )[0];
+    }
 }
