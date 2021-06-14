@@ -148,13 +148,13 @@ export async function InitializeStake(
     owner: PublicKey,
     community: PublicKey
 ): Promise<TransactionInstruction> {
-    const stake = await Staking.stakeAddress(programId, community, owner);
+    const stakeId = await Staking.stakeAddress(programId, community, owner);
 
     const keys: AccountMeta[] = [
         am(funder, true, false),
         am(owner, true, false),
         am(community, false, false),
-        am(stake, false, true),
+        am(stakeId, false, true),
         am(SYSVAR_RENT_PUBKEY, false, false),
         am(SYSVAR_CLOCK_PUBKEY, false, false),
         am(SystemProgram.programId, false, false)
@@ -162,6 +162,44 @@ export async function InitializeStake(
 
     const instruction = new SimpleSchema(Instructions.InitializeStake);
     const instructionData = borsh.serialize(SimpleSchema.schema, instruction);
+
+    return new TransactionInstruction({
+        keys: keys,
+        programId,
+        data: Buffer.from(instructionData)
+    });
+}
+
+export async function Stake(
+    programId: PublicKey,
+    funder: PublicKey,
+    staker: PublicKey,
+    stakerAssociated: PublicKey,
+    community: PublicKey,
+    amount: number
+): Promise<TransactionInstruction> {
+    const settingsId = await Staking.settingsId(programId);
+    const poolAuthorityId = await Staking.poolAuthorityId(programId);
+    const stakePoolId = await Staking.stakePoolId(programId);
+    const rewardPoolId = await Staking.rewardPoolId(programId);
+    const stakeId = await Staking.stakeAddress(programId, community, staker);
+
+    const keys: AccountMeta[] = [
+        am(funder, true, false),
+        am(staker, true, false),
+        am(stakerAssociated, false, true),
+        am(community, false, true),
+        am(poolAuthorityId, false, false),
+        am(stakePoolId, false, true),
+        am(rewardPoolId, false, true),
+        am(settingsId, false, true),
+        am(stakeId, false, true),
+        am(SYSVAR_CLOCK_PUBKEY, false, false),
+        am(TOKEN_PROGRAM_ID, false, false)
+    ];
+
+    const instruction = new AmountSchema(Instructions.Stake, amount);
+    const instructionData = borsh.serialize(AmountSchema.schema, instruction);
 
     return new TransactionInstruction({
         keys: keys,
