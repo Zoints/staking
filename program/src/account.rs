@@ -102,48 +102,29 @@ impl Settings {
     }
 }
 
-/// Transfer ZEE from Stake Pool
+/// Transfer ZEE from a Pool
 ///
+/// The type of pool (RewardPool/StakePool) has to be specified as the first parameter.
 /// The recipient has to be verified to be ZEE before this is used.
 #[macro_export]
-macro_rules! stake_pool_transfer {
-    ($pool:expr, $recipient:expr, $program:expr, $amount:expr) => {
-        match StakePool::verify_program_address($pool.key, $program.key) {
-            Ok(seed) => invoke_signed(
-                &spl_token::instruction::transfer(
-                    &spl_token::id(),
-                    $pool.key,
-                    $recipient.key,
-                    $program.key,
-                    &[],
-                    $amount,
-                )?,
-                &[$pool.clone(), $recipient.clone(), $program.clone()],
-                &[&[b"stakepool", &[seed]]],
-            ),
-            Err(err) => Err(err),
-        }
-    };
-}
-/// Transfer ZEE from Reward Pool
-///
-/// The recipient has to be verified to be ZEE before this is used.
-#[macro_export]
-macro_rules! reward_pool_transfer {
-    ($fund:expr, $recipient:expr, $program:expr, $amount:expr) => {
-        match RewardPool::verify_program_address($fund.key, $program.key) {
-            Ok(seed) => invoke_signed(
-                &spl_token::instruction::transfer(
-                    &spl_token::id(),
-                    $fund.key,
-                    $recipient.key,
-                    $program.key,
-                    &[],
-                    $amount,
-                )?,
-                &[$fund.clone(), $recipient.clone(), $program.clone()],
-                &[&[b"rewardpool", &[seed]]],
-            ),
+macro_rules! pool_transfer {
+    ($fund_type:ident, $fund:expr, $recipient:expr, $authority:expr, $program_id:expr, $amount:expr) => {
+        match PoolAuthority::verify_program_address($authority.key, $program_id) {
+            Ok(seed) => match $fund_type::verify_program_address($fund.key, $program_id) {
+                Ok(_) => invoke_signed(
+                    &spl_token::instruction::transfer(
+                        &spl_token::id(),
+                        $fund.key,
+                        $recipient.key,
+                        $authority.key,
+                        &[],
+                        $amount,
+                    )?,
+                    &[$fund.clone(), $recipient.clone(), $authority.clone()],
+                    &[&[b"poolauthority", &[seed]]],
+                ),
+                Err(err) => Err(err),
+            },
             Err(err) => Err(err),
         }
     };
@@ -165,6 +146,23 @@ macro_rules! verify_associated {
             _ => Err(StakingError::AssociatedInvalidAccount),
         }
     };
+}
+
+#[derive(Debug, PartialEq, Clone, Copy, Eq)]
+pub struct PoolAuthority {}
+impl PoolAuthority {
+    pub fn program_address(program_id: &Pubkey) -> (Pubkey, u8) {
+        Pubkey::find_program_address(&[b"poolauthority"], program_id)
+    }
+    pub fn verify_program_address(
+        address: &Pubkey,
+        program_id: &Pubkey,
+    ) -> Result<u8, ProgramError> {
+        match Self::program_address(program_id) {
+            (real, seed) if real == *address => Ok(seed),
+            _ => Err(StakingError::InvalidPoolAuthorityAccount.into()),
+        }
+    }
 }
 
 /// Stake Pool

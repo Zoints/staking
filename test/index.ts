@@ -136,6 +136,14 @@ function am(
     const settings_id = (
         await PublicKey.findProgramAddress([Buffer.from('settings')], programId)
     )[0];
+
+    const pool_authority_id = (
+        await PublicKey.findProgramAddress(
+            [Buffer.from('poolauthority')],
+            programId
+        )
+    )[0];
+
     const stake_pool_id = (
         await PublicKey.findProgramAddress(
             [Buffer.from('stakepool')],
@@ -143,7 +151,7 @@ function am(
         )
     )[0];
 
-    const reward_fund_id = (
+    const reward_pool_id = (
         await PublicKey.findProgramAddress(
             [Buffer.from('rewardfund')],
             programId
@@ -168,7 +176,7 @@ function am(
         am(config.authority.publicKey, true, false),
         am(settings_id, false, true),
         am(stake_pool_id, false, true),
-        am(reward_fund_id, false, true),
+        am(reward_pool_id, false, true),
         am(config.mint_id.publicKey, false, false),
         am(SYSVAR_RENT_PUBKEY, false, false),
         am(SYSVAR_CLOCK_PUBKEY, false, false),
@@ -191,7 +199,7 @@ function am(
     ]);
     console.log(`Initialized: ${init_sig}`);
 
-    await token.mintTo(reward_fund_id, config.mint_authority, [], 100_000_000);
+    await token.mintTo(reward_pool_id, config.mint_authority, [], 100_000_000);
 
     //////////
     ////////// USER COMMUNITY 1
@@ -415,7 +423,7 @@ function am(
         am(staker_1_associated.address, false, true),
         am(user_1_community.publicKey, false, true),
         am(stake_pool_id, false, true),
-        am(reward_fund_id, false, true),
+        am(reward_pool_id, false, true),
         am(settings_id, false, true),
         am(staker_1_stake, false, true),
         am(programId, false, false),

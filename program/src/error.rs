@@ -26,6 +26,10 @@ pub enum StakingError {
     #[error("Invalid Reward Pool Account")]
     InvalidRewardPoolAccount,
 
+    /// Invalid Pool Authority Account
+    #[error("Invalid Pool Authority Account")]
+    InvalidPoolAuthorityAccount,
+
     /// Invalid Stake Pool Account
     #[error("Invalid Stake Pool Account")]
     InvalidStakePoolAccount,

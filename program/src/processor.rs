@@ -15,11 +15,12 @@ use solana_program::{
 use spl_token::state::{Account, Mint};
 
 use crate::{
-    account::{Beneficiary, BorshU256, Community, RewardPool, Settings, Stake, StakePool},
+    account::{
+        Beneficiary, BorshU256, Community, PoolAuthority, RewardPool, Settings, Stake, StakePool,
+    },
     error::StakingError,
     instruction::StakingInstruction,
-    reward_pool_transfer, split_stake, stake_pool_transfer, verify_associated, MINIMUM_STAKE,
-    ZERO_KEY,
+    pool_transfer, split_stake, verify_associated, MINIMUM_STAKE, ZERO_KEY,
 };
 
 pub struct Processor {}
@@ -57,13 +58,13 @@ impl Processor {
         let funder_info = next_account_info(iter)?;
         let authority_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
+        let pool_authority_info = next_account_info(iter)?;
         let stake_pool_info = next_account_info(iter)?;
         let reward_pool_info = next_account_info(iter)?;
         let token_info = next_account_info(iter)?;
         let rent_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
         let token_program_info = next_account_info(iter)?;
-        let program_info = next_account_info(iter)?;
 
         let rent = Rent::from_account_info(rent_info)?;
         let clock = Clock::from_account_info(clock_info)?;
@@ -133,13 +134,13 @@ impl Processor {
                 &spl_token::id(),
                 stake_pool_info.key,
                 token_info.key,
-                program_id,
+                pool_authority_info.key,
             )?,
             &[
                 stake_pool_info.clone(),
                 token_info.clone(),
                 rent_info.clone(),
-                program_info.clone(),
+                pool_authority_info.clone(),
                 token_program_info.clone(),
             ],
         )?;
@@ -168,13 +169,13 @@ impl Processor {
                 &spl_token::id(),
                 reward_pool_info.key,
                 token_info.key,
-                program_id,
+                pool_authority_info.key,
             )?,
             &[
                 reward_pool_info.clone(),
                 token_info.clone(),
                 rent_info.clone(),
-                program_info.clone(),
+                pool_authority_info.clone(),
                 token_program_info.clone(),
             ],
         )
@@ -358,11 +359,11 @@ impl Processor {
         let staker_info = next_account_info(iter)?;
         let staker_associated_info = next_account_info(iter)?;
         let community_info = next_account_info(iter)?;
+        let pool_authority_info = next_account_info(iter)?;
         let stake_pool_info = next_account_info(iter)?;
         let reward_pool_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
-        let program_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
         let clock = Clock::from_account_info(clock_info)?;
@@ -409,10 +410,12 @@ impl Processor {
         }
 
         // pay out pending reward first
-        reward_pool_transfer!(
+        pool_transfer!(
+            RewardPool,
             reward_pool_info,
             staker_associated_info,
-            program_info,
+            pool_authority_info,
+            program_id,
             stake.beneficiary.pending_reward
         )?;
         stake.beneficiary.pending_reward = 0;
@@ -462,10 +465,10 @@ impl Processor {
         let staker_info = next_account_info(iter)?;
         let staker_associated_info = next_account_info(iter)?;
         let community_info = next_account_info(iter)?;
+        let pool_authority_info = next_account_info(iter)?;
         let reward_pool_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
-        let program_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
         let clock = Clock::from_account_info(clock_info)?;
@@ -507,10 +510,12 @@ impl Processor {
         }
 
         // pay out pending reward
-        reward_pool_transfer!(
+        pool_transfer!(
+            RewardPool,
             reward_pool_info,
             staker_associated_info,
-            program_info,
+            pool_authority_info,
+            program_id,
             stake.beneficiary.pending_reward
         )?;
         stake.beneficiary.pending_reward = 0;
@@ -543,9 +548,9 @@ impl Processor {
         let staker_associated_info = next_account_info(iter)?;
         let community_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
-        let pool_info = next_account_info(iter)?;
+        let pool_authority_info = next_account_info(iter)?;
+        let stake_pool_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
-        let program_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
         let clock = Clock::from_account_info(clock_info)?;
@@ -569,10 +574,12 @@ impl Processor {
             return Err(StakingError::WithdrawUnbondingTimeNotOverYet.into());
         }
 
-        stake_pool_transfer!(
-            pool_info,
+        pool_transfer!(
+            StakePool,
+            stake_pool_info,
             staker_associated_info,
-            program_info,
+            pool_authority_info,
+            program_id,
             stake.unbonding_amount
         )?;
 
@@ -598,8 +605,8 @@ impl Processor {
         let authority_associated_info = next_account_info(iter)?;
         let community_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
+        let pool_authority_info = next_account_info(iter)?;
         let reward_pool_info = next_account_info(iter)?;
-        let program_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
         let clock = Clock::from_account_info(clock_info)?;
@@ -631,10 +638,12 @@ impl Processor {
         // the stake amount doesn't change, so there's no need to update staker/secondary at the same time
         beneficiary.pay_out(beneficiary.staked, settings.reward_per_share);
         // pay out pending reward
-        reward_pool_transfer!(
+        pool_transfer!(
+            RewardPool,
             reward_pool_info,
             authority_associated_info,
-            program_info,
+            pool_authority_info,
+            program_id,
             beneficiary.pending_reward
         )?;
         beneficiary.pending_reward = 0;
