@@ -22,9 +22,9 @@ pub enum StakingError {
     #[error("Invalid Settings Account")]
     InvalidSettingsAccount,
 
-    /// Invalid Reward Fund Account
-    #[error("Invalid Reward Fund Account")]
-    InvalidRewardFundAccount,
+    /// Invalid Reward Pool Account
+    #[error("Invalid Reward Pool Account")]
+    InvalidRewardPoolAccount,
 
     /// Invalid Stake Pool Account
     #[error("Invalid Stake Pool Account")]

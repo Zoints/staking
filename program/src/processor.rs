@@ -15,10 +15,10 @@ use solana_program::{
 use spl_token::state::{Account, Mint};
 
 use crate::{
-    account::{Beneficiary, BorshU256, Community, RewardFund, Settings, Stake, StakePool},
+    account::{Beneficiary, BorshU256, Community, RewardPool, Settings, Stake, StakePool},
     error::StakingError,
     instruction::StakingInstruction,
-    reward_fund_transfer, split_stake, stake_pool_transfer, verify_associated, MINIMUM_STAKE,
+    reward_pool_transfer, split_stake, stake_pool_transfer, verify_associated, MINIMUM_STAKE,
     ZERO_KEY,
 };
 
@@ -58,7 +58,7 @@ impl Processor {
         let authority_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
         let stake_pool_info = next_account_info(iter)?;
-        let reward_fund_info = next_account_info(iter)?;
+        let reward_pool_info = next_account_info(iter)?;
         let token_info = next_account_info(iter)?;
         let rent_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
@@ -146,32 +146,32 @@ impl Processor {
 
         msg!("stake pool account initialized");
 
-        // create reward fund
-        let reward_fund_seed =
-            RewardFund::verify_program_address(reward_fund_info.key, program_id)?;
+        // create reward pool
+        let reward_pool_seed =
+            RewardPool::verify_program_address(reward_pool_info.key, program_id)?;
 
         invoke_signed(
             &create_account(
                 funder_info.key,
-                reward_fund_info.key,
+                reward_pool_info.key,
                 lamports, // same lamports/space as prev account
                 space,
                 &spl_token::id(),
             ),
-            &[funder_info.clone(), reward_fund_info.clone()],
-            &[&[b"rewardfund", &[reward_fund_seed]]],
+            &[funder_info.clone(), reward_pool_info.clone()],
+            &[&[b"rewardpool", &[reward_pool_seed]]],
         )?;
-        msg!("reward fund account created");
+        msg!("reward pool account created");
 
         invoke(
             &spl_token::instruction::initialize_account(
                 &spl_token::id(),
-                reward_fund_info.key,
+                reward_pool_info.key,
                 token_info.key,
                 program_id,
             )?,
             &[
-                reward_fund_info.clone(),
+                reward_pool_info.clone(),
                 token_info.clone(),
                 rent_info.clone(),
                 program_info.clone(),
@@ -359,7 +359,7 @@ impl Processor {
         let staker_associated_info = next_account_info(iter)?;
         let community_info = next_account_info(iter)?;
         let stake_pool_info = next_account_info(iter)?;
-        let reward_fund_info = next_account_info(iter)?;
+        let reward_pool_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
         let program_info = next_account_info(iter)?;
@@ -409,8 +409,8 @@ impl Processor {
         }
 
         // pay out pending reward first
-        reward_fund_transfer!(
-            reward_fund_info,
+        reward_pool_transfer!(
+            reward_pool_info,
             staker_associated_info,
             program_info,
             stake.beneficiary.pending_reward
@@ -462,7 +462,7 @@ impl Processor {
         let staker_info = next_account_info(iter)?;
         let staker_associated_info = next_account_info(iter)?;
         let community_info = next_account_info(iter)?;
-        let reward_fund_info = next_account_info(iter)?;
+        let reward_pool_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
         let program_info = next_account_info(iter)?;
@@ -507,8 +507,8 @@ impl Processor {
         }
 
         // pay out pending reward
-        reward_fund_transfer!(
-            reward_fund_info,
+        reward_pool_transfer!(
+            reward_pool_info,
             staker_associated_info,
             program_info,
             stake.beneficiary.pending_reward
@@ -598,7 +598,7 @@ impl Processor {
         let authority_associated_info = next_account_info(iter)?;
         let community_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
-        let reward_fund_info = next_account_info(iter)?;
+        let reward_pool_info = next_account_info(iter)?;
         let program_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
@@ -631,8 +631,8 @@ impl Processor {
         // the stake amount doesn't change, so there's no need to update staker/secondary at the same time
         beneficiary.pay_out(beneficiary.staked, settings.reward_per_share);
         // pay out pending reward
-        reward_fund_transfer!(
-            reward_fund_info,
+        reward_pool_transfer!(
+            reward_pool_info,
             authority_associated_info,
             program_info,
             beneficiary.pending_reward
