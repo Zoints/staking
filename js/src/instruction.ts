@@ -11,7 +11,7 @@ import {
     SYSVAR_RENT_PUBKEY,
     TransactionInstruction
 } from '@solana/web3.js';
-import { Staking, ZERO_KEY } from './';
+import { Staking, ZERO_KEY } from '.';
 import * as borsh from 'borsh';
 
 export enum Instructions {
