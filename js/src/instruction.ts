@@ -107,7 +107,7 @@ export async function RegisterCommunity(
     owner: PublicKey,
     community: PublicKey,
     primary: PublicKey,
-    secondary?: PublicKey,
+    secondary?: PublicKey
 ): Promise<TransactionInstruction> {
     if (secondary === undefined) {
         secondary = ZERO_KEY;
@@ -140,7 +140,7 @@ export async function InitializeStake(
     owner: PublicKey,
     community: PublicKey
 ): Promise<TransactionInstruction> {
-    const stakeId = await Staking.stakeAddress(programId, community, owner);
+    const stakeId = await Staking.stakerAddress(programId, community, owner);
 
     const keys: AccountMeta[] = [
         am(funder, true, false),
@@ -174,7 +174,7 @@ export async function Stake(
     const poolAuthorityId = await Staking.poolAuthorityId(programId);
     const stakePoolId = await Staking.stakePoolId(programId);
     const rewardPoolId = await Staking.rewardPoolId(programId);
-    const stakeId = await Staking.stakeAddress(programId, community, staker);
+    const stakeId = await Staking.stakerAddress(programId, community, staker);
 
     const keys: AccountMeta[] = [
         am(funder, true, false),
@@ -211,7 +211,7 @@ export async function Unstake(
     const settingsId = await Staking.settingsId(programId);
     const poolAuthorityId = await Staking.poolAuthorityId(programId);
     const rewardPoolId = await Staking.rewardPoolId(programId);
-    const stakeId = await Staking.stakeAddress(programId, community, staker);
+    const stakeId = await Staking.stakerAddress(programId, community, staker);
 
     const keys: AccountMeta[] = [
         am(funder, true, false),
@@ -246,7 +246,7 @@ export async function WithdrawUnbond(
     const settingsId = await Staking.settingsId(programId);
     const poolAuthorityId = await Staking.poolAuthorityId(programId);
     const stakePoolId = await Staking.stakePoolId(programId);
-    const stakeId = await Staking.stakeAddress(programId, community, staker);
+    const stakeId = await Staking.stakerAddress(programId, community, staker);
 
     const keys: AccountMeta[] = [
         am(funder, true, false),

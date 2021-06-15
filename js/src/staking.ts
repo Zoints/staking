@@ -1,6 +1,7 @@
 import { Connection, PublicKey } from '@solana/web3.js';
-import { Settings } from './accounts';
+import { Community, Settings } from './';
 import * as borsh from 'borsh';
+import { Staker } from './accounts';
 
 export class Staking {
     programId: PublicKey;
@@ -18,6 +19,30 @@ export class Staking {
             throw new Error('Unable to find settings account');
 
         return borsh.deserialize(Settings.schema, Settings, account.data);
+    }
+
+    public async getCommunity(communityId: PublicKey): Promise<Community> {
+        const account = await this.connection.getAccountInfo(communityId);
+        if (account === null)
+            throw new Error('Unable to find community account');
+        if (!account.owner.equals(this.programId))
+            throw new Error('Not a recognized community account');
+        return borsh.deserialize(Community.schema, Community, account.data);
+    }
+
+    public async getStaker(
+        communityId: PublicKey,
+        owner: PublicKey
+    ): Promise<Staker> {
+        const stakerId = await Staking.stakerAddress(
+            this.programId,
+            communityId,
+            owner
+        );
+        const account = await this.connection.getAccountInfo(stakerId);
+        if (account === null) throw new Error('Unable to find staker account');
+
+        return borsh.deserialize(Staker.schema, Staker, account.data);
     }
 
     static async settingsId(programId: PublicKey): Promise<PublicKey> {
@@ -54,7 +79,7 @@ export class Staking {
         )[0];
     }
 
-    static async stakeAddress(
+    static async stakerAddress(
         programId: PublicKey,
         community: PublicKey,
         owner: PublicKey

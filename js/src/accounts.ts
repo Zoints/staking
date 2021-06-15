@@ -124,6 +124,25 @@ export class Staker {
     public unbondingStart: Date;
     public unbondingAmount: BN;
 
+    static schema: borsh.Schema = new Map([
+        [
+            Staker,
+            {
+                kind: 'struct',
+                fields: [
+                    ['creationDate', 'u64'],
+                    ['totalStake', 'u64'],
+                    ['authority', [32]],
+                    ['staked', 'u64'],
+                    ['rewardDebt', 'u64'],
+                    ['rendingReward', 'u64'],
+                    ['unbondingStart', 'u64'],
+                    ['unbondingAmount', 'u64']
+                ]
+            }
+        ]
+    ]);
+
     constructor(params: {
         creationDate: BN;
         totalStake: BN;
