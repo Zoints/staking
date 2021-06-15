@@ -118,4 +118,4 @@ dist
 # TSC output
 build/
 
-resume.json
+seed.json
