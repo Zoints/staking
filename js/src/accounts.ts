@@ -15,16 +15,28 @@ export class Settings {
             Settings,
             {
                 kind: 'struct',
-                fields: [['token', [32]], ['authority', [32]], ['totalStake', 'u64'], ['rewardPerShare', 'u256'], ['lastReward', 'i64']]
+                fields: [
+                    ['token', [32]],
+                    ['authority', [32]],
+                    ['totalStake', 'u64'],
+                    ['rewardPerShare', 'u256'],
+                    ['lastReward', 'u64'] // this is an i64 timestamp, so always > 0, u64 should be fine
+                ]
             }
         ]
     ]);
 
-    constructor(token: PublicKey, authority: PublicKey, totalStake: BN, rewardPerShare: BN, lastReward: BN) {
-        this.token = token;
-        this.authority = authority;
-        this.totalStake = totalStake;
-        this.rewardPerShare = rewardPerShare;
-        this.lastReward = lastReward;
+    constructor(params: {
+        token: PublicKey;
+        authority: PublicKey;
+        totalStake: BN;
+        rewardPerShare: BN;
+        lastReward: BN;
+    }) {
+        this.token = params.token;
+        this.authority = params.authority;
+        this.totalStake = params.totalStake;
+        this.rewardPerShare = params.rewardPerShare;
+        this.lastReward = params.lastReward;
     }
 }
