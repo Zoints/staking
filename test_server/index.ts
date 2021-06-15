@@ -11,8 +11,17 @@ const staking = new Stake(
     './seed.json'
 );
 
-app.get('/', (req: express.Request, res: express.Response) => {
-    res.send(wrap(staking, 'Hello World'));
+app.get('/reload', async (req: express.Request, res: express.Response) => {
+    await staking.regenerate();
+    res.redirect('/');
+});
+
+app.get('/', async (req: express.Request, res: express.Response) => {
+    if (!staking.loaded) {
+        res.send('loading BPF and initializing contract in progress');
+        return;
+    }
+    res.send(await wrap(staking, 'Hello World'));
 });
 
 app.listen(port, async () => {

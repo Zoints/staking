@@ -19,6 +19,7 @@ import * as crypto from 'crypto';
 export class Stake {
     seedPath: string;
     bpfPath: string;
+    loaded: boolean;
 
     seed: Buffer;
     newSeed: boolean;
@@ -38,6 +39,8 @@ export class Stake {
     constructor(url: string, bpfPath: string, seedPath: string) {
         this.seedPath = seedPath;
         this.bpfPath = bpfPath;
+        this.loaded = false;
+
         this.connection = new Connection(url);
         this.newSeed = false;
         this.seed = this.loadSeed();
@@ -73,10 +76,11 @@ export class Stake {
         }
     }
 
-    regenerate(seed: Buffer) {
+    async regenerate() {
+        this.loaded = false;
         console.log(`Reloading BPF`);
         this.seed = crypto.randomBytes(16);
-        fs.writeFileSync(this.seedPath, seed.toString('hex'), {});
+        fs.writeFileSync(this.seedPath, this.seed.toString('hex'), {});
         this.newSeed = true;
 
         this.funder = this.getKeyPair('funder');
@@ -92,7 +96,7 @@ export class Stake {
         console.log(`    Funder: ${this.funder.publicKey.toBase58()}`);
         console.log(`Program ID: ${this.program_id.toBase58()}`);
 
-        this.setup();
+        await this.setup();
     }
 
     private getKeyPair(name: string): Keypair {
@@ -108,6 +112,7 @@ export class Stake {
             await this.initializeProgram();
             console.log(`Initialization done.`);
         }
+        this.loaded = true;
     }
 
     private async fund() {
