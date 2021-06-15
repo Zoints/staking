@@ -14,7 +14,8 @@ export class Staking {
     public async getSettings(): Promise<Settings> {
         const settingsId = await Staking.settingsId(this.programId);
         const account = await this.connection.getAccountInfo(settingsId);
-        if (account === null) throw new Error('Unable to find settings account');
+        if (account === null)
+            throw new Error('Unable to find settings account');
 
         return borsh.deserialize(Settings.schema, Settings, account.data);
     }
@@ -60,7 +61,7 @@ export class Staking {
     ): Promise<PublicKey> {
         return (
             await PublicKey.findProgramAddress(
-                [Buffer.from('stake'), community.toBuffer(), owner.toBuffer()],
+                [Buffer.from('staker'), community.toBuffer(), owner.toBuffer()],
                 programId
             )
         )[0];

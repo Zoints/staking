@@ -16,7 +16,7 @@ use spl_token::state::{Account, Mint};
 
 use crate::{
     account::{
-        Beneficiary, BorshU256, Community, PoolAuthority, RewardPool, Settings, Stake, StakePool,
+        Beneficiary, BorshU256, Community, PoolAuthority, RewardPool, Settings, StakePool, Staker,
     },
     error::StakingError,
     instruction::StakingInstruction,
@@ -267,16 +267,16 @@ impl Processor {
             return Err(StakingError::MissingStakeSignature.into());
         }
 
-        let seed = Stake::verify_program_address(
+        let seed = Staker::verify_program_address(
             stake_info.key,
             community_info.key,
             staker_info.key,
             program_id,
         )?;
 
-        let stake = Stake {
+        let stake = Staker {
             creation_date: clock.unix_timestamp,
-            staked: 0,
+            total_stake: 0,
             beneficiary: Beneficiary {
                 authority: *staker_info.key,
                 staked: 0,
@@ -302,7 +302,7 @@ impl Processor {
             ),
             &[funder_info.clone(), stake_info.clone()],
             &[&[
-                b"stake",
+                b"staker",
                 &community_info.key.to_bytes(),
                 &staker_info.key.to_bytes(),
                 &[seed],
@@ -339,15 +339,15 @@ impl Processor {
             verify_associated!(staker_associated_info, settings.token, *staker_info.key)?;
 
         let mut stake =
-            Stake::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
-        if stake.staked + amount < MINIMUM_STAKE {
+            Staker::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
+        if stake.total_stake + amount < MINIMUM_STAKE {
             return Err(StakingError::StakerMinimumBalanceNotMet.into());
         }
 
         settings.update_rewards(clock.unix_timestamp);
 
-        stake.staked += amount;
-        let (staker_share, primary, secondary) = split_stake(stake.staked);
+        stake.total_stake += amount;
+        let (staker_share, primary, secondary) = split_stake(stake.total_stake);
 
         // PROCESS STAKER'S REWARD
 
@@ -441,18 +441,18 @@ impl Processor {
         }
 
         let mut stake =
-            Stake::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
-        if amount > stake.staked {
+            Staker::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
+        if amount > stake.total_stake {
             return Err(StakingError::StakerWithdrawingTooMuch.into());
-        } else if amount < stake.staked && stake.staked - amount < MINIMUM_STAKE {
+        } else if amount < stake.total_stake && stake.total_stake - amount < MINIMUM_STAKE {
             // allow them to withdraw everything
             return Err(StakingError::StakerMinimumBalanceNotMet.into());
         }
 
         settings.update_rewards(clock.unix_timestamp);
 
-        stake.staked -= amount;
-        let (staker_share, primary, secondary) = split_stake(stake.staked);
+        stake.total_stake -= amount;
+        let (staker_share, primary, secondary) = split_stake(stake.total_stake);
 
         // PROCESS STAKER'S REWARD
 
@@ -525,7 +525,7 @@ impl Processor {
         verify_associated!(staker_associated_info, settings.token, *staker_info.key)?;
 
         let mut stake =
-            Stake::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
+            Staker::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
 
         if stake.unbonding_amount == 0 {
             return Err(StakingError::WithdrawNothingtowithdraw.into());

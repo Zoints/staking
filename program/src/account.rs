@@ -257,10 +257,10 @@ impl Beneficiary {
 }
 
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
-pub struct Stake {
+pub struct Staker {
     pub creation_date: UnixTimestamp,
 
-    pub staked: u64,
+    pub total_stake: u64,
 
     pub beneficiary: Beneficiary,
 
@@ -268,14 +268,14 @@ pub struct Stake {
     pub unbonding_amount: u64,
 }
 
-impl Stake {
+impl Staker {
     pub fn program_address(
         community: &Pubkey,
         staker: &Pubkey,
         program_id: &Pubkey,
     ) -> (Pubkey, u8) {
         Pubkey::find_program_address(
-            &[b"stake", &community.to_bytes(), &staker.to_bytes()],
+            &[b"staker", &community.to_bytes(), &staker.to_bytes()],
             program_id,
         )
     }
@@ -297,9 +297,9 @@ impl Stake {
         community: &Pubkey,
         staker: &Pubkey,
         program_id: &Pubkey,
-    ) -> Result<Stake, ProgramError> {
-        Stake::verify_program_address(info.key, community, staker, program_id)?;
-        Stake::try_from_slice(&info.data.borrow())
+    ) -> Result<Staker, ProgramError> {
+        Staker::verify_program_address(info.key, community, staker, program_id)?;
+        Staker::try_from_slice(&info.data.borrow())
             .map_err(|_| StakingError::StakerInvalidStakeAccount.into())
     }
 }
