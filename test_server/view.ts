@@ -123,6 +123,14 @@ export async function wrap(staking: Stake, content: string): Promise<string> {
     }
     const communities = `<ol>${community_list}</ol> <a href="/addCommunity">Add Community</a>`;
 
+    let stakers_list = '';
+    for (let staker of staking.stakers) {
+        stakers_list += `<li><a href="/staker/${
+            staker.id
+        }"> ${staker.key.publicKey.toBase58().substr(0, 8)}</a></li>`;
+    }
+    const stakers = `<ol>${stakers_list}</ol> <a href="/addStaker">Add Staker</a>`;
+
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -156,6 +164,9 @@ export async function wrap(staking: Stake, content: string): Promise<string> {
 </table>
 <h2>Communities</h2>
 ${communities}
+
+<h2>Stakers</h2>
+${stakers}
 </div>
 <div>${content}</div>
 </div>

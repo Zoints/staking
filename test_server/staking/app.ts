@@ -10,7 +10,6 @@ import {
     SystemProgram,
     Transaction
 } from '@solana/web3.js';
-import { createHmac } from 'crypto';
 import * as fs from 'fs';
 import {
     Initialize,
@@ -20,7 +19,7 @@ import {
 } from '../../js/src';
 import { seededKey, sleep } from './util';
 import * as crypto from 'crypto';
-import { AppCommunity } from './community';
+import { AppCommunity, AppStaker } from './community';
 
 export class Stake {
     seedPath: string;
@@ -33,6 +32,7 @@ export class Stake {
     connection: Connection;
     connectionURL: string;
     staking: Staking;
+    token: Token;
 
     funder: Keypair;
     deploy_key: Keypair;
@@ -44,6 +44,7 @@ export class Stake {
     mint_authority: Keypair;
 
     communities: AppCommunity[];
+    stakers: AppStaker[];
 
     constructor(url: string, bpfPath: string, seedPath: string) {
         this.seedPath = seedPath;
@@ -64,8 +65,15 @@ export class Stake {
         this.mint_authority = this.getKeyPair('mintAuthority');
 
         this.staking = new Staking(this.program_id, this.connection);
+        this.token = new Token(
+            this.connection,
+            this.mint_id.publicKey,
+            TOKEN_PROGRAM_ID,
+            this.funder
+        );
 
         this.communities = [];
+        this.stakers = [];
 
         console.log(`    Funder: ${this.funder.publicKey.toBase58()}`);
         console.log(`Program ID: ${this.program_id.toBase58()}`);
@@ -104,8 +112,15 @@ export class Stake {
         this.mint_authority = this.getKeyPair('mintAuthority');
 
         this.staking = new Staking(this.program_id, this.connection);
+        this.token = new Token(
+            this.connection,
+            this.mint_id.publicKey,
+            TOKEN_PROGRAM_ID,
+            this.funder
+        );
 
         this.communities = [];
+        this.stakers = [];
 
         console.log(`    Funder: ${this.funder.publicKey.toBase58()}`);
         console.log(`Program ID: ${this.program_id.toBase58()}`);
@@ -132,6 +147,15 @@ export class Stake {
                 );
                 if (acc === null) break;
                 this.communities.push(comm);
+            }
+
+            for (let i = 0; ; i++) {
+                const staker = new AppStaker(i, this.seed);
+                const acc = await this.connection.getAccountInfo(
+                    staker.key.publicKey
+                );
+                if (acc === null) break;
+                this.stakers.push(staker);
             }
         }
         this.loaded = true;
@@ -160,6 +184,16 @@ export class Stake {
             transaction,
             [this.funder, comm.authority, comm.key]
         );
+    }
+
+    async addStaker() {
+        const staker = new AppStaker(this.communities.length, this.seed);
+        this.stakers.push(staker);
+        console.log(
+            `Adding staker ${staker.id}: ${staker.key.publicKey.toBase58()}`
+        );
+
+        await this.token.getOrCreateAssociatedAccountInfo(staker.key.publicKey);
     }
 
     private async fund() {

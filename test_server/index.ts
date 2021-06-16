@@ -33,6 +33,11 @@ app.get(
     }
 );
 
+app.get('/addStaker', async (req: express.Request, res: express.Response) => {
+    await staking.addStaker();
+    res.redirect('/');
+});
+
 app.get('/settings', async (req: express.Request, res: express.Response) => {
     res.send(await wrap(staking, await viewSettings(staking)));
 });

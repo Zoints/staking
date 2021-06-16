@@ -17,3 +17,14 @@ export class AppCommunity {
         this.secondaryAuthority = seededKey(`community-${id}-secondary`, seed);
     }
 }
+
+export class AppStaker {
+    id: number;
+    key: Keypair;
+
+    constructor(id: number, seed: Buffer) {
+        this.id = id;
+
+        this.key = seededKey(`staker-${id}`, seed);
+    }
+}
