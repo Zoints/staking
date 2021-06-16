@@ -62,6 +62,11 @@ export class Staking {
             )
         )[0];
     }
+
+    async poolAuthorityId(): Promise<PublicKey> {
+        return Staking.poolAuthorityId(this.programId);
+    }
+
     static async rewardPoolId(programId: PublicKey): Promise<PublicKey> {
         return (
             await PublicKey.findProgramAddress(
@@ -70,6 +75,11 @@ export class Staking {
             )
         )[0];
     }
+
+    async rewardPoolId(): Promise<PublicKey> {
+        return Staking.rewardPoolId(this.programId);
+    }
+
     static async stakePoolId(programId: PublicKey): Promise<PublicKey> {
         return (
             await PublicKey.findProgramAddress(
@@ -77,6 +87,10 @@ export class Staking {
                 programId
             )
         )[0];
+    }
+
+    async stakePoolId(): Promise<PublicKey> {
+        return Staking.stakePoolId(this.programId);
     }
 
     static async stakerAddress(

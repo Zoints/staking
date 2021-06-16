@@ -1,4 +1,9 @@
-import { MintLayout, Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import {
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    MintLayout,
+    Token,
+    TOKEN_PROGRAM_ID
+} from '@solana/spl-token';
 import {
     BpfLoader,
     BPF_LOADER_PROGRAM_ID,
@@ -151,9 +156,13 @@ export class Stake {
 
             for (let i = 0; ; i++) {
                 const staker = new AppStaker(i, this.seed);
-                const acc = await this.connection.getAccountInfo(
+                const address = await Token.getAssociatedTokenAddress(
+                    ASSOCIATED_TOKEN_PROGRAM_ID,
+                    TOKEN_PROGRAM_ID,
+                    this.mint_id.publicKey,
                     staker.key.publicKey
                 );
+                const acc = await this.connection.getAccountInfo(address);
                 if (acc === null) break;
                 this.stakers.push(staker);
             }
@@ -272,5 +281,15 @@ export class Stake {
             [this.funder, this.mint_id, this.authority]
         );
         console.log(`Initialized: ${sig}`);
+
+        const rewardPool = await this.staking.rewardPoolId();
+        await this.token.mintTo(
+            rewardPool,
+            this.mint_authority,
+            [],
+            1_000_000_000
+        );
+
+        console.log(`Token minted and 1_000_000_000 ZEE created`);
     }
 }
