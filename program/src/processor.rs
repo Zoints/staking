@@ -307,7 +307,13 @@ impl Processor {
                 &staker_info.key.to_bytes(),
                 &[seed],
             ]],
-        )
+        )?;
+
+        stake_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&stake.try_to_vec()?);
+        Ok(())
     }
 
     pub fn process_stake(
