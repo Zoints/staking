@@ -10,7 +10,7 @@ export async function viewSettings(staking: Stake): Promise<string> {
         return 'loading BPF and initializing contract in progress';
     }
 
-    return `<a href="/reload"> RESET SYSTEM & RELOAD BPF </a>`;
+    return `<a href="/reloadBPF"> RELOAD BPF </a><br><a href="/reload"> RESET SYSTEM & RELOAD BPF </a>`;
 }
 
 export async function viewCommunity(
@@ -176,7 +176,7 @@ export async function viewStaker(staking: Stake, id: number): Promise<string> {
             `;
         } catch (e: any) {
             community_list += `<tr><td colspan="2">No stake found</td></tr>`;
-            console.log(e);
+            //console.log(e);
         }
         community_list += `<tr><td>
             <form action="/stake/${community.id}/${appStaker.id}" method="GET"><input type="text" name="amount" placeholder="0"><input type="submit" value="Stake"></form>

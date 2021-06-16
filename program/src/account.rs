@@ -83,12 +83,14 @@ impl Settings {
 
         if self.total_stake > 0 {
             let seconds = U256::from(now - self.last_reward);
+            msg!("pool rewards: {} seconds", seconds);
             // The formula is:
             // <time elapsed> * <rewards per second> / <total amount staked>
             // rearranged to make all the multiplications first
-            let reward = seconds * U256::from(PRECISION) * U256::from(REWARD_PER_HOUR)
-                / U256::from(3600)
+            let reward = seconds * U256::from(PRECISION * REWARD_PER_HOUR / 3600)
                 / U256::from(self.total_stake);
+
+            msg!("pool reward delta: {}", reward);
 
             self.reward_per_share.0 = self.reward_per_share.0 + reward;
         }

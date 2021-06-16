@@ -277,7 +277,7 @@ export class Stake {
         console.log(`Funded: ${sig}`);
     }
 
-    private async loadBPF() {
+    async loadBPF() {
         console.log(`Deploying BPF`);
         const programdata = fs.readFileSync(this.bpfPath);
         if (

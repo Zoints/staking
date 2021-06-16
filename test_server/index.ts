@@ -16,6 +16,11 @@ app.get('/reload', async (req: express.Request, res: express.Response) => {
     res.redirect('/');
 });
 
+app.get('/reloadBPF', async (req: express.Request, res: express.Response) => {
+    await staking.loadBPF();
+    res.redirect('/');
+});
+
 app.get(
     '/community/:id',
     async (req: express.Request, res: express.Response) => {
