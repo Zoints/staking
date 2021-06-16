@@ -1,6 +1,6 @@
 import { Stake } from './staking/app';
 import * as express from 'express';
-import { viewSettings, viewCommunity, wrap } from './view';
+import { viewSettings, viewCommunity, wrap, viewStaker } from './view';
 
 const app = express.default();
 const port = 8080;
@@ -33,9 +33,22 @@ app.get(
     }
 );
 
+app.get('/staker/:id', async (req: express.Request, res: express.Response) => {
+    const id = Number(req.params.id);
+
+    res.send(await wrap(staking, await viewStaker(staking, id)));
+});
+
 app.get('/addStaker', async (req: express.Request, res: express.Response) => {
     await staking.addStaker();
     res.redirect('/');
+});
+
+app.get('/airdrop/:id', async (req: express.Request, res: express.Response) => {
+    const amount = Number(req.query.amount);
+    const id = Number(req.params.id);
+    await staking.airdrop(id, amount);
+    res.redirect('/staker/' + id);
 });
 
 app.get('/settings', async (req: express.Request, res: express.Response) => {

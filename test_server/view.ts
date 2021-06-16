@@ -107,6 +107,66 @@ export async function viewCommunity(
     </table>`;
 }
 
+export async function viewStaker(staking: Stake, id: number): Promise<string> {
+    if (!staking.loaded) {
+        return 'loading BPF and initializing contract in progress';
+    }
+
+    const appStaker = staking.stakers[id];
+    const settings = await staking.staking.getSettings();
+    const assoc = await staking.token.getOrCreateAssociatedAccountInfo(
+        appStaker.key.publicKey
+    );
+
+    const rps = settings.calculateRewardPerShare(new Date());
+
+    let community_list = '';
+    for (let community of staking.communities) {
+        community_list += `<h3>${community.id} - ${community.key.publicKey
+            .toBase58()
+            .substr(0, 8)}</h3><table>`;
+        try {
+            const stakeAccount = await staking.staking.getStaker(
+                community.key.publicKey,
+                appStaker.key.publicKey
+            );
+        } catch (e) {
+            community_list += `<tr><td>No stake found</td></t>`;
+        }
+        community_list += `</table>`;
+    }
+
+    let communities = `<h2>Communities</h2>${community_list}`;
+
+    return `<table>
+        <tr>
+            <td>ID</td>
+            <td>${id}</td>
+        </td>
+        <tr>
+            <td>Public Key</td>
+            <td><a href="https://explorer.solana.com/address/${appStaker.key.publicKey.toBase58()}?customUrl=${
+        staking.connectionURL
+    }&cluster=custom">${appStaker.key.publicKey.toBase58()}</a></td>
+        </tr>
+
+        <tr>
+            <td>ZEE Address</td>
+            <td><a href="https://explorer.solana.com/address/${assoc.address.toBase58()}?customUrl=${
+        staking.connectionURL
+    }&cluster=custom">${assoc.address.toBase58()}</a></td>
+        </tr>
+        <tr>
+            <td>ZEE Balance</td>
+            <td>${assoc.amount}</td>
+
+        </tr>
+        <tr><td></td><td><form action="/airdrop/${
+            appStaker.id
+        }" method="GET"><input type="text" name="amount"><input type="submit" value="Airdrop Zee"></form></td></tr>
+    </table> ${communities}`;
+}
+
 export async function wrap(staking: Stake, content: string): Promise<string> {
     if (!staking.loaded) {
         return 'loading BPF and initializing contract in progress';

@@ -103,8 +103,9 @@ export class Stake {
 
     async regenerate() {
         this.loaded = false;
-        console.log(`Reloading BPF`);
+
         this.seed = crypto.randomBytes(16);
+        console.log(`Reloading BPF with new seed ${this.seed.toString('hex')}`);
         fs.writeFileSync(this.seedPath, this.seed.toString('hex'), {});
         this.newSeed = true;
 
@@ -135,6 +136,18 @@ export class Stake {
 
     private getKeyPair(name: string): Keypair {
         return seededKey(name, this.seed);
+    }
+
+    public async airdrop(id: number, amount: number): Promise<void> {
+        const assoc = await this.token.getOrCreateAssociatedAccountInfo(
+            this.stakers[id].key.publicKey
+        );
+        return this.token.mintTo(
+            assoc.address,
+            this.mint_authority,
+            [],
+            amount
+        );
     }
 
     public async setup() {
@@ -173,9 +186,6 @@ export class Stake {
     async addCommunity() {
         const comm = new AppCommunity(this.communities.length, this.seed);
         this.communities.push(comm);
-        console.log(
-            `Adding community ${comm.id}: ${comm.key.publicKey.toBase58()}`
-        );
 
         const transaction = new Transaction().add(
             await RegisterCommunity(
@@ -193,10 +203,15 @@ export class Stake {
             transaction,
             [this.funder, comm.authority, comm.key]
         );
+        console.log(
+            `Added community ${
+                comm.id
+            }: ${comm.key.publicKey.toBase58()}: ${sig}`
+        );
     }
 
     async addStaker() {
-        const staker = new AppStaker(this.communities.length, this.seed);
+        const staker = new AppStaker(this.stakers.length, this.seed);
         this.stakers.push(staker);
         console.log(
             `Adding staker ${staker.id}: ${staker.key.publicKey.toBase58()}`
