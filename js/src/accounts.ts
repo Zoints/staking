@@ -166,7 +166,7 @@ export class Staker {
                     ['authority', [32]],
                     ['staked', 'u64'],
                     ['rewardDebt', 'u64'],
-                    ['rendingReward', 'u64'],
+                    ['pendingReward', 'u64'],
                     ['unbondingStart', 'u64'],
                     ['unbondingAmount', 'u64']
                 ]

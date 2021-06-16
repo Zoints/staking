@@ -130,10 +130,57 @@ export async function viewStaker(staking: Stake, id: number): Promise<string> {
                 community.key.publicKey,
                 appStaker.key.publicKey
             );
-        } catch (e) {
-            community_list += `<tr><td>No stake found</td></t>`;
+
+            community_list += `
+                <tr>
+                    <td>Created</td>
+                    <td>${pretty(stakeAccount.creationDate)}</td>
+                </tr>
+                <tr>
+                    <td>Total Stake</td>
+                    <td>${stakeAccount.totalStake.toNumber()}</td>
+                </tr>
+                
+                <tr>
+                    <td>Unbonding Amount</td>
+                    <td>${stakeAccount.unbondingAmount.toNumber()}</td>
+                </tr>
+                <tr>
+                    <td>Unbonding Start</td>
+                    <td>${pretty(stakeAccount.unbondingStart)}</td>
+                </tr>
+                <tr>
+                    <td>Authority</td>
+                    <td><a href="https://explorer.solana.com/address/${stakeAccount.beneficiary.authority.toBase58()}?customUrl=${
+                staking.connectionURL
+            }&cluster=custom">${stakeAccount.beneficiary.authority.toBase58()}</td>
+                </tr>
+                <tr>
+                    <td>Staked</td>
+                    <td>${stakeAccount.beneficiary.staked.toNumber()}</td>
+                </tr>
+                <tr>
+                    <td>Reward Debt</td>
+                    <td>${stakeAccount.beneficiary.rewardDebt.toNumber()}</td>
+                </tr>
+                <tr>
+                    <td>Pending Reward</td>
+                    <td>${stakeAccount.beneficiary.pendingReward.toNumber()}</td>
+                </tr>
+                <tr>
+                    <td>Harvestable</td>
+                    <td>${stakeAccount.beneficiary
+                        .calculateReward(rps)
+                        .toNumber()}</td>
+                </tr>
+            `;
+        } catch (e: any) {
+            community_list += `<tr><td colspan="2">No stake found</td></tr>`;
+            console.log(e);
         }
-        community_list += `</table>`;
+        community_list += `<tr><td>
+            <form action="/stake/${community.id}/${appStaker.id}" method="GET"><input type="text" name="amount" placeholder="0"><input type="submit" value="Stake"></form>
+            </td></tr></table>`;
     }
 
     let communities = `<h2>Communities</h2>${community_list}`;
@@ -163,7 +210,7 @@ export async function viewStaker(staking: Stake, id: number): Promise<string> {
         </tr>
         <tr><td></td><td><form action="/airdrop/${
             appStaker.id
-        }" method="GET"><input type="text" name="amount"><input type="submit" value="Airdrop Zee"></form></td></tr>
+        }" method="GET"><input type="text" name="amount" placeholder="0"><input type="submit" value="Airdrop Zee"></form></td></tr>
     </table> ${communities}`;
 }
 

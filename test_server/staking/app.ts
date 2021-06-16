@@ -20,7 +20,8 @@ import {
     Initialize,
     InitializeStake,
     RegisterCommunity,
-    Staking
+    Staking,
+    Stake as StakeInstruction
 } from '../../js/src';
 import { seededKey, sleep } from './util';
 import * as crypto from 'crypto';
@@ -148,6 +149,52 @@ export class Stake {
             [],
             amount
         );
+    }
+
+    public async stake(
+        commId: number,
+        stakerId: number,
+        amount: number
+    ): Promise<void> {
+        const community = this.communities[commId];
+        const staker = this.stakers[stakerId];
+        const assoc = await this.token.getOrCreateAssociatedAccountInfo(
+            staker.key.publicKey
+        );
+        const trans = new Transaction();
+
+        try {
+            await this.staking.getStaker(
+                community.key.publicKey,
+                staker.key.publicKey
+            );
+        } catch (e) {
+            trans.add(
+                await InitializeStake(
+                    this.program_id,
+                    this.funder.publicKey,
+                    staker.key.publicKey,
+                    community.key.publicKey
+                )
+            );
+        }
+
+        trans.add(
+            await StakeInstruction(
+                this.program_id,
+                this.funder.publicKey,
+                staker.key.publicKey,
+                assoc.address,
+                community.key.publicKey,
+                amount
+            )
+        );
+        const sig = await sendAndConfirmTransaction(this.connection, trans, [
+            this.funder,
+            staker.key
+        ]);
+
+        console.log(`Staked: ${sig}`);
     }
 
     public async setup() {

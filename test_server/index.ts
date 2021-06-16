@@ -44,6 +44,17 @@ app.get('/addStaker', async (req: express.Request, res: express.Response) => {
     res.redirect('/');
 });
 
+app.get(
+    '/stake/:community/:staker',
+    async (req: express.Request, res: express.Response) => {
+        const amount = Number(req.query.amount);
+        const community = Number(req.params.community);
+        const staker = Number(req.params.staker);
+        await staking.stake(community, staker, amount);
+        res.redirect('/staker/' + staker);
+    }
+);
+
 app.get('/airdrop/:id', async (req: express.Request, res: express.Response) => {
     const amount = Number(req.query.amount);
     const id = Number(req.params.id);
