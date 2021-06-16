@@ -12,9 +12,15 @@ import {
 } from '@solana/web3.js';
 import { createHmac } from 'crypto';
 import * as fs from 'fs';
-import { Initialize, InitializeStake, Staking } from '../../js/src';
-import { sleep } from './util';
+import {
+    Initialize,
+    InitializeStake,
+    RegisterCommunity,
+    Staking
+} from '../../js/src';
+import { seededKey, sleep } from './util';
 import * as crypto from 'crypto';
+import { AppCommunity } from './community';
 
 export class Stake {
     seedPath: string;
@@ -25,6 +31,7 @@ export class Stake {
     newSeed: boolean;
 
     connection: Connection;
+    connectionURL: string;
     staking: Staking;
 
     funder: Keypair;
@@ -36,11 +43,14 @@ export class Stake {
     mint_id: Keypair;
     mint_authority: Keypair;
 
+    communities: AppCommunity[];
+
     constructor(url: string, bpfPath: string, seedPath: string) {
         this.seedPath = seedPath;
         this.bpfPath = bpfPath;
         this.loaded = false;
 
+        this.connectionURL = url;
         this.connection = new Connection(url);
         this.newSeed = false;
         this.seed = this.loadSeed();
@@ -54,6 +64,8 @@ export class Stake {
         this.mint_authority = this.getKeyPair('mintAuthority');
 
         this.staking = new Staking(this.program_id, this.connection);
+
+        this.communities = [];
 
         console.log(`    Funder: ${this.funder.publicKey.toBase58()}`);
         console.log(`Program ID: ${this.program_id.toBase58()}`);
@@ -93,6 +105,8 @@ export class Stake {
 
         this.staking = new Staking(this.program_id, this.connection);
 
+        this.communities = [];
+
         console.log(`    Funder: ${this.funder.publicKey.toBase58()}`);
         console.log(`Program ID: ${this.program_id.toBase58()}`);
 
@@ -100,8 +114,7 @@ export class Stake {
     }
 
     private getKeyPair(name: string): Keypair {
-        const hash = createHmac('sha256', this.seed).update(name).digest();
-        return Keypair.fromSeed(hash);
+        return seededKey(name, this.seed);
     }
 
     public async setup() {
@@ -111,8 +124,42 @@ export class Stake {
             await this.loadBPF();
             await this.initializeProgram();
             console.log(`Initialization done.`);
+        } else {
+            for (let i = 0; ; i++) {
+                const comm = new AppCommunity(i, this.seed);
+                const acc = await this.connection.getAccountInfo(
+                    comm.key.publicKey
+                );
+                if (acc === null) break;
+                this.communities.push(comm);
+            }
         }
         this.loaded = true;
+    }
+
+    async addCommunity() {
+        const comm = new AppCommunity(this.communities.length, this.seed);
+        this.communities.push(comm);
+        console.log(
+            `Adding community ${comm.id}: ${comm.key.publicKey.toBase58()}`
+        );
+
+        const transaction = new Transaction().add(
+            await RegisterCommunity(
+                this.program_id,
+                this.funder.publicKey,
+                comm.authority.publicKey,
+                comm.key.publicKey,
+                comm.primaryAuthority.publicKey,
+                comm.secondaryAuthority.publicKey
+            )
+        );
+
+        const sig = await sendAndConfirmTransaction(
+            this.connection,
+            transaction,
+            [this.funder, comm.authority, comm.key]
+        );
     }
 
     private async fund() {

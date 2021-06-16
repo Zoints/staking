@@ -1,6 +1,7 @@
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import * as borsh from 'borsh';
+import { PRECISION, REWARD_PER_HOUR } from '.';
 
 export class Settings {
     public token: PublicKey;
@@ -39,6 +40,29 @@ export class Settings {
         this.rewardPerShare = params.rewardPerShare;
         this.lastReward = new Date(params.lastReward.toNumber() * 1000);
     }
+
+    public calculateRewardPerShare(now: Date): BN {
+        let reward = this.rewardPerShare;
+
+        const oldSeconds = Math.floor(this.lastReward.getMilliseconds() / 1000);
+        const newSeconds = Math.floor(now.getMilliseconds() / 1000);
+
+        if (newSeconds <= oldSeconds) {
+            return reward;
+        }
+
+        if (this.totalStake.cmpn(0) > 0) {
+            const seconds = new BN(newSeconds - oldSeconds, 'le');
+            const delta = seconds
+                .mul(PRECISION)
+                .muln(REWARD_PER_HOUR)
+                .divn(3600)
+                .div(this.totalStake);
+            reward.iadd(delta);
+        }
+
+        return reward;
+    }
 }
 
 class Beneficiary {
@@ -58,10 +82,17 @@ class Beneficiary {
         this.rewardDebt = params.rewardDebt;
         this.pendingReward = params.pendingReward;
     }
+
+    public calculateReward(newRewardPerShare: BN): BN {
+        return this.staked
+            .mul(newRewardPerShare)
+            .div(PRECISION)
+            .sub(this.rewardDebt);
+    }
 }
 
 export class Community {
-    public creationDate: BN;
+    public creationDate: Date;
     public authority: PublicKey;
 
     public primary: Beneficiary;
@@ -100,7 +131,7 @@ export class Community {
         secondaryRewardDebt: BN;
         secondaryPendingReward: BN;
     }) {
-        this.creationDate = params.creationDate;
+        this.creationDate = new Date(params.creationDate.toNumber() * 1000);
         this.authority = new PublicKey(params.authority);
         this.primary = new Beneficiary({
             authority: new PublicKey(params.primaryAuthority),

@@ -1,6 +1,6 @@
 import { Stake } from './staking/app';
 import * as express from 'express';
-import { wrap } from './view';
+import { viewSettings, viewCommunity, wrap } from './view';
 
 const app = express.default();
 const port = 8080;
@@ -16,11 +16,28 @@ app.get('/reload', async (req: express.Request, res: express.Response) => {
     res.redirect('/');
 });
 
-app.get('/', async (req: express.Request, res: express.Response) => {
-    if (!staking.loaded) {
-        res.send('loading BPF and initializing contract in progress');
-        return;
+app.get(
+    '/community/:id',
+    async (req: express.Request, res: express.Response) => {
+        const id = Number(req.params.id);
+
+        res.send(await wrap(staking, await viewCommunity(staking, id)));
     }
+);
+
+app.get(
+    '/addCommunity',
+    async (req: express.Request, res: express.Response) => {
+        await staking.addCommunity();
+        res.redirect('/');
+    }
+);
+
+app.get('/settings', async (req: express.Request, res: express.Response) => {
+    res.send(await wrap(staking, await viewSettings(staking)));
+});
+
+app.get('/', async (req: express.Request, res: express.Response) => {
     res.send(await wrap(staking, 'Hello World'));
 });
 
