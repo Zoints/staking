@@ -70,6 +70,7 @@ mod tests {
     // trying to figure out if the u128 datatype is enough for our purposes
     #[test]
     pub fn test_rps_calculation() {
+        let max_years: u128 = 95;
         let precision: u128 = 1_000_000_000_000_000_000_000_000;
         let mut emission_per_year: u128 = 900_000_000_000;
 
@@ -78,8 +79,8 @@ mod tests {
         let max_stake = 6_400_000_000_000; // 100% of supply - 36% of token rewards
         let min_stake = 1;
 
-        // calculate reward per share for 50 years
-        for year in 0..50u128 {
+        // calculate reward per share for x years
+        for year in 0..max_years {
             let emission_per_seconds_min =
                 precision * emission_per_year / 31_536_000u128 / min_stake;
             let emission_per_seconds_max =
@@ -107,7 +108,7 @@ mod tests {
         let reward_min = min_stake * reward_per_share_min / precision;
         let reward_max = max_stake * reward_per_share_max / precision;
 
-        println!("50 year reward min: {} ZEE", reward_min);
-        println!("50 year reward max: {} ZEE", reward_max);
+        println!("{} year reward min: {} ZEE", max_years, reward_min);
+        println!("{} year reward max: {} ZEE", max_years, reward_max);
     }
 }
