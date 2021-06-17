@@ -54,12 +54,11 @@ export class Settings {
         if (this.totalStake.cmpn(0) > 0) {
             const seconds = new BN(newSeconds - oldSeconds, 'le');
 
-            const reward_per_year = PRECISION.mul(REWARD_PER_YEAR);
-            const reward_per_second = reward_per_year.div(SECONDS_PER_YEAR);
-            const reward_per_share = reward_per_second.div(this.totalStake);
-            const delta = reward_per_share.mul(seconds);
+            const delta = PRECISION.mul(REWARD_PER_YEAR)
+                .div(SECONDS_PER_YEAR)
+                .div(this.totalStake)
+                .mul(seconds);
 
-            console.log(`delta: ${delta}`);
             reward = reward.add(delta);
         }
 
@@ -86,9 +85,6 @@ class Beneficiary {
     }
 
     public calculateReward(newRewardPerShare: BN): BN {
-        console.log(
-            `Calculating reward for ${this.authority.toBase58()}: ${newRewardPerShare}`
-        );
         return this.staked
             .mul(newRewardPerShare)
             .div(PRECISION)

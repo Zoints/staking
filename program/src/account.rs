@@ -225,7 +225,7 @@ impl Beneficiary {
         let pending = self.calculate_pending_reward(reward_per_share) - self.reward_debt;
 
         self.staked = new_stake;
-        self.pending_reward = self.calculate_pending_reward(reward_per_share);
+        self.reward_debt = self.calculate_pending_reward(reward_per_share);
         self.pending_reward += pending;
     }
 }

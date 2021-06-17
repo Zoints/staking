@@ -1,5 +1,6 @@
 import { PRECISION } from '../js/src';
 import { Stake } from './staking/app';
+import BN from 'bn.js';
 
 function pretty(d: Date): string {
     return d.toISOString().replace(/T/, ' ').replace(/\..+/, '');
