@@ -28,6 +28,8 @@ pub fn split_stake(amount: u64) -> (u64, u64, u64) {
 
 #[cfg(test)]
 mod tests {
+    use core::f64;
+
     use super::*;
     #[test]
     pub fn test_split_stake() {
@@ -63,5 +65,51 @@ mod tests {
             assert!(split.2 <= prev.2);
             prev = split
         }
+    }
+
+    // trying to figure out if the u128 datatype is enough for our purposes
+    #[test]
+    pub fn test_max_rps() {
+        let precision: u128 = 1_000_000_000_000_000_000_000_000;
+        let mut emission_per_year: u128 = 900_000_000_000;
+
+        let mut max_per_second = 0;
+        let mut reward_per_share = 0;
+        let max_stake = 6_400_000_000_000;
+
+        // calculate reward per share for 50 years
+        for year in 0..50u128 {
+            let emission_per_seconds = precision * emission_per_year / 31_536_000u128 / max_stake;
+            if emission_per_seconds > max_per_second {
+                max_per_second = emission_per_seconds;
+            }
+
+            println!(
+                "Year {}: ZEE per year: {}, ZEE per second: {}",
+                year + 1,
+                emission_per_year,
+                emission_per_seconds as f64 / precision as f64
+            );
+
+            reward_per_share += precision * emission_per_year / max_stake;
+
+            emission_per_year = (emission_per_year * 3) / 4; // *.75
+        }
+
+        // calculate the worst pending reward. assuming that one person has staked the entire ZEE supply
+        // and has been staking for 50 years at a constant year0 emission schedule.
+        // 36% of tokens are reserved for staking rewards, so the maximum possible stake is:
+        // 6,400,000,000,000
+        // (U256::from(self.staked) * reward_per_share.0 / U256::from(PRECISION)).as_u64()
+
+        let seconds = 50 * 31_536_000; // 50 years
+        println!(
+            "\n\nseconds: {}, reward per share {}",
+            seconds,
+            reward_per_share as f64 / precision as f64
+        );
+        let reward = max_stake * reward_per_share / precision;
+
+        println!("50 year reward: {} ZEE", reward);
     }
 }
