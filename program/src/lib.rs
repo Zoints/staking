@@ -73,25 +73,28 @@ mod tests {
         let precision: u128 = 1_000_000_000_000_000_000_000_000;
         let mut emission_per_year: u128 = 900_000_000_000;
 
-        let mut max_per_second = 0;
-        let mut reward_per_share = 0;
+        let mut reward_per_share_min = 0;
+        let mut reward_per_share_max = 0;
         let max_stake = 6_400_000_000_000;
+        let min_stake = 1_000;
 
         // calculate reward per share for 50 years
         for year in 0..50u128 {
-            let emission_per_seconds = precision * emission_per_year / 31_536_000u128 / max_stake;
-            if emission_per_seconds > max_per_second {
-                max_per_second = emission_per_seconds;
-            }
+            let emission_per_seconds_min =
+                precision * emission_per_year / 31_536_000u128 / min_stake;
+            let emission_per_seconds_max =
+                precision * emission_per_year / 31_536_000u128 / max_stake;
 
             println!(
-                "Year {}: ZEE per year: {}, ZEE per second: {}",
+                "Year {}: ZEE per year: {}, ZEE per second minimum: {}, ZEE per second maximum: {}",
                 year + 1,
                 emission_per_year,
-                emission_per_seconds as f64 / precision as f64
+                emission_per_seconds_min as f64 / precision as f64,
+                emission_per_seconds_max as f64 / precision as f64
             );
 
-            reward_per_share += precision * emission_per_year / max_stake;
+            reward_per_share_min += emission_per_seconds_min * 31_536_000u128;
+            reward_per_share_max += emission_per_seconds_max * 31_536_000u128;
 
             emission_per_year = (emission_per_year * 3) / 4; // *.75
         }
@@ -100,16 +103,17 @@ mod tests {
         // and has been staking for 50 years at a constant year0 emission schedule.
         // 36% of tokens are reserved for staking rewards, so the maximum possible stake is:
         // 6,400,000,000,000
-        // (U256::from(self.staked) * reward_per_share.0 / U256::from(PRECISION)).as_u64()
+        // (U256::from(self.staked) * reward_per_share_max.0 / U256::from(PRECISION)).as_u64()
 
-        let seconds = 50 * 31_536_000; // 50 years
         println!(
-            "\n\nseconds: {}, reward per share {}",
-            seconds,
-            reward_per_share as f64 / precision as f64
+            "\nreward per share min {}\nreward per share max {}",
+            reward_per_share_min as f64 / precision as f64,
+            reward_per_share_max as f64 / precision as f64
         );
-        let reward = max_stake * reward_per_share / precision;
+        let reward_min = min_stake * reward_per_share_min / precision;
+        let reward_max = max_stake * reward_per_share_max / precision;
 
-        println!("50 year reward: {} ZEE", reward);
+        println!("50 year reward min: {} ZEE", reward_min);
+        println!("50 year reward max: {} ZEE", reward_max);
     }
 }
