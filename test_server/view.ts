@@ -61,19 +61,19 @@ export async function viewCommunity(
         </tr>
         <tr>
             <td>Staked</td>
-            <td>${community.primary.staked.toNumber()}</td>
+            <td>${community.primary.staked.toString()}</td>
         </tr>
         <tr>
             <td>Reward Debt</td>
-            <td>${community.primary.rewardDebt.toNumber()}</td>
+            <td>${community.primary.rewardDebt.toString()}</td>
         </tr>
         <tr>
             <td>Pending Reward</td>
-            <td>${community.primary.pendingReward.toNumber()}</td>
+            <td>${community.primary.pendingReward.toString()}</td>
         </tr>
         <tr>
             <td>Harvestable</td>
-            <td>${community.primary.calculateReward(rps).toNumber()}</td>
+            <td>${community.primary.calculateReward(rps).toString()}</td>
         </tr>
         <tr>
             <td colspan="2"><br><b>Secondary</b></td>
@@ -86,19 +86,19 @@ export async function viewCommunity(
         </tr>
         <tr>
             <td>Staked</td>
-            <td>${community.secondary.staked.toNumber()}</td>
+            <td>${community.secondary.staked.toString()}</td>
         </tr>
         <tr>
             <td>Reward Debt</td>
-            <td>${community.secondary.rewardDebt.toNumber()}</td>
+            <td>${community.secondary.rewardDebt.toString()}</td>
         </tr>
         <tr>
             <td>Pending Reward</td>
-            <td>${community.secondary.pendingReward.toNumber()}</td>
+            <td>${community.secondary.pendingReward.toString()}</td>
         </tr>
         <tr>
             <td>Harvestable</td>
-            <td>${community.secondary.calculateReward(rps).toNumber()}</td>
+            <td>${community.secondary.calculateReward(rps).toString()}</td>
         </tr>
         <tr>
             <td></td>
@@ -138,12 +138,12 @@ export async function viewStaker(staking: Stake, id: number): Promise<string> {
                 </tr>
                 <tr>
                     <td>Total Stake</td>
-                    <td>${stakeAccount.totalStake.toNumber()}</td>
+                    <td>${stakeAccount.totalStake.toString()}</td>
                 </tr>
                 
                 <tr>
                     <td>Unbonding Amount</td>
-                    <td>${stakeAccount.unbondingAmount.toNumber()}</td>
+                    <td>${stakeAccount.unbondingAmount.toString()}</td>
                 </tr>
                 <tr>
                     <td>Unbonding Start</td>
@@ -157,21 +157,21 @@ export async function viewStaker(staking: Stake, id: number): Promise<string> {
                 </tr>
                 <tr>
                     <td>Staked</td>
-                    <td>${stakeAccount.beneficiary.staked.toNumber()}</td>
+                    <td>${stakeAccount.beneficiary.staked.toString()}</td>
                 </tr>
                 <tr>
                     <td>Reward Debt</td>
-                    <td>${stakeAccount.beneficiary.rewardDebt.toNumber()}</td>
+                    <td>${stakeAccount.beneficiary.rewardDebt.toString()}</td>
                 </tr>
                 <tr>
                     <td>Pending Reward</td>
-                    <td>${stakeAccount.beneficiary.pendingReward.toNumber()}</td>
+                    <td>${stakeAccount.beneficiary.pendingReward.toString()}</td>
                 </tr>
                 <tr>
                     <td>Harvestable</td>
                     <td>${stakeAccount.beneficiary
                         .calculateReward(rps)
-                        .toNumber()}</td>
+                        .toString()}</td>
                 </tr>
             `;
         } catch (e: any) {
@@ -262,7 +262,7 @@ export async function wrap(staking: Stake, content: string): Promise<string> {
     <tr><td>Slot</td><td>${recent.context.slot}</td></tr>
     <tr>
         <td>Total Stake</td>
-        <td>${settings.totalStake.toNumber()}</td>
+        <td>${settings.totalStake.toString()}</td>
     </tr>
     <tr>
         <td>Last Reward</td>

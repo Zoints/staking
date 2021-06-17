@@ -198,6 +198,30 @@ export class Stake {
     }
 
     public async setup() {
+        if (!this.newSeed) {
+            // check if bpf is loaded
+            let acc = await this.connection.getAccountInfo(this.program_id);
+            if (acc === null) {
+                this.loaded = false;
+                console.log(
+                    `Seed file found but program not loaded. Reloading BPF with original seed ${this.seed.toString(
+                        'hex'
+                    )}`
+                );
+                this.newSeed = true;
+            } else if (acc.executable === false) {
+                this.loaded = false;
+                this.seed = crypto.randomBytes(16);
+                fs.writeFileSync(this.seedPath, this.seed.toString('hex'), {});
+                console.log(
+                    `Seed file found but program loaded incorrect. Reloading BPF with new seed ${this.seed.toString(
+                        'hex'
+                    )}`
+                );
+                this.newSeed = true;
+            }
+        }
+
         if (this.newSeed) {
             console.log(`New BPF: initializing program...`);
             await this.fund();

@@ -15,9 +15,7 @@ use solana_program::{
 use spl_token::state::{Account, Mint};
 
 use crate::{
-    account::{
-        Beneficiary, BorshU256, Community, PoolAuthority, RewardPool, Settings, StakePool, Staker,
-    },
+    account::{Beneficiary, Community, PoolAuthority, RewardPool, Settings, StakePool, Staker},
     error::StakingError,
     instruction::StakingInstruction,
     pool_transfer, split_stake, verify_associated, MINIMUM_STAKE,
@@ -83,7 +81,7 @@ impl Processor {
         let settings = Settings {
             authority: *authority_info.key,
             token: *token_info.key,
-            reward_per_share: BorshU256::from(0),
+            reward_per_share: 0u128,
             last_reward: clock.unix_timestamp,
             total_stake: 0,
         };

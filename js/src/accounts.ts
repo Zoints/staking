@@ -1,7 +1,7 @@
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import * as borsh from 'borsh';
-import { PRECISION, REWARD_PER_HOUR } from '.';
+import { PRECISION, REWARD_PER_YEAR, SECONDS_PER_YEAR } from '.';
 
 export class Settings {
     public token: PublicKey;
@@ -20,7 +20,7 @@ export class Settings {
                     ['token', [32]],
                     ['authority', [32]],
                     ['totalStake', 'u64'],
-                    ['rewardPerShare', 'u256'],
+                    ['rewardPerShare', 'u128'],
                     ['lastReward', 'u64'] // this is an i64 timestamp, so always > 0, u64 should be fine
                 ]
             }
@@ -44,8 +44,8 @@ export class Settings {
     public calculateRewardPerShare(now: Date): BN {
         let reward = this.rewardPerShare;
 
-        const oldSeconds = Math.floor(this.lastReward.getMilliseconds() / 1000);
-        const newSeconds = Math.floor(now.getMilliseconds() / 1000);
+        const oldSeconds = Math.floor(this.lastReward.getTime() / 1000);
+        const newSeconds = Math.floor(now.getTime() / 1000);
 
         if (newSeconds <= oldSeconds) {
             return reward;
@@ -53,12 +53,14 @@ export class Settings {
 
         if (this.totalStake.cmpn(0) > 0) {
             const seconds = new BN(newSeconds - oldSeconds, 'le');
-            const delta = seconds
-                .mul(PRECISION)
-                .muln(REWARD_PER_HOUR)
-                .divn(3600)
-                .div(this.totalStake);
-            reward.iadd(delta);
+
+            const reward_per_year = PRECISION.mul(REWARD_PER_YEAR);
+            const reward_per_second = reward_per_year.div(SECONDS_PER_YEAR);
+            const reward_per_share = reward_per_second.div(this.totalStake);
+            const delta = reward_per_share.mul(seconds);
+
+            console.log(`delta: ${delta}`);
+            reward = reward.add(delta);
         }
 
         return reward;
@@ -84,6 +86,9 @@ class Beneficiary {
     }
 
     public calculateReward(newRewardPerShare: BN): BN {
+        console.log(
+            `Calculating reward for ${this.authority.toBase58()}: ${newRewardPerShare}`
+        );
         return this.staked
             .mul(newRewardPerShare)
             .div(PRECISION)
