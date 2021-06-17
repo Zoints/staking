@@ -69,14 +69,14 @@ mod tests {
 
     // trying to figure out if the u128 datatype is enough for our purposes
     #[test]
-    pub fn test_max_rps() {
+    pub fn test_rps_calculation() {
         let precision: u128 = 1_000_000_000_000_000_000_000_000;
         let mut emission_per_year: u128 = 900_000_000_000;
 
         let mut reward_per_share_min = 0;
         let mut reward_per_share_max = 0;
-        let max_stake = 6_400_000_000_000;
-        let min_stake = 1_000;
+        let max_stake = 6_400_000_000_000; // 100% of supply - 36% of token rewards
+        let min_stake = 1;
 
         // calculate reward per share for 50 years
         for year in 0..50u128 {
@@ -98,12 +98,6 @@ mod tests {
 
             emission_per_year = (emission_per_year * 3) / 4; // *.75
         }
-
-        // calculate the worst pending reward. assuming that one person has staked the entire ZEE supply
-        // and has been staking for 50 years at a constant year0 emission schedule.
-        // 36% of tokens are reserved for staking rewards, so the maximum possible stake is:
-        // 6,400,000,000,000
-        // (U256::from(self.staked) * reward_per_share_max.0 / U256::from(PRECISION)).as_u64()
 
         println!(
             "\nreward per share min {}\nreward per share max {}",
