@@ -1,4 +1,4 @@
-import { PRECISION } from '../js/src';
+import { PRECISION, Staking } from '../js/src';
 import { Stake } from './staking/app';
 import BN from 'bn.js';
 
@@ -180,7 +180,7 @@ export async function viewStaker(staking: Stake, id: number): Promise<string> {
             //console.log(e);
         }
         community_list += `<tr><td>
-            <form action="/stake/${community.id}/${appStaker.id}" method="GET"><input type="text" name="amount" placeholder="0"><input type="submit" value="Stake"></form>
+            <form action="/stake/${community.id}/${appStaker.id}" method="POST"><input type="text" name="amount" placeholder="0"><input type="submit" value="Stake"></form>
             </td></tr></table>`;
     }
 

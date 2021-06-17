@@ -155,7 +155,7 @@ export class Stake {
         commId: number,
         stakerId: number,
         amount: number
-    ): Promise<void> {
+    ): Promise<string> {
         const community = this.communities[commId];
         const staker = this.stakers[stakerId];
         const assoc = await this.token.getOrCreateAssociatedAccountInfo(
@@ -195,6 +195,7 @@ export class Stake {
         ]);
 
         console.log(`Staked: ${sig}`);
+        return sig;
     }
 
     public async setup() {

@@ -11,6 +11,9 @@ const staking = new Stake(
     './seed.json'
 );
 
+// Parse URL-encoded bodies (as sent by HTML forms)
+app.use(express.urlencoded({ extended: false }));
+
 app.get('/reload', async (req: express.Request, res: express.Response) => {
     await staking.regenerate();
     res.redirect('/');
@@ -25,6 +28,11 @@ app.get(
     '/community/:id',
     async (req: express.Request, res: express.Response) => {
         const id = Number(req.params.id);
+        if (id >= staking.communities.length) {
+            console.log(`tried to access nonexistent community`);
+            res.redirect('/');
+            return;
+        }
 
         res.send(await wrap(staking, await viewCommunity(staking, id)));
     }
@@ -40,7 +48,11 @@ app.get(
 
 app.get('/staker/:id', async (req: express.Request, res: express.Response) => {
     const id = Number(req.params.id);
-
+    if (id >= staking.stakers.length) {
+        console.log(`tried to access nonexistent staker`);
+        res.redirect('/');
+        return;
+    }
     res.send(await wrap(staking, await viewStaker(staking, id)));
 });
 
@@ -49,10 +61,10 @@ app.get('/addStaker', async (req: express.Request, res: express.Response) => {
     res.redirect('/');
 });
 
-app.get(
+app.post(
     '/stake/:community/:staker',
     async (req: express.Request, res: express.Response) => {
-        const amount = Number(req.query.amount);
+        const amount = Number(req.body.amount);
         const community = Number(req.params.community);
         const staker = Number(req.params.staker);
         await staking.stake(community, staker, amount);

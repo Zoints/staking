@@ -345,6 +345,12 @@ impl Processor {
         let mut stake =
             Staker::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
         if stake.total_stake + amount < MINIMUM_STAKE {
+            msg!(
+                "existing stake: {}, amount: {}, minimum required: {}",
+                stake.total_stake,
+                amount,
+                MINIMUM_STAKE
+            );
             return Err(StakingError::StakerMinimumBalanceNotMet.into());
         }
 
