@@ -356,9 +356,20 @@ impl Processor {
 
         settings.update_rewards(clock.unix_timestamp);
 
-        let (_, old_primary, old_secondary) = split_stake(stake.total_stake);
+        let (old_staker_share, old_primary, old_secondary) = split_stake(stake.total_stake);
         stake.total_stake += amount;
         let (staker_share, new_primary, new_secondary) = split_stake(stake.total_stake);
+        msg!(
+            "stake: {} -> {}: self {} -> {}, primary {} -> {}, secondary {} - {}",
+            stake.total_stake - amount,
+            stake.total_stake,
+            old_staker_share,
+            staker_share,
+            old_primary,
+            new_primary,
+            old_secondary,
+            new_secondary
+        );
 
         // PROCESS STAKER'S REWARD
 
@@ -376,12 +387,10 @@ impl Processor {
             community.primary.staked + new_primary - old_primary,
             settings.reward_per_share,
         );
-        if !community.secondary.is_empty() {
-            community.secondary.pay_out(
-                community.secondary.staked + new_secondary - old_secondary,
-                settings.reward_per_share,
-            );
-        }
+        community.secondary.pay_out(
+            community.secondary.staked + new_secondary - old_secondary,
+            settings.reward_per_share,
+        );
 
         // pay out pending reward first
         pool_transfer!(
