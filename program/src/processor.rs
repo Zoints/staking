@@ -356,8 +356,9 @@ impl Processor {
 
         settings.update_rewards(clock.unix_timestamp);
 
+        let (_, old_primary, old_secondary) = split_stake(stake.total_stake);
         stake.total_stake += amount;
-        let (staker_share, primary, secondary) = split_stake(stake.total_stake);
+        let (staker_share, new_primary, new_secondary) = split_stake(stake.total_stake);
 
         // PROCESS STAKER'S REWARD
 
@@ -371,13 +372,15 @@ impl Processor {
         }
 
         // primary + secondary
-        community
-            .primary
-            .pay_out(primary, settings.reward_per_share);
+        community.primary.pay_out(
+            community.primary.staked + new_primary - old_primary,
+            settings.reward_per_share,
+        );
         if !community.secondary.is_empty() {
-            community
-                .secondary
-                .pay_out(secondary, settings.reward_per_share);
+            community.secondary.pay_out(
+                community.secondary.staked + new_secondary - old_secondary,
+                settings.reward_per_share,
+            );
         }
 
         // pay out pending reward first
@@ -461,8 +464,9 @@ impl Processor {
 
         settings.update_rewards(clock.unix_timestamp);
 
+        let (_, old_primary, old_secondary) = split_stake(stake.total_stake);
         stake.total_stake -= amount;
-        let (staker_share, primary, secondary) = split_stake(stake.total_stake);
+        let (staker_share, new_primary, new_secondary) = split_stake(stake.total_stake);
 
         // PROCESS STAKER'S REWARD
 
@@ -471,13 +475,15 @@ impl Processor {
             .pay_out(staker_share, settings.reward_per_share);
 
         // primary + secondary
-        community
-            .primary
-            .pay_out(primary, settings.reward_per_share);
+        community.primary.pay_out(
+            community.primary.staked + new_primary - old_primary,
+            settings.reward_per_share,
+        );
         if !community.secondary.is_empty() {
-            community
-                .secondary
-                .pay_out(secondary, settings.reward_per_share);
+            community.secondary.pay_out(
+                community.secondary.staked + new_secondary - old_secondary,
+                settings.reward_per_share,
+            );
         }
 
         // pay out pending reward
