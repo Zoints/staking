@@ -28,6 +28,13 @@ export async function viewCommunity(
 
     const rps = settings.calculateRewardPerShare(new Date());
 
+    const assocPrimary = await staking.token.getOrCreateAssociatedAccountInfo(
+        community.primary.authority
+    );
+    const assocSecondary = await staking.token.getOrCreateAssociatedAccountInfo(
+        community.secondary.authority
+    );
+
     return `<table>
         <tr>
             <td>ID</td>
@@ -61,6 +68,17 @@ export async function viewCommunity(
     }&cluster=custom">${community.primary.authority.toBase58()}</td>
         </tr>
         <tr>
+            <td>ZEE Address</td>
+            <td><a href="https://explorer.solana.com/address/${assocPrimary.address.toBase58()}?customUrl=${
+        staking.connectionURL
+    }&cluster=custom">${assocPrimary.address.toBase58()}</a></td>
+        </tr>
+        <tr>
+            <td>ZEE Balance</td>
+            <td>${assocPrimary.amount}</td>
+
+        </tr>
+        <tr>
             <td>Staked</td>
             <td>${community.primary.staked.toString()}</td>
         </tr>
@@ -74,7 +92,11 @@ export async function viewCommunity(
         </tr>
         <tr>
             <td>Harvestable</td>
-            <td>${community.primary.calculateReward(rps).toString()}</td>
+            <td>${community.primary
+                .calculateReward(rps)
+                .toString()} (<a href="/claim/${
+        appComm.id
+    }/primary">Claim</a>)</td>
         </tr>
         <tr>
             <td colspan="2"><br><b>Secondary</b></td>
@@ -84,6 +106,17 @@ export async function viewCommunity(
             <td><a href="https://explorer.solana.com/address/${community.secondary.authority.toBase58()}?customUrl=${
         staking.connectionURL
     }&cluster=custom">${community.secondary.authority.toBase58()}</td>
+        </tr>
+        <tr>
+            <td>ZEE Address</td>
+            <td><a href="https://explorer.solana.com/address/${assocSecondary.address.toBase58()}?customUrl=${
+        staking.connectionURL
+    }&cluster=custom">${assocSecondary.address.toBase58()}</a></td>
+        </tr>
+        <tr>
+            <td>ZEE Balance</td>
+            <td>${assocSecondary.amount}</td>
+
         </tr>
         <tr>
             <td>Staked</td>
@@ -99,7 +132,11 @@ export async function viewCommunity(
         </tr>
         <tr>
             <td>Harvestable</td>
-            <td>${community.secondary.calculateReward(rps).toString()}</td>
+            <td>${community.secondary
+                .calculateReward(rps)
+                .toString()} (<a href="/claim/${
+        appComm.id
+    }/secondary">Claim</a>)</td>
         </tr>
         <tr>
             <td></td>

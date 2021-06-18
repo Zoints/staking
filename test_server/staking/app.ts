@@ -21,7 +21,10 @@ import {
     InitializeStake,
     RegisterCommunity,
     Staking,
-    Stake as StakeInstruction
+    Stake as StakeInstruction,
+    WithdrawUnbond,
+    ClaimPrimary,
+    ClaimSecondary
 } from '../../js/src';
 import { seededKey, sleep } from './util';
 import * as crypto from 'crypto';
@@ -151,6 +154,58 @@ export class Stake {
         );
     }
 
+    public async claimPrimary(commId: number): Promise<string> {
+        const community = this.communities[commId];
+        const assoc = await this.token.getOrCreateAssociatedAccountInfo(
+            community.primaryAuthority.publicKey
+        );
+        const trans = new Transaction();
+        trans.add(
+            await ClaimPrimary(
+                this.program_id,
+                this.funder.publicKey,
+                community.primaryAuthority.publicKey,
+                assoc.address,
+                community.key.publicKey
+            )
+        );
+        const sig = await sendAndConfirmTransaction(this.connection, trans, [
+            this.funder,
+            community.primaryAuthority
+        ]);
+
+        console.log(
+            `Claimed Primary Harvest ${community.key.publicKey.toBase58()}: ${sig}`
+        );
+        return sig;
+    }
+
+    public async claimSecondary(commId: number): Promise<string> {
+        const community = this.communities[commId];
+        const assoc = await this.token.getOrCreateAssociatedAccountInfo(
+            community.secondaryAuthority.publicKey
+        );
+        const trans = new Transaction();
+        trans.add(
+            await ClaimSecondary(
+                this.program_id,
+                this.funder.publicKey,
+                community.secondaryAuthority.publicKey,
+                assoc.address,
+                community.key.publicKey
+            )
+        );
+        const sig = await sendAndConfirmTransaction(this.connection, trans, [
+            this.funder,
+            community.secondaryAuthority
+        ]);
+
+        console.log(
+            `Claimed Secondary Harvest ${community.key.publicKey.toBase58()}: ${sig}`
+        );
+        return sig;
+    }
+
     public async stake(
         commId: number,
         stakerId: number,
@@ -270,11 +325,43 @@ export class Stake {
             )
         );
 
-        const sig = await sendAndConfirmTransaction(
-            this.connection,
-            transaction,
-            [this.funder, comm.authority, comm.key]
-        );
+        let sig = '';
+        const promises: Promise<void>[] = [
+            new Promise((resolve, reject) => {
+                sendAndConfirmTransaction(this.connection, transaction, [
+                    this.funder,
+                    comm.authority,
+                    comm.key
+                ])
+                    .then((siig) => {
+                        sig = siig;
+                        resolve();
+                    })
+                    .catch((r) => reject(r));
+            }),
+            new Promise((resolve, reject) => {
+                this.token
+                    .getOrCreateAssociatedAccountInfo(
+                        comm.primaryAuthority.publicKey
+                    )
+                    .then(() => {
+                        resolve();
+                    })
+                    .catch((r) => reject(r));
+            }),
+            new Promise((resolve, reject) => {
+                this.token
+                    .getOrCreateAssociatedAccountInfo(
+                        comm.secondaryAuthority.publicKey
+                    )
+                    .then(() => {
+                        resolve();
+                    })
+                    .catch((r) => reject(r));
+            })
+        ];
+        await Promise.all(promises);
+
         console.log(
             `Added community ${
                 comm.id

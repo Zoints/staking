@@ -71,6 +71,18 @@ app.post(
         res.redirect('/staker/' + staker);
     }
 );
+app.get(
+    '/claim/:community/:primary',
+    async (req: express.Request, res: express.Response) => {
+        const community = Number(req.params.community);
+        if (req.params.primary === 'primary') {
+            await staking.claimPrimary(community);
+        } else {
+            await staking.claimSecondary(community);
+        }
+        res.redirect('/community/' + community);
+    }
+);
 
 app.get('/airdrop/:id', async (req: express.Request, res: express.Response) => {
     const amount = Number(req.query.amount);
