@@ -276,7 +276,8 @@ export async function ClaimSecondary(
     funder: PublicKey,
     authority: PublicKey,
     authorityAssociated: PublicKey,
-    community: PublicKey
+    community: PublicKey,
+    mint: PublicKey
 ): Promise<TransactionInstruction> {
     const settingsId = await Staking.settingsId(programId);
     const poolAuthorityId = await Staking.poolAuthorityId(programId);
@@ -290,6 +291,7 @@ export async function ClaimSecondary(
         am(settingsId, false, true),
         am(poolAuthorityId, false, false),
         am(rewardPoolId, false, true),
+        am(mint, false, true),
         am(SYSVAR_CLOCK_PUBKEY, false, false),
         am(TOKEN_PROGRAM_ID, false, false)
     ];

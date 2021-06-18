@@ -194,7 +194,8 @@ export class Stake {
                 this.funder.publicKey,
                 community.secondaryAuthority.publicKey,
                 assoc.address,
-                community.key.publicKey
+                community.key.publicKey,
+                this.mint_id.publicKey
             )
         );
         const sig = await sendAndConfirmTransaction(this.connection, trans, [
