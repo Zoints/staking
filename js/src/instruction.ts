@@ -54,7 +54,7 @@ export class AmountSchema {
                 kind: 'struct',
                 fields: [
                     ['instructionId', 'u8'],
-                    ['amount', 'u64']
+                    ['amount', 'i64']
                 ]
             }
         ]
@@ -193,44 +193,6 @@ export async function Stake(
     ];
 
     const instruction = new AmountSchema(Instructions.Stake, amount);
-    const instructionData = borsh.serialize(AmountSchema.schema, instruction);
-
-    return new TransactionInstruction({
-        keys: keys,
-        programId,
-        data: Buffer.from(instructionData)
-    });
-}
-
-export async function Unstake(
-    programId: PublicKey,
-    funder: PublicKey,
-    staker: PublicKey,
-    stakerAssociated: PublicKey,
-    community: PublicKey,
-    mint: PublicKey,
-    amount: number
-): Promise<TransactionInstruction> {
-    const settingsId = await Staking.settingsId(programId);
-    const poolAuthorityId = await Staking.poolAuthorityId(programId);
-    const rewardPoolId = await Staking.rewardPoolId(programId);
-    const stakeId = await Staking.stakerAddress(programId, community, staker);
-
-    const keys: AccountMeta[] = [
-        am(funder, true, false),
-        am(staker, true, false),
-        am(stakerAssociated, false, true),
-        am(community, false, true),
-        am(poolAuthorityId, false, false),
-        am(rewardPoolId, false, true),
-        am(settingsId, false, true),
-        am(stakeId, false, true),
-        am(mint, false, true),
-        am(SYSVAR_CLOCK_PUBKEY, false, false),
-        am(TOKEN_PROGRAM_ID, false, false)
-    ];
-
-    const instruction = new AmountSchema(Instructions.Unstake, amount);
     const instructionData = borsh.serialize(AmountSchema.schema, instruction);
 
     return new TransactionInstruction({

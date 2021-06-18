@@ -40,9 +40,6 @@ impl Processor {
             StakingInstruction::Stake { amount } => {
                 Self::process_stake(program_id, accounts, amount)
             }
-            StakingInstruction::Unstake { amount } => {
-                Self::process_unstake(program_id, accounts, amount)
-            }
             StakingInstruction::WithdrawUnbond => {
                 Self::process_withdraw_unbond(program_id, accounts)
             }
@@ -317,7 +314,7 @@ impl Processor {
     pub fn process_stake(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
-        amount: u64,
+        raw_amount: i64,
     ) -> ProgramResult {
         let iter = &mut accounts.iter();
         let _funder_info = next_account_info(iter)?;
@@ -345,41 +342,42 @@ impl Processor {
 
         let mut stake =
             Staker::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
-        if stake.total_stake + amount < MINIMUM_STAKE {
-            msg!(
-                "existing stake: {}, amount: {}, minimum required: {}",
-                stake.total_stake,
-                amount,
-                MINIMUM_STAKE
-            );
-            return Err(StakingError::StakerMinimumBalanceNotMet.into());
+
+        let staking = raw_amount > 0;
+        let amount = raw_amount.abs() as u64;
+
+        if staking {
+            if stake.total_stake + amount < MINIMUM_STAKE {
+                msg!(
+                    "existing stake: {}, amount: {}, minimum required: {}",
+                    stake.total_stake,
+                    amount,
+                    MINIMUM_STAKE
+                );
+                return Err(StakingError::StakerMinimumBalanceNotMet.into());
+            }
+        } else {
+            if amount > stake.total_stake {
+                return Err(StakingError::StakerWithdrawingTooMuch.into());
+            } else if amount < stake.total_stake && stake.total_stake - amount < MINIMUM_STAKE {
+                // allow them to withdraw everything
+                return Err(StakingError::StakerMinimumBalanceNotMet.into());
+            }
         }
 
         settings.update_rewards(clock.unix_timestamp);
 
-        let (old_staker_share, old_primary, old_secondary) = split_stake(stake.total_stake);
+        let (_, old_primary, old_secondary) = split_stake(stake.total_stake);
         stake.total_stake += amount;
         let (staker_share, new_primary, new_secondary) = split_stake(stake.total_stake);
-        msg!(
-            "stake: {} -> {}: self {} -> {}, primary {} -> {}, secondary {} - {}",
-            stake.total_stake - amount,
-            stake.total_stake,
-            old_staker_share,
-            staker_share,
-            old_primary,
-            new_primary,
-            old_secondary,
-            new_secondary
-        );
 
         // PROCESS STAKER'S REWARD
-
         stake
             .beneficiary
             .pay_out(staker_share, settings.reward_per_share);
 
         // allow them to re-stake their pending reward immediately
-        if staker_assoc.amount + stake.beneficiary.pending_reward < amount {
+        if staking && staker_assoc.amount + stake.beneficiary.pending_reward < amount {
             return Err(StakingError::StakerBalanceTooLow.into());
         }
 
@@ -416,124 +414,29 @@ impl Processor {
             community.secondary.pending_reward = 0;
         }
 
-        // transfer the new staked amount to stake pool
-        invoke(
-            &spl_token::instruction::transfer(
-                &spl_token::id(),
-                staker_associated_info.key,
-                stake_pool_info.key,
-                staker_info.key,
-                &[],
-                amount,
-            )?,
-            &[
-                staker_associated_info.clone(),
-                stake_pool_info.clone(),
-                staker_info.clone(),
-            ],
-        )?;
-
-        settings.total_stake += amount;
-
-        settings_info
-            .data
-            .borrow_mut()
-            .copy_from_slice(&settings.try_to_vec()?);
-        stake_info
-            .data
-            .borrow_mut()
-            .copy_from_slice(&stake.try_to_vec()?);
-        community_info
-            .data
-            .borrow_mut()
-            .copy_from_slice(&community.try_to_vec()?);
-
-        Ok(())
-    }
-
-    pub fn process_unstake(
-        program_id: &Pubkey,
-        accounts: &[AccountInfo],
-        amount: u64,
-    ) -> ProgramResult {
-        let iter = &mut accounts.iter();
-        let _funder_info = next_account_info(iter)?;
-        let staker_info = next_account_info(iter)?;
-        let staker_associated_info = next_account_info(iter)?;
-        let community_info = next_account_info(iter)?;
-        let pool_authority_info = next_account_info(iter)?;
-        let reward_pool_info = next_account_info(iter)?;
-        let settings_info = next_account_info(iter)?;
-        let stake_info = next_account_info(iter)?;
-        let mint_info = next_account_info(iter)?;
-        let clock_info = next_account_info(iter)?;
-
-        let clock = Clock::from_account_info(clock_info)?;
-        let mut settings = Settings::from_account_info(settings_info, program_id)?;
-        let mut community = Community::from_account_info(community_info, program_id)?;
-
-        if !staker_info.is_signer {
-            return Err(StakingError::MissingStakeSignature.into());
-        }
-
-        let mut stake =
-            Staker::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
-        if amount > stake.total_stake {
-            return Err(StakingError::StakerWithdrawingTooMuch.into());
-        } else if amount < stake.total_stake && stake.total_stake - amount < MINIMUM_STAKE {
-            // allow them to withdraw everything
-            return Err(StakingError::StakerMinimumBalanceNotMet.into());
-        }
-
-        settings.update_rewards(clock.unix_timestamp);
-
-        let (_, old_primary, old_secondary) = split_stake(stake.total_stake);
-        stake.total_stake -= amount;
-        let (staker_share, new_primary, new_secondary) = split_stake(stake.total_stake);
-
-        // PROCESS STAKER'S REWARD
-
-        stake
-            .beneficiary
-            .pay_out(staker_share, settings.reward_per_share);
-
-        // primary + secondary
-        community.primary.pay_out(
-            community.primary.staked + new_primary - old_primary,
-            settings.reward_per_share,
-        );
-        community.secondary.pay_out(
-            community.secondary.staked + new_secondary - old_secondary,
-            settings.reward_per_share,
-        );
-
-        // pay out pending reward
-        pool_transfer!(
-            RewardPool,
-            reward_pool_info,
-            staker_associated_info,
-            pool_authority_info,
-            program_id,
-            stake.beneficiary.pending_reward
-        )?;
-        stake.beneficiary.pending_reward = 0;
-
-        // burn secondary
-        if community.secondary.is_empty() {
-            pool_burn!(
-                reward_pool_info,
-                pool_authority_info,
-                mint_info,
-                program_id,
-                community.secondary.pending_reward
+        if staking {
+            // transfer the new staked amount to stake pool
+            invoke(
+                &spl_token::instruction::transfer(
+                    &spl_token::id(),
+                    staker_associated_info.key,
+                    stake_pool_info.key,
+                    staker_info.key,
+                    &[],
+                    amount,
+                )?,
+                &[
+                    staker_associated_info.clone(),
+                    stake_pool_info.clone(),
+                    staker_info.clone(),
+                ],
             )?;
-            community.secondary.pending_reward = 0;
+            settings.total_stake += amount;
+        } else {
+            stake.unbonding_amount += amount;
+            stake.unbonding_start = clock.unix_timestamp;
+            settings.total_stake -= amount;
         }
-
-        stake.unbonding_amount += amount;
-        stake.unbonding_start = clock.unix_timestamp;
-
-        settings.total_stake -= amount;
 
         settings_info
             .data

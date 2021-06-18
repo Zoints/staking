@@ -88,7 +88,7 @@ mod tests {
                 precision * emission_per_year / 31_536_000u128 / max_stake;
 
             println!(
-                "Year {}: ZEE per year: {}, ZEE per second minimum: {}, ZEE per second maximum: {}",
+                "Year {}: ZEE per year: {}, ZEE per second per share minimum: {}, ZEE per second per share maximum: {}",
                 year + 1,
                 emission_per_year,
                 emission_per_seconds_min as f64 / precision as f64,
