@@ -192,8 +192,9 @@ export async function Stake(
         am(TOKEN_PROGRAM_ID, false, false)
     ];
 
-    const instruction = new AmountSchema(Instructions.Stake, amount);
-    const instructionData = borsh.serialize(AmountSchema.schema, instruction);
+    const instructionData = Buffer.alloc(9, 0);
+    instructionData[0] = Instructions.Stake;
+    instructionData.writeBigInt64LE(BigInt(amount), 1);
 
     return new TransactionInstruction({
         keys: keys,

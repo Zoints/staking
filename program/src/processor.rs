@@ -368,7 +368,11 @@ impl Processor {
         settings.update_rewards(clock.unix_timestamp);
 
         let (_, old_primary, old_secondary) = split_stake(stake.total_stake);
-        stake.total_stake += amount;
+        if staking {
+            stake.total_stake += amount;
+        } else {
+            stake.total_stake -= amount;
+        }
         let (staker_share, new_primary, new_secondary) = split_stake(stake.total_stake);
 
         // PROCESS STAKER'S REWARD
