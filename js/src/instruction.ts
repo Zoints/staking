@@ -19,7 +19,6 @@ export enum Instructions {
     RegisterCommunity,
     InitializeStake,
     Stake,
-    Unstake,
     WithdrawUnbond,
     ClaimPrimary,
     ClaimSecondary
