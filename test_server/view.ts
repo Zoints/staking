@@ -31,9 +31,82 @@ export async function viewCommunity(
     const assocPrimary = await staking.token.getOrCreateAssociatedAccountInfo(
         community.primary.authority
     );
-    const assocSecondary = await staking.token.getOrCreateAssociatedAccountInfo(
-        community.secondary.authority
-    );
+
+    let secondary = '';
+    if (community.secondary.isEmpty()) {
+        secondary = `        <tr>
+            <td>Authority</td>
+            <td>None</td>
+        </tr>
+        <tr>
+            <td>ZEE Address</td>
+            <td>N/A</td>
+        </tr>
+        <tr>
+            <td>ZEE Balance</td>
+            <td>N/A</td>
+
+        </tr>
+        <tr>
+            <td>Staked</td>
+            <td>${community.secondary.staked.toString()}</td>
+        </tr>
+        <tr>
+            <td>Reward Debt</td>
+            <td>${community.secondary.rewardDebt.toString()}</td>
+        </tr>
+        <tr>
+            <td>Pending Reward</td>
+            <td>${community.secondary.pendingReward.toString()}</td>
+        </tr>
+        <tr>
+            <td>Harvestable</td>
+            <td>${community.secondary.calculateReward(rps).toString()}</td>
+        </tr>`;
+    } else {
+        const assocSecondary =
+            await staking.token.getOrCreateAssociatedAccountInfo(
+                community.secondary.authority
+            );
+
+        secondary = `        <tr>
+            <td>Authority</td>
+            <td><a href="https://explorer.solana.com/address/${assocSecondary.address.toBase58()}?customUrl=${
+            staking.connectionURL
+        }&cluster=custom">${assocSecondary.address.toBase58()}</a></td>
+        </tr>
+        <tr>
+            <td>ZEE Address</td>
+            <td><a href="https://explorer.solana.com/address/${community.secondary.authority.toBase58()}?customUrl=${
+            staking.connectionURL
+        }&cluster=custom">${community.secondary.authority.toBase58()}</td>
+        </tr>
+        <tr>
+            <td>ZEE Balance</td>
+            <td>${assocSecondary.amount.toString()}</td>
+
+        </tr>
+        <tr>
+            <td>Staked</td>
+            <td>${community.secondary.staked.toString()}</td>
+        </tr>
+        <tr>
+            <td>Reward Debt</td>
+            <td>${community.secondary.rewardDebt.toString()}</td>
+        </tr>
+        <tr>
+            <td>Pending Reward</td>
+            <td>${community.secondary.pendingReward.toString()}</td>
+        </tr>
+        <tr>
+            <td>Harvestable</td>
+            <td>${community.secondary
+                .calculateReward(rps)
+                .toString()} (<a href="/claim/${
+            appComm.id
+        }/secondary">Claim</a>)</td>
+        </tr>`;
+    }
 
     return `<table>
         <tr>
@@ -101,47 +174,7 @@ export async function viewCommunity(
         <tr>
             <td colspan="2"><br><b>Secondary</b></td>
         </tr>
-        <tr>
-            <td>Authority</td>
-            <td><a href="https://explorer.solana.com/address/${community.secondary.authority.toBase58()}?customUrl=${
-        staking.connectionURL
-    }&cluster=custom">${community.secondary.authority.toBase58()}</td>
-        </tr>
-        <tr>
-            <td>ZEE Address</td>
-            <td><a href="https://explorer.solana.com/address/${assocSecondary.address.toBase58()}?customUrl=${
-        staking.connectionURL
-    }&cluster=custom">${assocSecondary.address.toBase58()}</a></td>
-        </tr>
-        <tr>
-            <td>ZEE Balance</td>
-            <td>${assocSecondary.amount}</td>
-
-        </tr>
-        <tr>
-            <td>Staked</td>
-            <td>${community.secondary.staked.toString()}</td>
-        </tr>
-        <tr>
-            <td>Reward Debt</td>
-            <td>${community.secondary.rewardDebt.toString()}</td>
-        </tr>
-        <tr>
-            <td>Pending Reward</td>
-            <td>${community.secondary.pendingReward.toString()}</td>
-        </tr>
-        <tr>
-            <td>Harvestable</td>
-            <td>${community.secondary
-                .calculateReward(rps)
-                .toString()} (<a href="/claim/${
-        appComm.id
-    }/secondary">Claim</a>)</td>
-        </tr>
-        <tr>
-            <td></td>
-            <td></td>
-        </tr>
+        ${secondary}
     </table>`;
 }
 
@@ -266,7 +299,7 @@ export async function wrap(staking: Stake, content: string): Promise<string> {
             community.id
         }"> ${community.key.publicKey.toBase58().substr(0, 8)}</a></li>`;
     }
-    const communities = `<ol>${community_list}</ol> <a href="/addCommunity">Add Community</a>`;
+    const communities = `<ol>${community_list}</ol> <a href="/addCommunity">Add Community</a><br><a href="/addCommunity?nosec=true">Add Community (No Secondary)</a>`;
 
     let stakers_list = '';
     for (let staker of staking.stakers) {

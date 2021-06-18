@@ -18,7 +18,7 @@ use crate::{
     account::{Beneficiary, Community, PoolAuthority, RewardPool, Settings, StakePool, Staker},
     error::StakingError,
     instruction::StakingInstruction,
-    pool_transfer, split_stake, verify_associated, MINIMUM_STAKE,
+    pool_burn, pool_transfer, split_stake, verify_associated, MINIMUM_STAKE,
 };
 
 pub struct Processor {}
@@ -329,6 +329,7 @@ impl Processor {
         let reward_pool_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
+        let mint_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
         let clock = Clock::from_account_info(clock_info)?;
@@ -403,6 +404,18 @@ impl Processor {
         )?;
         stake.beneficiary.pending_reward = 0;
 
+        // burn secondary
+        if community.secondary.is_empty() {
+            pool_burn!(
+                reward_pool_info,
+                pool_authority_info,
+                mint_info,
+                program_id,
+                community.secondary.pending_reward
+            )?;
+            community.secondary.pending_reward = 0;
+        }
+
         // transfer the new staked amount to stake pool
         invoke(
             &spl_token::instruction::transfer(
@@ -452,6 +465,7 @@ impl Processor {
         let reward_pool_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
+        let mint_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
         let clock = Clock::from_account_info(clock_info)?;
@@ -488,12 +502,10 @@ impl Processor {
             community.primary.staked + new_primary - old_primary,
             settings.reward_per_share,
         );
-        if !community.secondary.is_empty() {
-            community.secondary.pay_out(
-                community.secondary.staked + new_secondary - old_secondary,
-                settings.reward_per_share,
-            );
-        }
+        community.secondary.pay_out(
+            community.secondary.staked + new_secondary - old_secondary,
+            settings.reward_per_share,
+        );
 
         // pay out pending reward
         pool_transfer!(
@@ -505,6 +517,18 @@ impl Processor {
             stake.beneficiary.pending_reward
         )?;
         stake.beneficiary.pending_reward = 0;
+
+        // burn secondary
+        if community.secondary.is_empty() {
+            pool_burn!(
+                reward_pool_info,
+                pool_authority_info,
+                mint_info,
+                program_id,
+                community.secondary.pending_reward
+            )?;
+            community.secondary.pending_reward = 0;
+        }
 
         stake.unbonding_amount += amount;
         stake.unbonding_start = clock.unix_timestamp;
@@ -593,6 +617,7 @@ impl Processor {
         let settings_info = next_account_info(iter)?;
         let pool_authority_info = next_account_info(iter)?;
         let reward_pool_info = next_account_info(iter)?;
+        let mint_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
         let clock = Clock::from_account_info(clock_info)?;
@@ -633,6 +658,22 @@ impl Processor {
             beneficiary.pending_reward
         )?;
         beneficiary.pending_reward = 0;
+
+        // burn secondary
+        if primary && community.secondary.is_empty() {
+            community
+                .secondary
+                .pay_out(community.secondary.staked, settings.reward_per_share);
+
+            pool_burn!(
+                reward_pool_info,
+                pool_authority_info,
+                mint_info,
+                program_id,
+                community.secondary.pending_reward
+            )?;
+            community.secondary.pending_reward = 0;
+        }
 
         settings_info
             .data

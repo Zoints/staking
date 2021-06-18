@@ -168,6 +168,7 @@ export async function Stake(
     staker: PublicKey,
     stakerAssociated: PublicKey,
     community: PublicKey,
+    mint: PublicKey,
     amount: number
 ): Promise<TransactionInstruction> {
     const settingsId = await Staking.settingsId(programId);
@@ -186,6 +187,7 @@ export async function Stake(
         am(rewardPoolId, false, true),
         am(settingsId, false, true),
         am(stakeId, false, true),
+        am(mint, false, true),
         am(SYSVAR_CLOCK_PUBKEY, false, false),
         am(TOKEN_PROGRAM_ID, false, false)
     ];
@@ -206,6 +208,7 @@ export async function Unstake(
     staker: PublicKey,
     stakerAssociated: PublicKey,
     community: PublicKey,
+    mint: PublicKey,
     amount: number
 ): Promise<TransactionInstruction> {
     const settingsId = await Staking.settingsId(programId);
@@ -222,6 +225,7 @@ export async function Unstake(
         am(rewardPoolId, false, true),
         am(settingsId, false, true),
         am(stakeId, false, true),
+        am(mint, false, true),
         am(SYSVAR_CLOCK_PUBKEY, false, false),
         am(TOKEN_PROGRAM_ID, false, false)
     ];
@@ -276,7 +280,8 @@ export async function ClaimPrimary(
     funder: PublicKey,
     authority: PublicKey,
     authorityAssociated: PublicKey,
-    community: PublicKey
+    community: PublicKey,
+    mint: PublicKey
 ): Promise<TransactionInstruction> {
     const settingsId = await Staking.settingsId(programId);
     const poolAuthorityId = await Staking.poolAuthorityId(programId);
@@ -290,6 +295,7 @@ export async function ClaimPrimary(
         am(settingsId, false, true),
         am(poolAuthorityId, false, false),
         am(rewardPoolId, false, true),
+        am(mint, false, true),
         am(SYSVAR_CLOCK_PUBKEY, false, false),
         am(TOKEN_PROGRAM_ID, false, false)
     ];

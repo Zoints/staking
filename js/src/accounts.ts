@@ -1,7 +1,7 @@
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import * as borsh from 'borsh';
-import { PRECISION, REWARD_PER_YEAR, SECONDS_PER_YEAR } from '.';
+import { PRECISION, REWARD_PER_YEAR, SECONDS_PER_YEAR, ZERO_KEY } from '.';
 
 export class Settings {
     public token: PublicKey;
@@ -89,6 +89,10 @@ class Beneficiary {
             .mul(newRewardPerShare)
             .div(PRECISION)
             .sub(this.rewardDebt);
+    }
+
+    public isEmpty(): boolean {
+        return this.authority.equals(ZERO_KEY);
     }
 }
 

@@ -25,7 +25,8 @@ import {
     WithdrawUnbond,
     ClaimPrimary,
     ClaimSecondary,
-    Unstake
+    Unstake,
+    ZERO_KEY
 } from '../../js/src';
 import { seededKey, sleep } from './util';
 import * as crypto from 'crypto';
@@ -167,7 +168,8 @@ export class Stake {
                 this.funder.publicKey,
                 community.primaryAuthority.publicKey,
                 assoc.address,
-                community.key.publicKey
+                community.key.publicKey,
+                this.mint_id.publicKey
             )
         );
         const sig = await sendAndConfirmTransaction(this.connection, trans, [
@@ -242,6 +244,7 @@ export class Stake {
                 staker.key.publicKey,
                 assoc.address,
                 community.key.publicKey,
+                this.mint_id.publicKey,
                 amount
             )
         );
@@ -273,6 +276,7 @@ export class Stake {
                 staker.key.publicKey,
                 assoc.address,
                 community.key.publicKey,
+                this.mint_id.publicKey,
                 amount
             )
         );
@@ -342,7 +346,7 @@ export class Stake {
         this.loaded = true;
     }
 
-    async addCommunity() {
+    async addCommunity(noSecondary: boolean) {
         const comm = new AppCommunity(this.communities.length, this.seed);
         this.communities.push(comm);
 
@@ -353,7 +357,7 @@ export class Stake {
                 comm.authority.publicKey,
                 comm.key.publicKey,
                 comm.primaryAuthority.publicKey,
-                comm.secondaryAuthority.publicKey
+                noSecondary ? ZERO_KEY : comm.secondaryAuthority.publicKey
             )
         );
 
@@ -380,18 +384,24 @@ export class Stake {
                         resolve();
                     })
                     .catch((r) => reject(r));
-            }),
-            new Promise((resolve, reject) => {
-                this.token
-                    .getOrCreateAssociatedAccountInfo(
-                        comm.secondaryAuthority.publicKey
-                    )
-                    .then(() => {
-                        resolve();
-                    })
-                    .catch((r) => reject(r));
             })
         ];
+
+        if (!noSecondary) {
+            promises.push(
+                new Promise((resolve, reject) => {
+                    this.token
+                        .getOrCreateAssociatedAccountInfo(
+                            comm.secondaryAuthority.publicKey
+                        )
+                        .then(() => {
+                            resolve();
+                        })
+                        .catch((r) => reject(r));
+                })
+            );
+        }
+
         await Promise.all(promises);
 
         console.log(

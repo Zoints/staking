@@ -105,6 +105,30 @@ macro_rules! pool_transfer {
 }
 
 #[macro_export]
+macro_rules! pool_burn {
+    ($fund:expr,  $authority:expr, $mint:expr, $program_id:expr, $amount:expr) => {
+        match PoolAuthority::verify_program_address($authority.key, $program_id) {
+            Ok(seed) => match RewardPool::verify_program_address($fund.key, $program_id) {
+                Ok(_) => invoke_signed(
+                    &spl_token::instruction::burn(
+                        &spl_token::id(),
+                        $fund.key,
+                        $mint.key,
+                        $authority.key,
+                        &[],
+                        $amount,
+                    )?,
+                    &[$fund.clone(), $authority.clone(), $mint.clone()],
+                    &[&[b"poolauthority", &[seed]]],
+                ),
+                Err(err) => Err(err),
+            },
+            Err(err) => Err(err),
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! verify_associated {
     ($assoc:expr, $token:expr, $owner:expr) => {
         match Account::unpack(&$assoc.data.borrow()) {

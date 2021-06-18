@@ -41,7 +41,8 @@ app.get(
 app.get(
     '/addCommunity',
     async (req: express.Request, res: express.Response) => {
-        await staking.addCommunity();
+        const noSecondary = req.query.nosec === 'true';
+        await staking.addCommunity(noSecondary);
         res.redirect('/');
     }
 );
