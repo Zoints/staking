@@ -24,7 +24,8 @@ import {
     Stake as StakeInstruction,
     WithdrawUnbond,
     ClaimPrimary,
-    ClaimSecondary
+    ClaimSecondary,
+    Unstake
 } from '../../js/src';
 import { seededKey, sleep } from './util';
 import * as crypto from 'crypto';
@@ -250,6 +251,37 @@ export class Stake {
         ]);
 
         console.log(`Staked: ${sig}`);
+        return sig;
+    }
+
+    public async unstake(
+        commId: number,
+        stakerId: number,
+        amount: number
+    ): Promise<string> {
+        const community = this.communities[commId];
+        const staker = this.stakers[stakerId];
+        const assoc = await this.token.getOrCreateAssociatedAccountInfo(
+            staker.key.publicKey
+        );
+        const trans = new Transaction();
+
+        trans.add(
+            await Unstake(
+                this.program_id,
+                this.funder.publicKey,
+                staker.key.publicKey,
+                assoc.address,
+                community.key.publicKey,
+                amount
+            )
+        );
+        const sig = await sendAndConfirmTransaction(this.connection, trans, [
+            this.funder,
+            staker.key
+        ]);
+
+        console.log(`Unstaked: ${sig}`);
         return sig;
     }
 

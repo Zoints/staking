@@ -276,6 +276,12 @@ export async function wrap(staking: Stake, content: string): Promise<string> {
     }
     const stakers = `<ol>${stakers_list}</ol> <a href="/addStaker">Add Staker</a>`;
 
+    const stakePoolId = await Staking.stakePoolId(staking.program_id);
+    const stakePool = await staking.token.getAccountInfo(stakePoolId);
+
+    const rewardPoolId = await Staking.rewardPoolId(staking.program_id);
+    const rewardPool = await staking.token.getAccountInfo(rewardPoolId);
+
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -305,6 +311,14 @@ export async function wrap(staking: Stake, content: string): Promise<string> {
     <tr>
         <td>Last Reward</td>
         <td>${pretty(settings.lastReward)}</td>
+    </tr>
+    <tr>
+        <td>Stake Pool Balance</td>
+        <td>${stakePool.amount.toString()}</td>
+    </tr>
+    <tr>
+        <td>Reward Pool Balance</td>
+        <td>${rewardPool.amount.toString()}</td>
     </tr>
 </table>
 <h2>Communities</h2>

@@ -67,7 +67,12 @@ app.post(
         const amount = Number(req.body.amount);
         const community = Number(req.params.community);
         const staker = Number(req.params.staker);
-        await staking.stake(community, staker, amount);
+
+        if (amount >= 0) {
+            await staking.stake(community, staker, amount);
+        } else {
+            await staking.unstake(community, staker, amount);
+        }
         res.redirect('/staker/' + staker);
     }
 );
