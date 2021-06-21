@@ -202,6 +202,37 @@ export async function viewStaker(staking: Stake, id: number): Promise<string> {
                 appStaker.key.publicKey
             );
 
+            let unbonding = '';
+            const now = Math.floor(new Date().getTime() / 1000);
+            const expired =
+                Math.floor(stakeAccount.unbondingStart.getTime() / 1000) +
+                settings.unbondingTime.toNumber();
+
+            if (now <= expired) {
+                let remain = expired - now;
+                const ub_days = Math.floor(remain / 86400);
+                remain -= ub_days * 86400;
+
+                if (ub_days > 0) {
+                    unbonding += `${ub_days} days `;
+                }
+
+                const ub_hours = Math.floor(remain / 3600);
+                if (ub_hours > 0) {
+                    unbonding += `${ub_hours} hours `;
+                }
+
+                remain -= ub_hours * 3600;
+                if (remain > 0) {
+                    unbonding += `${remain} seconds `;
+                }
+                unbonding += `left`;
+            } else if (stakeAccount.unbondingAmount.isZero()) {
+                unbonding = `Nothing to withdraw.`;
+            } else {
+                unbonding = `<a href="/withdraw/${community.id}/${appStaker.id}">Ready to Withdraw</a>`;
+            }
+
             community_list += `
                 <tr>
                     <td>Created</td>
@@ -221,6 +252,9 @@ export async function viewStaker(staking: Stake, id: number): Promise<string> {
                     <td>${pretty(stakeAccount.unbondingStart)}</td>
                 </tr>
                 <tr>
+                    <td>Withdraw Unbond</td>
+                    <td>${unbonding}</td>
+                </tr>                <tr>
                     <td>Authority</td>
                     <td><a href="https://explorer.solana.com/address/${stakeAccount.beneficiary.authority.toBase58()}?customUrl=${
                 staking.connectionURL

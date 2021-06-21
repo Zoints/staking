@@ -257,6 +257,36 @@ export class Stake {
         return sig;
     }
 
+    public async withdrawUnbond(
+        commId: number,
+        stakerId: number
+    ): Promise<string> {
+        const community = this.communities[commId];
+        const staker = this.stakers[stakerId];
+        const assoc = await this.token.getOrCreateAssociatedAccountInfo(
+            staker.key.publicKey
+        );
+        const trans = new Transaction();
+        trans.add(
+            await WithdrawUnbond(
+                this.program_id,
+                this.funder.publicKey,
+                staker.key.publicKey,
+                assoc.address,
+                community.key.publicKey
+            )
+        );
+        const sig = await sendAndConfirmTransaction(this.connection, trans, [
+            this.funder,
+            staker.key
+        ]);
+
+        console.log(
+            `Withdraw Unbond ${community.key.publicKey.toBase58()}: ${sig}`
+        );
+        return sig;
+    }
+
     public async setup() {
         if (!this.newSeed) {
             // check if bpf is loaded
