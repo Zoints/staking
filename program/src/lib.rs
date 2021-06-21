@@ -72,7 +72,7 @@ mod tests {
     pub fn test_rps_calculation() {
         let max_years: u128 = 95;
         let precision: u128 = 1_000_000_000_000_000_000_000_000;
-        let mut emission_per_year: u128 = 900_000_000_000;
+        let mut emission_per_year: u128 = REWARD_PER_YEAR;
 
         let mut reward_per_share_min = 0;
         let mut reward_per_share_max = 0;
@@ -82,9 +82,9 @@ mod tests {
         // calculate reward per share for x years
         for year in 0..max_years {
             let emission_per_seconds_min =
-                precision * emission_per_year / 31_536_000u128 / min_stake;
+                precision * emission_per_year / SECONDS_PER_YEAR / min_stake;
             let emission_per_seconds_max =
-                precision * emission_per_year / 31_536_000u128 / max_stake;
+                precision * emission_per_year / SECONDS_PER_YEAR / max_stake;
 
             println!(
                 "Year {}: ZEE per year: {}, ZEE per second per share minimum: {}, ZEE per second per share maximum: {}",
@@ -94,8 +94,8 @@ mod tests {
                 emission_per_seconds_max as f64 / precision as f64
             );
 
-            reward_per_share_min += emission_per_seconds_min * 31_536_000u128;
-            reward_per_share_max += emission_per_seconds_max * 31_536_000u128;
+            reward_per_share_min += emission_per_seconds_min * SECONDS_PER_YEAR;
+            reward_per_share_max += emission_per_seconds_max * SECONDS_PER_YEAR;
 
             emission_per_year = (emission_per_year * 3) / 4; // *.75
         }
