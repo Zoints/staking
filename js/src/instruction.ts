@@ -13,6 +13,7 @@ import {
 } from '@solana/web3.js';
 import { Staking, ZERO_KEY } from '.';
 import * as borsh from 'borsh';
+import './extendBorsh';
 
 export enum Instructions {
     Initialize,
@@ -44,7 +45,7 @@ export class SimpleSchema {
 
 export class AmountSchema {
     instructionId: number;
-    amount: number;
+    amount: bigint;
 
     static schema: borsh.Schema = new Map([
         [
@@ -59,7 +60,7 @@ export class AmountSchema {
         ]
     ]);
 
-    constructor(id: number, amount: number) {
+    constructor(id: number, amount: bigint) {
         this.instructionId = id;
         this.amount = amount;
     }
@@ -168,7 +169,7 @@ export async function Stake(
     stakerAssociated: PublicKey,
     community: PublicKey,
     mint: PublicKey,
-    amount: number
+    amount: number | bigint
 ): Promise<TransactionInstruction> {
     const settingsId = await Staking.settingsId(programId);
     const poolAuthorityId = await Staking.poolAuthorityId(programId);
@@ -191,9 +192,8 @@ export async function Stake(
         am(TOKEN_PROGRAM_ID, false, false)
     ];
 
-    const instructionData = Buffer.alloc(9, 0);
-    instructionData[0] = Instructions.Stake;
-    instructionData.writeBigInt64LE(BigInt(amount), 1);
+    const instruction = new AmountSchema(Instructions.Stake, BigInt(amount));
+    const instructionData = borsh.serialize(AmountSchema.schema, instruction);
 
     return new TransactionInstruction({
         keys: keys,
