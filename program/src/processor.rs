@@ -1,7 +1,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
-    clock::Clock,
+    clock::{Clock, UnixTimestamp},
     entrypoint::ProgramResult,
     msg,
     program::{invoke, invoke_signed},
@@ -30,7 +30,9 @@ impl Processor {
         msg!("Staking Instruction :: {:?}", instruction);
 
         match instruction {
-            StakingInstruction::Initialize => Self::process_initialize(program_id, accounts),
+            StakingInstruction::Initialize { amount } => {
+                Self::process_initialize(program_id, accounts, amount)
+            }
             StakingInstruction::RegisterCommunity => {
                 Self::process_register_community(program_id, accounts)
             }
@@ -48,7 +50,11 @@ impl Processor {
         }
     }
 
-    pub fn process_initialize(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    pub fn process_initialize(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        unbonding_time: UnixTimestamp,
+    ) -> ProgramResult {
         let iter = &mut accounts.iter();
         let funder_info = next_account_info(iter)?;
         let authority_info = next_account_info(iter)?;
@@ -72,12 +78,17 @@ impl Processor {
             return Err(StakingError::ProgramAlreadyInitialized.into());
         }
 
+        if unbonding_time < 0 {
+            return Err(StakingError::InvalidUnbondingTime.into());
+        }
+
         let seed = Settings::verify_program_address(settings_info.key, program_id)?;
         Mint::unpack(&token_info.data.borrow()).map_err(|_| StakingError::TokenNotSPLToken)?;
 
         let settings = Settings {
             authority: *authority_info.key,
             token: *token_info.key,
+            unbonding_time,
             reward_per_share: 0u128,
             last_reward: clock.unix_timestamp,
             total_stake: 0,
@@ -487,7 +498,7 @@ impl Processor {
             return Err(StakingError::WithdrawNothingtowithdraw.into());
         }
 
-        if clock.unix_timestamp - stake.unbonding_start < crate::UNBONDING_PERIOD {
+        if clock.unix_timestamp - stake.unbonding_start < settings.unbonding_time {
             return Err(StakingError::WithdrawUnbondingTimeNotOverYet.into());
         }
 

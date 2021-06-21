@@ -3,7 +3,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
 pub enum StakingInstruction {
-    Initialize,
+    Initialize { amount: i64 },
     RegisterCommunity,
     InitializeStake,
     Stake { amount: i64 },

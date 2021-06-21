@@ -456,7 +456,8 @@ export class Stake {
                     this.program_id,
                     this.funder.publicKey,
                     this.authority.publicKey,
-                    this.mint_id.publicKey
+                    this.mint_id.publicKey,
+                    60n
                 )
             );
         const sig = await sendAndConfirmTransaction(

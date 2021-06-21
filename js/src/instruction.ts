@@ -70,7 +70,8 @@ export async function Initialize(
     programId: PublicKey,
     funder: PublicKey,
     authority: PublicKey,
-    mint: PublicKey
+    mint: PublicKey,
+    unbondingTime: bigint
 ): Promise<TransactionInstruction> {
     const settingsId = await Staking.settingsId(programId);
     const poolAuthorityId = await Staking.poolAuthorityId(programId);
@@ -91,8 +92,11 @@ export async function Initialize(
         am(SystemProgram.programId, false, false)
     ];
 
-    const instruction = new SimpleSchema(Instructions.Initialize);
-    const instructionData = borsh.serialize(SimpleSchema.schema, instruction);
+    const instruction = new AmountSchema(
+        Instructions.Initialize,
+        unbondingTime
+    );
+    const instructionData = borsh.serialize(AmountSchema.schema, instruction);
 
     return new TransactionInstruction({
         keys: keys,

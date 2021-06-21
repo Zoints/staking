@@ -1,4 +1,4 @@
-use solana_program::{clock::UnixTimestamp, pubkey::Pubkey};
+use solana_program::pubkey::Pubkey;
 
 pub mod account;
 #[cfg(not(feature = "no-entrypoint"))]
@@ -7,7 +7,6 @@ pub mod error;
 pub mod instruction;
 pub mod processor;
 
-pub const UNBONDING_PERIOD: UnixTimestamp = 10 * 24 * 60 * 60; // 10 days
 pub const ZERO_KEY: Pubkey = Pubkey::new_from_array([0; 32]);
 
 pub const MINIMUM_STAKE: u64 = 1_000;

@@ -14,6 +14,7 @@ use crate::{PRECISION, REWARD_PER_YEAR, SECONDS_PER_YEAR};
 pub struct Settings {
     pub token: Pubkey,
     pub authority: Pubkey,
+    pub unbonding_time: UnixTimestamp,
 
     // tokenomics variables
     // for a more detailed explanation of the algorithm and variables
@@ -312,6 +313,7 @@ mod tests {
         let v = Settings {
             token: Pubkey::new_unique(),
             authority: Pubkey::new_unique(),
+            unbonding_time: 10 * 3600 * 24,
 
             reward_per_share: 348923452348342394u128,
             last_reward: 293458234234,

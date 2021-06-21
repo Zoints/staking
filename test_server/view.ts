@@ -315,6 +315,24 @@ export async function wrap(staking: Stake, content: string): Promise<string> {
     const rewardPoolId = await Staking.rewardPoolId(staking.program_id);
     const rewardPool = await staking.token.getAccountInfo(rewardPoolId);
 
+    let unbonding = '';
+    const ub_days = Math.floor(settings.unbondingTime.toNumber() / 86400);
+    let remain = settings.unbondingTime.toNumber() - ub_days * 86400;
+
+    if (ub_days > 0) {
+        unbonding += `${ub_days} days `;
+    }
+
+    const ub_hours = Math.floor(remain / 3600);
+    if (ub_hours > 0) {
+        unbonding += `${ub_hours} hours `;
+    }
+
+    remain = remain - ub_hours * 3600;
+    if (remain > 0) {
+        unbonding += `${remain} seconds`;
+    }
+
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -352,6 +370,10 @@ export async function wrap(staking: Stake, content: string): Promise<string> {
     <tr>
         <td>Reward Pool Balance</td>
         <td>${rewardPool.amount.toString()}</td>
+    </tr>
+    <tr>
+        <td>Unbonding Time</td>
+        <td>${unbonding}</td>
     </tr>
 </table>
 <h2>Communities</h2>
