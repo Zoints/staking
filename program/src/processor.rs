@@ -354,7 +354,7 @@ impl Processor {
         let mut stake =
             Staker::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
 
-        let staking = raw_amount > 0;
+        let staking = raw_amount >= 0;
         let amount = raw_amount.abs() as u64;
 
         if staking {
