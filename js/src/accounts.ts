@@ -56,8 +56,7 @@ export class Settings {
         }
 
         if (this.totalStake.cmpn(0) > 0) {
-            const seconds = new BN(newSeconds - oldSeconds, 'le');
-
+            const seconds = new BN(newSeconds - oldSeconds);
             const delta = PRECISION.mul(REWARD_PER_YEAR)
                 .div(SECONDS_PER_YEAR)
                 .div(this.totalStake)
