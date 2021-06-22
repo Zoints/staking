@@ -38,10 +38,6 @@ pub enum StakingError {
     #[error("Token is not a valid SPL token")]
     TokenNotSPLToken,
 
-    /// Unbonding time must be positive
-    #[error("Unbonding time must be positive")]
-    InvalidUnbondingTime,
-
     /// Community Account Already Exists
     #[error("Community Account Already Exists")]
     CommunityAccountAlreadyExists,

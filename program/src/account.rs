@@ -14,7 +14,7 @@ use crate::{PRECISION, SECONDS_PER_YEAR};
 pub struct Settings {
     pub token: Pubkey,
     pub authority: Pubkey,
-    pub unbonding_time: UnixTimestamp,
+    pub unbonding_duration: u64,
 
     // emissions settings
     pub next_emission_change: UnixTimestamp,
@@ -336,7 +336,7 @@ mod tests {
         let v = Settings {
             token: Pubkey::new_unique(),
             authority: Pubkey::new_unique(),
-            unbonding_time: 10 * 3600 * 24,
+            unbonding_duration: 10 * 3600 * 24,
 
             next_emission_change: 98123798352345,
             emission: 23458972935823,
@@ -357,7 +357,7 @@ mod tests {
         let base = Settings {
             token: Pubkey::new_unique(),
             authority: Pubkey::new_unique(),
-            unbonding_time: 0,
+            unbonding_duration: 0,
 
             next_emission_change: SECONDS_PER_YEAR as i64,
             emission: BASE_REWARD as u64,

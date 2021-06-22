@@ -3,10 +3,23 @@ import BN from 'bn.js';
 import * as borsh from 'borsh';
 import { PRECISION, REWARD_PER_YEAR, SECONDS_PER_YEAR, ZERO_KEY } from '.';
 
+declare global {
+    interface Date {
+        getUnixTime(): number;
+    }
+}
+
+Date.prototype.getUnixTime = function (): number {
+    return Math.floor(this.getTime() / 1000);
+};
+
 export class Settings {
     public token: PublicKey;
     public authority: PublicKey;
     public unbondingTime: BN;
+
+    public nextEmissionChange: Date;
+    public emission: BN;
 
     public totalStake: BN;
     public rewardPerShare: BN;
@@ -21,6 +34,9 @@ export class Settings {
                     ['token', [32]],
                     ['authority', [32]],
                     ['unbondingTime', 'u64'],
+                    ['nextEmissionChange', 'u64'], // this is an i64 timestamp, so always > 0, u64 should be fine
+                    ['emission', 'u64'],
+
                     ['totalStake', 'u64'],
                     ['rewardPerShare', 'u128'],
                     ['lastReward', 'u64'] // this is an i64 timestamp, so always > 0, u64 should be fine
@@ -33,6 +49,8 @@ export class Settings {
         token: Uint8Array;
         authority: Uint8Array;
         unbondingTime: BN;
+        nextEmissionChange: BN;
+        emission: BN;
         totalStake: BN;
         rewardPerShare: BN;
         lastReward: BN;
@@ -40,6 +58,10 @@ export class Settings {
         this.token = new PublicKey(params.token);
         this.authority = new PublicKey(params.authority);
         this.unbondingTime = params.unbondingTime;
+        this.nextEmissionChange = new Date(
+            params.nextEmissionChange.toNumber() * 1000
+        );
+        this.emission = params.emission;
         this.totalStake = params.totalStake;
         this.rewardPerShare = params.rewardPerShare;
         this.lastReward = new Date(params.lastReward.toNumber() * 1000);
@@ -48,19 +70,38 @@ export class Settings {
     public calculateRewardPerShare(now: Date): BN {
         let reward = this.rewardPerShare;
 
-        const oldSeconds = Math.floor(this.lastReward.getTime() / 1000);
-        const newSeconds = Math.floor(now.getTime() / 1000);
+        const oldSeconds = this.lastReward.getUnixTime();
+        const newSeconds = now.getUnixTime();
 
         if (newSeconds <= oldSeconds) {
             return reward;
         }
 
         if (this.totalStake.cmpn(0) > 0) {
-            const seconds = new BN(newSeconds - oldSeconds);
-            const delta = PRECISION.mul(REWARD_PER_YEAR)
-                .div(SECONDS_PER_YEAR)
-                .div(this.totalStake)
-                .mul(seconds);
+            let delta = new BN(0);
+            let emission = this.emission;
+            let nextEmissionChange = this.nextEmissionChange.getUnixTime();
+            let lastReward = this.lastReward.getUnixTime();
+            while (newSeconds >= nextEmissionChange) {
+                const seconds = new BN(nextEmissionChange - lastReward);
+                delta.iadd(
+                    PRECISION.mul(emission)
+                        .div(SECONDS_PER_YEAR)
+                        .div(this.totalStake)
+                        .mul(seconds)
+                );
+                lastReward = nextEmissionChange;
+                nextEmissionChange += SECONDS_PER_YEAR.toNumber();
+                emission = emission.muln(3).divn(4);
+            }
+
+            const seconds = new BN(newSeconds - lastReward);
+            delta.iadd(
+                PRECISION.mul(emission)
+                    .div(SECONDS_PER_YEAR)
+                    .div(this.totalStake)
+                    .mul(seconds)
+            );
 
             reward = reward.add(delta);
         }

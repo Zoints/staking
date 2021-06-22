@@ -131,7 +131,8 @@ const staking = new Staking(programId, connection);
             config.funder.publicKey,
             config.authority.publicKey,
             config.mint_id.publicKey,
-            60n
+            new Date(),
+            60
         )
     );
 

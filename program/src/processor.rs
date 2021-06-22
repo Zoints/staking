@@ -31,9 +31,10 @@ impl Processor {
         msg!("Staking Instruction :: {:?}", instruction);
 
         match instruction {
-            StakingInstruction::Initialize { amount } => {
-                Self::process_initialize(program_id, accounts, amount)
-            }
+            StakingInstruction::Initialize {
+                start_time,
+                unbonding_duration,
+            } => Self::process_initialize(program_id, accounts, start_time, unbonding_duration),
             StakingInstruction::RegisterCommunity => {
                 Self::process_register_community(program_id, accounts)
             }
@@ -54,7 +55,8 @@ impl Processor {
     pub fn process_initialize(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
-        unbonding_time: UnixTimestamp,
+        start_time: UnixTimestamp,
+        unbonding_duration: u64,
     ) -> ProgramResult {
         let iter = &mut accounts.iter();
         let funder_info = next_account_info(iter)?;
@@ -79,21 +81,17 @@ impl Processor {
             return Err(StakingError::ProgramAlreadyInitialized.into());
         }
 
-        if unbonding_time < 0 {
-            return Err(StakingError::InvalidUnbondingTime.into());
-        }
-
         let seed = Settings::verify_program_address(settings_info.key, program_id)?;
         Mint::unpack(&token_info.data.borrow()).map_err(|_| StakingError::TokenNotSPLToken)?;
 
         let settings = Settings {
             authority: *authority_info.key,
             token: *token_info.key,
-            unbonding_time,
+            unbonding_duration,
             next_emission_change: clock.unix_timestamp + SECONDS_PER_YEAR as i64,
             emission: BASE_REWARD as u64,
             reward_per_share: 0u128,
-            last_reward: clock.unix_timestamp,
+            last_reward: start_time,
             total_stake: 0,
         };
 
@@ -501,7 +499,7 @@ impl Processor {
             return Err(StakingError::WithdrawNothingtowithdraw.into());
         }
 
-        if clock.unix_timestamp - stake.unbonding_start < settings.unbonding_time {
+        if clock.unix_timestamp - stake.unbonding_start < settings.unbonding_duration as i64 {
             return Err(StakingError::WithdrawUnbondingTimeNotOverYet.into());
         }
 

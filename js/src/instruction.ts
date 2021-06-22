@@ -14,6 +14,7 @@ import {
 import { Staking, ZERO_KEY } from '.';
 import * as borsh from 'borsh';
 import './extendBorsh';
+import BN from 'bn.js';
 
 export enum Instructions {
     Initialize,
@@ -66,12 +67,39 @@ export class AmountSchema {
     }
 }
 
+export class InitSchema {
+    instructionId: number;
+    start_time: bigint;
+    unbonding_duration: BN;
+
+    static schema: borsh.Schema = new Map([
+        [
+            InitSchema,
+            {
+                kind: 'struct',
+                fields: [
+                    ['instructionId', 'u8'],
+                    ['start_time', 'i64'],
+                    ['unbonding_duration', 'u64']
+                ]
+            }
+        ]
+    ]);
+
+    constructor(id: number, start_time: bigint, unbonding_duration: BN) {
+        this.instructionId = id;
+        this.start_time = start_time;
+        this.unbonding_duration = unbonding_duration;
+    }
+}
+
 export async function Initialize(
     programId: PublicKey,
     funder: PublicKey,
     authority: PublicKey,
     mint: PublicKey,
-    unbondingTime: bigint
+    startTime: Date,
+    unbondingDuration: number
 ): Promise<TransactionInstruction> {
     const settingsId = await Staking.settingsId(programId);
     const poolAuthorityId = await Staking.poolAuthorityId(programId);
@@ -92,11 +120,12 @@ export async function Initialize(
         am(SystemProgram.programId, false, false)
     ];
 
-    const instruction = new AmountSchema(
+    const instruction = new InitSchema(
         Instructions.Initialize,
-        unbondingTime
+        BigInt(Math.floor(startTime.getTime() / 1000)),
+        new BN(unbondingDuration)
     );
-    const instructionData = borsh.serialize(AmountSchema.schema, instruction);
+    const instructionData = borsh.serialize(InitSchema.schema, instruction);
 
     return new TransactionInstruction({
         keys: keys,

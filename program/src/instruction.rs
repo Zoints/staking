@@ -3,10 +3,15 @@ use borsh::{BorshDeserialize, BorshSerialize};
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
 pub enum StakingInstruction {
-    Initialize { amount: i64 },
+    Initialize {
+        start_time: i64,
+        unbonding_duration: u64,
+    },
     RegisterCommunity,
     InitializeStake,
-    Stake { amount: i64 },
+    Stake {
+        amount: i64,
+    },
     WithdrawUnbond,
     ClaimPrimary,
     ClaimSecondary,
