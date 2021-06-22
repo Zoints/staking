@@ -409,6 +409,14 @@ export async function wrap(staking: Stake, content: string): Promise<string> {
         <td>Unbonding Time</td>
         <td>${unbonding}</td>
     </tr>
+    <tr>
+        <td>Emission</td>
+        <td>${settings.emission.toString()}</td>
+    </tr>
+    <tr>
+        <td>Next Emission Change</td>
+        <td>${pretty(settings.nextEmissionChange)}</td>
+    </tr>
 </table>
 <h2>Communities</h2>
 ${communities}
