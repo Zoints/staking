@@ -18,7 +18,8 @@ use crate::{
     account::{Beneficiary, Community, PoolAuthority, RewardPool, Settings, StakePool, Staker},
     error::StakingError,
     instruction::StakingInstruction,
-    pool_burn, pool_transfer, split_stake, verify_associated, MINIMUM_STAKE,
+    pool_burn, pool_transfer, split_stake, verify_associated, BASE_REWARD, MINIMUM_STAKE,
+    SECONDS_PER_YEAR,
 };
 
 pub struct Processor {}
@@ -89,6 +90,8 @@ impl Processor {
             authority: *authority_info.key,
             token: *token_info.key,
             unbonding_time,
+            next_emission_change: clock.unix_timestamp + SECONDS_PER_YEAR as i64,
+            emission: BASE_REWARD as u64,
             reward_per_share: 0u128,
             last_reward: clock.unix_timestamp,
             total_stake: 0,

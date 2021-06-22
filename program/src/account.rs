@@ -7,7 +7,7 @@ use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 
 use crate::error::StakingError;
 use crate::ZERO_KEY;
-use crate::{PRECISION, REWARD_PER_YEAR, SECONDS_PER_YEAR};
+use crate::{PRECISION, SECONDS_PER_YEAR};
 
 #[repr(C)]
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
@@ -15,6 +15,10 @@ pub struct Settings {
     pub token: Pubkey,
     pub authority: Pubkey,
     pub unbonding_time: UnixTimestamp,
+
+    // emissions settings
+    pub next_emission_change: UnixTimestamp,
+    pub emission: u64,
 
     // tokenomics variables
     // for a more detailed explanation of the algorithm and variables
@@ -48,27 +52,45 @@ impl Settings {
             .map_err(|_| StakingError::ProgramNotInitialized.into())
     }
 
+    /// Update the Reward per Share variable
+    ///
+    /// The basic formula is:
+    ///   reward per share += <time elapsed> * <emissions during that period> / <total amount staked>
+    ///
+    /// Emissions are automatically reduced by 25% every year
     pub fn update_rewards(&mut self, now: UnixTimestamp) {
-        if self.last_reward >= now {
+        if now <= self.last_reward {
             return;
         }
 
         if self.total_stake > 0 {
-            let seconds = (now - self.last_reward) as u128;
-            msg!("pool rewards: {} seconds", seconds);
-            // The formula is:
-            // <time elapsed> * <rewards per second> / <total amount staked>
-            // rearranged to make all the multiplications first
-            let reward =
-                (PRECISION * REWARD_PER_YEAR / SECONDS_PER_YEAR / self.total_stake as u128)
-                    * seconds;
+            let mut reward = 0;
 
-            msg!("pool reward delta: {}", reward);
+            // emissions reduce by 25% every year, so if the period between `last_reward`
+            // and `now` crosses the year threshold, we calculate the period in each year
+            // separately
+            // the math works across multiple year gaps though in production this would
+            // never occur
+            while now >= self.next_emission_change {
+                let seconds = (self.next_emission_change - self.last_reward) as u128;
+                reward += (PRECISION * self.emission as u128
+                    / SECONDS_PER_YEAR
+                    / self.total_stake as u128)
+                    * seconds;
+                self.last_reward = self.next_emission_change;
+                self.next_emission_change += SECONDS_PER_YEAR as i64;
+                self.emission = (self.emission as u128 * 3 / 4) as u64; // 75%
+            }
+
+            let seconds = (now - self.last_reward) as u128;
+            reward +=
+                (PRECISION * self.emission as u128 / SECONDS_PER_YEAR / self.total_stake as u128)
+                    * seconds;
 
             self.reward_per_share += reward;
         }
-
         self.last_reward = now;
+
         msg!(
             "updated pool rewards: last_reward = {}, reward_per_share = {}",
             self.last_reward,
@@ -307,6 +329,7 @@ impl Staker {
 mod tests {
 
     use super::*;
+    use crate::BASE_REWARD;
 
     #[test]
     pub fn test_settings_serialization() {
@@ -314,6 +337,9 @@ mod tests {
             token: Pubkey::new_unique(),
             authority: Pubkey::new_unique(),
             unbonding_time: 10 * 3600 * 24,
+
+            next_emission_change: 98123798352345,
+            emission: 23458972935823,
 
             reward_per_share: 348923452348342394u128,
             last_reward: 293458234234,
@@ -324,5 +350,80 @@ mod tests {
         let ret = Settings::try_from_slice(&data).unwrap();
 
         assert_eq!(v, ret);
+    }
+
+    #[test]
+    pub fn test_settings_update_rewards() {
+        let base = Settings {
+            token: Pubkey::new_unique(),
+            authority: Pubkey::new_unique(),
+            unbonding_time: 0,
+
+            next_emission_change: SECONDS_PER_YEAR as i64,
+            emission: BASE_REWARD as u64,
+
+            reward_per_share: 0,
+            last_reward: 0,
+            total_stake: 1, // makes math easier,
+        };
+
+        let mut previous: Vec<Settings> = vec![];
+        let breakpoints: Vec<(u128, u128)> = vec![
+            (0, 0),
+            (1, PRECISION * BASE_REWARD / SECONDS_PER_YEAR), // one second
+            (86400, PRECISION * BASE_REWARD / SECONDS_PER_YEAR * 86400), // one day
+            (
+                SECONDS_PER_YEAR - 1,
+                PRECISION * BASE_REWARD / SECONDS_PER_YEAR * (SECONDS_PER_YEAR - 1),
+            ),
+            (
+                SECONDS_PER_YEAR,
+                PRECISION * BASE_REWARD / SECONDS_PER_YEAR * SECONDS_PER_YEAR,
+            ),
+            (
+                SECONDS_PER_YEAR + 1,
+                PRECISION * BASE_REWARD / SECONDS_PER_YEAR * SECONDS_PER_YEAR
+                    + PRECISION * (BASE_REWARD * 3 / 4) / SECONDS_PER_YEAR,
+            ),
+            (
+                SECONDS_PER_YEAR + 2,
+                PRECISION * BASE_REWARD / SECONDS_PER_YEAR * SECONDS_PER_YEAR
+                    + PRECISION * (BASE_REWARD * 3 / 4) / SECONDS_PER_YEAR * 2,
+            ),
+            (
+                SECONDS_PER_YEAR * 2,
+                PRECISION * BASE_REWARD / SECONDS_PER_YEAR * SECONDS_PER_YEAR
+                    + PRECISION * (BASE_REWARD * 3 / 4) / SECONDS_PER_YEAR * SECONDS_PER_YEAR,
+            ),
+            (
+                SECONDS_PER_YEAR * 3,
+                PRECISION * BASE_REWARD / SECONDS_PER_YEAR * SECONDS_PER_YEAR
+                    + PRECISION * (BASE_REWARD * 3 / 4) / SECONDS_PER_YEAR * SECONDS_PER_YEAR
+                    + PRECISION * (BASE_REWARD * 3 / 4 * 3 / 4) / SECONDS_PER_YEAR
+                        * SECONDS_PER_YEAR,
+            ),
+            (
+                SECONDS_PER_YEAR * 3 + 1,
+                PRECISION * BASE_REWARD / SECONDS_PER_YEAR * SECONDS_PER_YEAR
+                    + PRECISION * (BASE_REWARD * 3 / 4) / SECONDS_PER_YEAR * SECONDS_PER_YEAR
+                    + PRECISION * (BASE_REWARD * 3 / 4 * 3 / 4) / SECONDS_PER_YEAR
+                        * SECONDS_PER_YEAR
+                    + PRECISION * (BASE_REWARD * 3 / 4 * 3 / 4 * 3 / 4) / SECONDS_PER_YEAR,
+            ),
+        ];
+
+        for (secs, rps) in breakpoints {
+            let mut settings = base.clone();
+
+            settings.update_rewards(secs as i64);
+            assert_eq!(rps, settings.reward_per_share);
+
+            previous.iter_mut().all(|prev| {
+                prev.update_rewards(secs as i64);
+                prev.reward_per_share == rps
+            });
+
+            previous.push(settings);
+        }
     }
 }

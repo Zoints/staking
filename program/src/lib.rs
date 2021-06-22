@@ -10,7 +10,7 @@ pub mod processor;
 pub const ZERO_KEY: Pubkey = Pubkey::new_from_array([0; 32]);
 
 pub const MINIMUM_STAKE: u64 = 1_000;
-pub const REWARD_PER_YEAR: u128 = 900_000_000_000;
+pub const BASE_REWARD: u128 = 900_000_000_000;
 pub const SECONDS_PER_YEAR: u128 = 31_536_000;
 
 pub const PRECISION: u128 = 1_000_000_000_000_000_000_000_000;
@@ -72,7 +72,7 @@ mod tests {
     pub fn test_rps_calculation() {
         let max_years: u128 = 95;
         let precision: u128 = 1_000_000_000_000_000_000_000_000;
-        let mut emission_per_year: u128 = REWARD_PER_YEAR;
+        let mut emission_per_year: u128 = BASE_REWARD;
 
         let mut reward_per_share_min = 0;
         let mut reward_per_share_max = 0;
