@@ -48,8 +48,6 @@ export class Stake {
     deploy_key: Keypair;
     program_id: PublicKey;
 
-    authority: Keypair;
-
     mint_id: Keypair;
     mint_authority: Keypair;
 
@@ -69,7 +67,6 @@ export class Stake {
         this.funder = this.getKeyPair('funder');
         this.deploy_key = this.getKeyPair('deployKey');
         this.program_id = this.deploy_key.publicKey;
-        this.authority = this.getKeyPair('authority');
 
         this.mint_id = this.getKeyPair('mint');
         this.mint_authority = this.getKeyPair('mintAuthority');
@@ -117,7 +114,6 @@ export class Stake {
         this.funder = this.getKeyPair('funder');
         this.deploy_key = this.getKeyPair('deployKey');
         this.program_id = this.deploy_key.publicKey;
-        this.authority = this.getKeyPair('authority');
 
         this.mint_id = this.getKeyPair('mint');
         this.mint_authority = this.getKeyPair('mintAuthority');
@@ -488,7 +484,6 @@ export class Stake {
                 await Initialize(
                     this.program_id,
                     this.funder.publicKey,
-                    this.authority.publicKey,
                     this.mint_id.publicKey,
                     date,
                     60
@@ -497,7 +492,7 @@ export class Stake {
         const sig = await sendAndConfirmTransaction(
             this.connection,
             transaction,
-            [this.funder, this.mint_id, this.authority]
+            [this.funder, this.mint_id]
         );
         console.log(`Initialized: ${sig}`);
 

@@ -96,7 +96,6 @@ export class InitSchema {
 export async function Initialize(
     programId: PublicKey,
     funder: PublicKey,
-    authority: PublicKey,
     mint: PublicKey,
     startTime: Date,
     unbondingDuration: number
@@ -108,7 +107,6 @@ export async function Initialize(
 
     const keys: AccountMeta[] = [
         am(funder, true, false),
-        am(authority, true, false),
         am(settingsId, false, true),
         am(poolAuthorityId, false, false),
         am(stakePoolId, false, true),

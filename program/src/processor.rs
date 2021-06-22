@@ -60,7 +60,6 @@ impl Processor {
     ) -> ProgramResult {
         let iter = &mut accounts.iter();
         let funder_info = next_account_info(iter)?;
-        let authority_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
         let pool_authority_info = next_account_info(iter)?;
         let stake_pool_info = next_account_info(iter)?;
@@ -71,10 +70,6 @@ impl Processor {
 
         let rent = Rent::from_account_info(rent_info)?;
 
-        if !authority_info.is_signer {
-            return Err(StakingError::MissingAuthoritySignature.into());
-        }
-
         if settings_info.data_len() > 0 {
             return Err(StakingError::ProgramAlreadyInitialized.into());
         }
@@ -83,7 +78,6 @@ impl Processor {
         Mint::unpack(&token_info.data.borrow()).map_err(|_| StakingError::TokenNotSPLToken)?;
 
         let settings = Settings {
-            authority: *authority_info.key,
             token: *token_info.key,
             unbonding_duration,
             next_emission_change: start_time + SECONDS_PER_YEAR as i64,

@@ -15,7 +15,6 @@ Date.prototype.getUnixTime = function (): number {
 
 export class Settings {
     public token: PublicKey;
-    public authority: PublicKey;
     public unbondingTime: BN;
 
     public nextEmissionChange: Date;
@@ -32,7 +31,6 @@ export class Settings {
                 kind: 'struct',
                 fields: [
                     ['token', [32]],
-                    ['authority', [32]],
                     ['unbondingTime', 'u64'],
                     ['nextEmissionChange', 'u64'], // this is an i64 timestamp, so always > 0, u64 should be fine
                     ['emission', 'u64'],
@@ -47,7 +45,6 @@ export class Settings {
 
     constructor(params: {
         token: Uint8Array;
-        authority: Uint8Array;
         unbondingTime: BN;
         nextEmissionChange: BN;
         emission: BN;
@@ -56,7 +53,6 @@ export class Settings {
         lastReward: BN;
     }) {
         this.token = new PublicKey(params.token);
-        this.authority = new PublicKey(params.authority);
         this.unbondingTime = params.unbondingTime;
         this.nextEmissionChange = new Date(
             params.nextEmissionChange.toNumber() * 1000

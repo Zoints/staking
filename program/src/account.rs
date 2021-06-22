@@ -12,13 +12,12 @@ use crate::{PRECISION, SECONDS_PER_YEAR};
 #[repr(C)]
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
 pub struct Settings {
-    pub token: Pubkey,
-    pub authority: Pubkey,
-    pub unbonding_duration: u64,
+    pub token: Pubkey,           // the spl token mint used for the pools
+    pub unbonding_duration: u64, // time (in seconds) that funds are locked after unstaking
 
     // emissions settings
-    pub next_emission_change: UnixTimestamp,
-    pub emission: u64,
+    pub next_emission_change: UnixTimestamp, // the time at which "emission" is reduced by 25%
+    pub emission: u64,                       // the amount of ZEE paid out during the current period
 
     // tokenomics variables
     // for a more detailed explanation of the algorithm and variables
@@ -335,7 +334,6 @@ mod tests {
     pub fn test_settings_serialization() {
         let v = Settings {
             token: Pubkey::new_unique(),
-            authority: Pubkey::new_unique(),
             unbonding_duration: 10 * 3600 * 24,
 
             next_emission_change: 98123798352345,
@@ -356,7 +354,6 @@ mod tests {
     pub fn test_settings_update_rewards() {
         let base = Settings {
             token: Pubkey::new_unique(),
-            authority: Pubkey::new_unique(),
             unbonding_duration: 0,
 
             next_emission_change: SECONDS_PER_YEAR as i64,

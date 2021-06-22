@@ -23,8 +23,6 @@ const config = {
     funder: new Keypair(),
     deploy_key: new Keypair(),
 
-    authority: new Keypair(),
-
     mint_id: new Keypair(),
     mint_authority: new Keypair(),
 
@@ -129,7 +127,6 @@ const staking = new Staking(programId, connection);
         await Initialize(
             programId,
             config.funder.publicKey,
-            config.authority.publicKey,
             config.mint_id.publicKey,
             new Date(),
             60
@@ -137,8 +134,7 @@ const staking = new Staking(programId, connection);
     );
 
     const init_sig = await sendAndConfirmTransaction(connection, init_trans, [
-        config.funder,
-        config.authority
+        config.funder
     ]);
     console.log(`Initialized: ${init_sig}`);
 
