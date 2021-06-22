@@ -130,7 +130,8 @@ const staking = new Staking(programId, connection);
             programId,
             config.funder.publicKey,
             config.authority.publicKey,
-            config.mint_id.publicKey
+            config.mint_id.publicKey,
+            60n
         )
     );
 
@@ -237,6 +238,7 @@ const staking = new Staking(programId, connection);
             staker_1.publicKey,
             staker_1_associated.address,
             user_1_community.publicKey,
+            config.mint_id.publicKey,
             20_000
         )
     );
