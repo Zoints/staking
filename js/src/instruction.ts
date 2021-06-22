@@ -115,7 +115,6 @@ export async function Initialize(
         am(rewardPoolId, false, true),
         am(mint, false, false),
         am(SYSVAR_RENT_PUBKEY, false, false),
-        am(SYSVAR_CLOCK_PUBKEY, false, false),
         am(TOKEN_PROGRAM_ID, false, false),
         am(SystemProgram.programId, false, false)
     ];

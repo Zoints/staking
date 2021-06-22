@@ -67,11 +67,9 @@ impl Processor {
         let reward_pool_info = next_account_info(iter)?;
         let token_info = next_account_info(iter)?;
         let rent_info = next_account_info(iter)?;
-        let clock_info = next_account_info(iter)?;
         let token_program_info = next_account_info(iter)?;
 
         let rent = Rent::from_account_info(rent_info)?;
-        let clock = Clock::from_account_info(clock_info)?;
 
         if !authority_info.is_signer {
             return Err(StakingError::MissingAuthoritySignature.into());
@@ -88,7 +86,7 @@ impl Processor {
             authority: *authority_info.key,
             token: *token_info.key,
             unbonding_duration,
-            next_emission_change: clock.unix_timestamp + SECONDS_PER_YEAR as i64,
+            next_emission_change: start_time + SECONDS_PER_YEAR as i64,
             emission: BASE_REWARD as u64,
             reward_per_share: 0u128,
             last_reward: start_time,

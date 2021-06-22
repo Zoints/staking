@@ -462,6 +462,9 @@ export class Stake {
             this.connection
         );
 
+        let date = new Date();
+        //date.setMinutes(date.getMinutes() + 3);
+
         const transaction = new Transaction()
             .add(
                 SystemProgram.createAccount({
@@ -487,7 +490,7 @@ export class Stake {
                     this.funder.publicKey,
                     this.authority.publicKey,
                     this.mint_id.publicKey,
-                    new Date(),
+                    date,
                     60
                 )
             );
