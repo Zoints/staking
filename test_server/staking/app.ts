@@ -416,7 +416,11 @@ export class Stake {
     }
 
     private async fund() {
-        console.log(`Funding funder with 100 SOL`);
+        console.log(
+            `Funding funder with 100 SOL: ${Buffer.from(
+                this.funder.secretKey
+            ).toString('hex')}`
+        );
         let sig = await this.connection.requestAirdrop(
             this.funder.publicKey,
             100 * LAMPORTS_PER_SOL
