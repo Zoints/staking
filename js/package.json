@@ -1,6 +1,6 @@
 {
-  "name": "staking",
-  "version": "0.1.0",
+  "name": "@zoints/staking",
+  "version": "1.0.0",
   "description": "The JavaScript library for staking",
   "main": "lib/index.js",
   "scripts": {
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Zoints/staking/jslib/"
+    "url": "https://github.com/Zoints/staking/js/"
   },
   "author": "Who Soup",
   "license": "UNLICENSED",
