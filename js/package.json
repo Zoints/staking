@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "The JavaScript library for staking",
   "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "scripts": {
+    "prepublish": "npm run build",
     "build": "tsc -p .",
     "lint": "eslint src",
     "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",

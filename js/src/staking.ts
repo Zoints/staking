@@ -39,6 +39,10 @@ export class Staking {
             communityId,
             owner
         );
+        return this.getStake(stakerId);
+    }
+
+    public async getStake(stakerId: PublicKey): Promise<Staker> {
         const account = await this.connection.getAccountInfo(stakerId);
         if (account === null) throw new Error('Unable to find staker account');
 
