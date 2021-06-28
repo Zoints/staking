@@ -3,7 +3,7 @@ import * as express from 'express';
 import { viewSettings, viewCommunity, wrap, viewStaker } from './view';
 
 const app = express.default();
-const port = 8080;
+const port = 8081;
 
 const staking = new Stake(
     'http://localhost:8899',

@@ -72,8 +72,7 @@ export class Stake {
         this.communities = [];
         this.stakers = [];
 
-        console.log(`    Funder: ${this.funder.publicKey.toBase58()}`);
-        console.log(`Program ID: ${this.program_id.toBase58()}`);
+        this.print_config();
     }
 
     loadSeed(): Buffer {
@@ -91,6 +90,18 @@ export class Stake {
             this.newSeed = true;
             return seed;
         }
+    }
+
+    print_config() {
+        console.log(`#### .env file for backend dev ####
+###################################
+STAKING_ENABLED=true
+STAKING_PROGRAMID=${this.program_id.toBase58()}
+SOL_FUNDER_PK=${this.funder.publicKey.toBase58()}
+SOL_FUNDER_ENCODING=hex
+SOL_FUNDER=${Buffer.from(this.funder.secretKey).toString('hex')}
+###################################
+`);
     }
 
     async regenerate() {
@@ -119,8 +130,7 @@ export class Stake {
         this.communities = [];
         this.stakers = [];
 
-        console.log(`    Funder: ${this.funder.publicKey.toBase58()}`);
-        console.log(`Program ID: ${this.program_id.toBase58()}`);
+        this.print_config();
 
         await this.setup();
     }
@@ -406,11 +416,7 @@ export class Stake {
     }
 
     private async fund() {
-        console.log(
-            `Funding funder with 100 SOL: ${Buffer.from(
-                this.funder.secretKey
-            ).toString('hex')}`
-        );
+        console.log(`Funding funder with 100 SOL`);
         let sig = await this.connection.requestAirdrop(
             this.funder.publicKey,
             100 * LAMPORTS_PER_SOL
