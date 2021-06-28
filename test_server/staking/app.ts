@@ -97,6 +97,7 @@ export class Stake {
 ###################################
 STAKING_ENABLED=true
 STAKING_PROGRAMID=${this.program_id.toBase58()}
+STAKING_MINT=${this.mint_id.publicKey.toBase58()}
 SOL_FUNDER_PK=${this.funder.publicKey.toBase58()}
 SOL_FUNDER_ENCODING=hex
 SOL_FUNDER=${Buffer.from(this.funder.secretKey).toString('hex')}
