@@ -197,12 +197,12 @@ export async function viewStaker(staking: Stake, id: number): Promise<string> {
             .toBase58()
             .substr(0, 8)}</h3><table>`;
         try {
-            const stakerId = await Staking.stakerAddress(
+            const stakerId = await Staking.stakeAddress(
                 staking.program_id,
                 community.key.publicKey,
                 appStaker.key.publicKey
             );
-            const stakeAccount = await staking.staking.getStaker(
+            const stakeAccount = await staking.staking.getStakeWithoutId(
                 community.key.publicKey,
                 appStaker.key.publicKey
             );
