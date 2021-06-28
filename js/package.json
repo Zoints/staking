@@ -13,7 +13,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Zoints/staking/js/"
+    "url": "https://github.com/Zoints/staking.git",
+    "directory": "js"
   },
   "author": "Who Soup",
   "license": "UNLICENSED",
