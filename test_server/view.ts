@@ -1,6 +1,5 @@
-import { PRECISION, Staking } from '../js/src';
+import { PRECISION, Staking } from '@zoints/staking';
 import { Stake } from './staking/app';
-import BN from 'bn.js';
 
 function pretty(d: Date): string {
     return d.toISOString().replace(/T/, ' ').replace(/\..+/, '');
@@ -425,6 +424,10 @@ export async function wrap(staking: Stake, content: string): Promise<string> {
     <tr>
         <td>Next Emission Change</td>
         <td>${pretty(settings.nextEmissionChange)}</td>
+    </tr>
+    <tr>
+        <td>Reward Per Share</td>
+        <td>${settings.rewardPerShare.div(PRECISION).toString()}</td>
     </tr>
 </table>
 <h2>Communities</h2>

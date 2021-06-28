@@ -1,5 +1,5 @@
 import { Keypair } from '@solana/web3.js';
-import { createHash, createHmac } from 'crypto';
+import { createHash } from 'crypto';
 
 export function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
