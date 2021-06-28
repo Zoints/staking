@@ -1,7 +1,7 @@
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import * as borsh from 'borsh';
-import { PRECISION, REWARD_PER_YEAR, SECONDS_PER_YEAR, ZERO_KEY } from '.';
+import { PRECISION, SECONDS_PER_YEAR, ZERO_KEY } from '.';
 
 declare global {
     interface Date {

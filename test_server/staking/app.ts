@@ -16,17 +16,7 @@ import {
     Transaction
 } from '@solana/web3.js';
 import * as fs from 'fs';
-import {
-    Initialize,
-    InitializeStake,
-    RegisterCommunity,
-    Staking,
-    Stake as StakeInstruction,
-    WithdrawUnbond,
-    ClaimPrimary,
-    ClaimSecondary,
-    ZERO_KEY
-} from '../../js/src';
+import { Instruction, Staking, ZERO_KEY } from '../../js/src';
 import { seededKey, sleep } from './util';
 import * as crypto from 'crypto';
 import { AppCommunity, AppStaker } from './community';
@@ -158,7 +148,7 @@ export class Stake {
         );
         const trans = new Transaction();
         trans.add(
-            await ClaimPrimary(
+            await Instruction.ClaimPrimary(
                 this.program_id,
                 this.funder.publicKey,
                 community.primaryAuthority.publicKey,
@@ -185,7 +175,7 @@ export class Stake {
         );
         const trans = new Transaction();
         trans.add(
-            await ClaimSecondary(
+            await Instruction.ClaimSecondary(
                 this.program_id,
                 this.funder.publicKey,
                 community.secondaryAuthority.publicKey,
@@ -218,13 +208,13 @@ export class Stake {
         const trans = new Transaction();
 
         try {
-            await this.staking.getStaker(
+            await this.staking.getStakeWithoutId(
                 community.key.publicKey,
                 staker.key.publicKey
             );
         } catch (e) {
             trans.add(
-                await InitializeStake(
+                await Instruction.InitializeStake(
                     this.program_id,
                     this.funder.publicKey,
                     staker.key.publicKey,
@@ -234,7 +224,7 @@ export class Stake {
         }
 
         trans.add(
-            await StakeInstruction(
+            await Instruction.Stake(
                 this.program_id,
                 this.funder.publicKey,
                 staker.key.publicKey,
@@ -264,7 +254,7 @@ export class Stake {
         );
         const trans = new Transaction();
         trans.add(
-            await WithdrawUnbond(
+            await Instruction.WithdrawUnbond(
                 this.program_id,
                 this.funder.publicKey,
                 staker.key.publicKey,
@@ -345,7 +335,7 @@ export class Stake {
         this.communities.push(comm);
 
         const transaction = new Transaction().add(
-            await RegisterCommunity(
+            await Instruction.RegisterCommunity(
                 this.program_id,
                 this.funder.publicKey,
                 comm.authority.publicKey,
@@ -485,7 +475,7 @@ export class Stake {
                 )
             )
             .add(
-                await Initialize(
+                await Instruction.Initialize(
                     this.program_id,
                     this.funder.publicKey,
                     this.mint_id.publicKey,
