@@ -12,9 +12,9 @@
   "dependencies": {
     "@solana/spl-token": "^0.1.5",
     "@solana/web3.js": "^1.15.0",
+    "@zoints/staking": "file:../js",
     "bn.js": "^5.2.0",
-    "borsh": "^0.4.0",
-    "staking": "file:../js"
+    "borsh": "^0.4.0"
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.1",

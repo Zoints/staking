@@ -193,7 +193,7 @@ export class Community {
     }
 }
 
-export class Staker {
+export class Stake {
     public creationDate: Date;
     public totalStake: BN;
     public beneficiary: Beneficiary;
@@ -202,7 +202,7 @@ export class Staker {
 
     static schema: borsh.Schema = new Map([
         [
-            Staker,
+            Stake,
             {
                 kind: 'struct',
                 fields: [

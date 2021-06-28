@@ -11,13 +11,7 @@ import {
 import { Connection } from '@solana/web3.js';
 import * as fs from 'fs';
 import { sendAndConfirmTransaction } from './util';
-import {
-    Staking,
-    Initialize,
-    RegisterCommunity,
-    InitializeStake,
-    Stake
-} from '../js/src/index';
+import { Staking, Instruction } from '@zoints/staking';
 
 const config = {
     funder: new Keypair(),
@@ -124,7 +118,7 @@ const staking = new Staking(programId, connection);
     )[0];
 
     const init_trans = new Transaction().add(
-        await Initialize(
+        await Instruction.Initialize(
             programId,
             config.funder.publicKey,
             config.mint_id.publicKey,
@@ -152,7 +146,7 @@ const staking = new Staking(programId, connection);
     const user_1_primary = new Keypair();
 
     const user_1_trans = new Transaction().add(
-        await RegisterCommunity(
+        await Instruction.RegisterCommunity(
             programId,
             config.funder.publicKey,
             user_1.publicKey,
@@ -177,7 +171,7 @@ const staking = new Staking(programId, connection);
     const zoints_1_primary = config.zoints_community[0].primary;
 
     const zoints_1_trans = new Transaction().add(
-        await RegisterCommunity(
+        await Instruction.RegisterCommunity(
             programId,
             config.funder.publicKey,
             zoints_1.publicKey,
@@ -203,7 +197,7 @@ const staking = new Staking(programId, connection);
     );
 
     const staker_1_trans = new Transaction().add(
-        await InitializeStake(
+        await Instruction.InitializeStake(
             programId,
             config.funder.publicKey,
             staker_1.publicKey,
@@ -229,7 +223,7 @@ const staking = new Staking(programId, connection);
     //////////
 
     const stake_1_trans = new Transaction().add(
-        await Stake(
+        await Instruction.Stake(
             programId,
             config.funder.publicKey,
             staker_1.publicKey,
