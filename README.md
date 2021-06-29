@@ -80,3 +80,42 @@ To sponsor a user community, anyone can call the instruction to donate the "Spon
 1. Send an amount equal to the Sponsor Fee to the Primary Account
 2. Update Secondary Account Authorized Key to the caller
 3. Update Secondary Account Percentage to 5
+
+## Running Tests
+
+Install JavaScript dependencies:
+
+```bash
+cd js
+npm install
+cd ../test
+npm install
+cd ../test_server
+npm install
+
+```
+
+Build Solana program:
+
+```bash
+cd ../program
+cargo build-bpf
+```
+
+Start Solana node and run tests:
+
+```bash
+cd ../test
+docker-compose up -d
+
+npm run start
+```
+
+Start Solana node and interactive web server:
+
+```bash
+cd ../test_server
+docker-compose up -d
+
+npm run start
+```
