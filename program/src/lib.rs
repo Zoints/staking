@@ -19,9 +19,9 @@ pub const PRECISION: u128 = 1_000_000_000_000_000_000_000_000;
 ///
 /// Divides the staked amount of ZEE into three components
 /// for the (staker, primary beneficiary, secondary beneficiary) at the
-/// rates of (47.5%, 47.5%, 5%). Remainders go to the staker.
+/// rates of (45%, 45%, 10%). Remainders go to the staker.
 pub fn split_stake(amount: u64) -> (u64, u64, u64) {
-    let secondary = amount / 20;
+    let secondary = amount / 10;
     let primary = (amount - secondary) / 2;
     (amount - primary - secondary, primary, secondary)
 }
@@ -35,9 +35,13 @@ mod tests {
     pub fn test_split_stake() {
         assert_eq!(split_stake(1), (1, 0, 0));
         assert_eq!(split_stake(2), (1, 1, 0));
-        assert_eq!(split_stake(20), (10, 9, 1));
-        assert_eq!(split_stake(100), (48, 47, 5));
-        assert_eq!(split_stake(1_000), (475, 475, 50));
+        assert_eq!(split_stake(20), (9, 9, 2));
+        assert_eq!(split_stake(21), (10, 9, 2));
+        assert_eq!(split_stake(22), (10, 10, 2));
+        assert_eq!(split_stake(98), (45, 44, 9));
+        assert_eq!(split_stake(99), (45, 45, 9));
+        assert_eq!(split_stake(100), (45, 45, 10));
+        assert_eq!(split_stake(1_000), (450, 450, 100));
     }
 
     //    #[test]
