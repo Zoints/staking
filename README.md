@@ -52,10 +52,10 @@ Unbonding Time: 10 days
 * Last action time
 * Primary Account Beneficiary Address
 * Primary Account Authorized Key
-* Primary Account Perecentage (47.5)
+* Primary Account Perecentage (45)
 * Primary Account Unclaimed Rewards Balance
 * Secondary Account Authorized Key
-* Secondary Account Perecentage (5 or 0)
+* Secondary Account Perecentage (10)
 * Secondary Account Unclaimed Rewards Balance
 * Referrer (User Community only)
 
