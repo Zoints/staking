@@ -1,11 +1,11 @@
 import { PRECISION, Staking } from '@zoints/staking';
-import { Stake } from './staking/app';
+import { App } from './staking/app';
 
 function pretty(d: Date): string {
     return d.toISOString().replace(/T/, ' ').replace(/\..+/, '');
 }
 
-export async function viewSettings(staking: Stake): Promise<string> {
+export async function viewSettings(staking: App): Promise<string> {
     if (!staking.loaded) {
         return 'loading BPF and initializing contract in progress';
     }
@@ -13,10 +13,7 @@ export async function viewSettings(staking: Stake): Promise<string> {
     return `<a href="/reloadBPF"> RELOAD BPF </a><br><a href="/reload"> RESET SYSTEM & RELOAD BPF </a>`;
 }
 
-export async function viewCommunity(
-    staking: Stake,
-    id: number
-): Promise<string> {
+export async function viewCommunity(staking: App, id: number): Promise<string> {
     if (!staking.loaded) {
         return 'loading BPF and initializing contract in progress';
     }
@@ -177,7 +174,7 @@ export async function viewCommunity(
     </table>`;
 }
 
-export async function viewStaker(staking: Stake, id: number): Promise<string> {
+export async function viewStaker(staking: App, id: number): Promise<string> {
     if (!staking.loaded) {
         return 'loading BPF and initializing contract in progress';
     }
@@ -327,7 +324,7 @@ export async function viewStaker(staking: Stake, id: number): Promise<string> {
     </table> ${communities}`;
 }
 
-export async function wrap(staking: Stake, content: string): Promise<string> {
+export async function wrap(staking: App, content: string): Promise<string> {
     if (!staking.loaded) {
         return 'loading BPF and initializing contract in progress';
     }
