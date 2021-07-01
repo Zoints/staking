@@ -122,7 +122,7 @@ export class EngineBackend implements StakeEngine {
             }
         );
         console.log(
-            `Stake prep: \n\trecent: ${prep.data.recent}\n\tmessage: ${prep.data.message}\n\ttransaction: ${prep.data.transaction}\n\tinitialize: ${prep.data.initialize}`
+            `Stake prep: \n\trecent: ${prep.data.recent}\n\tmessage: ${prep.data.message}\n\tinitialize: ${prep.data.initialize}`
         );
 
         const sig = nacl.sign.detached(
@@ -135,7 +135,7 @@ export class EngineBackend implements StakeEngine {
             `stake/${community.key.publicKey.toBase58()}/${staker.key.publicKey.toBase58()}/stake`,
             {
                 sig: Buffer.from(sig).toString('base64'),
-                transaction: prep.data.transaction
+                message: prep.data.message
             }
         );
 
