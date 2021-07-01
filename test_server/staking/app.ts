@@ -20,8 +20,9 @@ import { Instruction, Staking, ZERO_KEY } from '@zoints/staking';
 import { seededKey, sleep } from './util';
 import * as crypto from 'crypto';
 import { AppCommunity, AppStaker } from './community';
+import { StakeEngine } from './engine';
 
-export class Stake {
+export class App {
     seedPath: string;
     bpfPath: string;
     loaded: boolean;
@@ -44,7 +45,14 @@ export class Stake {
     communities: AppCommunity[];
     stakers: AppStaker[];
 
-    constructor(url: string, bpfPath: string, seedPath: string) {
+    engine: StakeEngine;
+
+    constructor(
+        url: string,
+        bpfPath: string,
+        seedPath: string,
+        engine: StakeEngine
+    ) {
         this.seedPath = seedPath;
         this.bpfPath = bpfPath;
         this.loaded = false;
@@ -71,6 +79,8 @@ export class Stake {
 
         this.communities = [];
         this.stakers = [];
+
+        this.engine = engine;
 
         this.print_config();
     }
@@ -154,56 +164,14 @@ SOL_FUNDER=${Buffer.from(this.funder.secretKey).toString('hex')}
 
     public async claimPrimary(commId: number): Promise<string> {
         const community = this.communities[commId];
-        const assoc = await this.token.getOrCreateAssociatedAccountInfo(
-            community.primaryAuthority.publicKey
-        );
-        const trans = new Transaction();
-        trans.add(
-            await Instruction.ClaimPrimary(
-                this.program_id,
-                this.funder.publicKey,
-                community.primaryAuthority.publicKey,
-                assoc.address,
-                community.key.publicKey,
-                this.mint_id.publicKey
-            )
-        );
-        const sig = await sendAndConfirmTransaction(this.connection, trans, [
-            this.funder,
-            community.primaryAuthority
-        ]);
-
-        console.log(
-            `Claimed Primary Harvest ${community.key.publicKey.toBase58()}: ${sig}`
-        );
-        return sig;
+        await this.engine.claim(this, community, true);
+        return 'removed with engine';
     }
 
     public async claimSecondary(commId: number): Promise<string> {
         const community = this.communities[commId];
-        const assoc = await this.token.getOrCreateAssociatedAccountInfo(
-            community.secondaryAuthority.publicKey
-        );
-        const trans = new Transaction();
-        trans.add(
-            await Instruction.ClaimSecondary(
-                this.program_id,
-                this.funder.publicKey,
-                community.secondaryAuthority.publicKey,
-                assoc.address,
-                community.key.publicKey,
-                this.mint_id.publicKey
-            )
-        );
-        const sig = await sendAndConfirmTransaction(this.connection, trans, [
-            this.funder,
-            community.secondaryAuthority
-        ]);
-
-        console.log(
-            `Claimed Secondary Harvest ${community.key.publicKey.toBase58()}: ${sig}`
-        );
-        return sig;
+        await this.engine.claim(this, community, false);
+        return 'removed with engine';
     }
 
     public async stake(
@@ -213,45 +181,10 @@ SOL_FUNDER=${Buffer.from(this.funder.secretKey).toString('hex')}
     ): Promise<string> {
         const community = this.communities[commId];
         const staker = this.stakers[stakerId];
-        const assoc = await this.token.getOrCreateAssociatedAccountInfo(
-            staker.key.publicKey
-        );
-        const trans = new Transaction();
 
-        try {
-            await this.staking.getStakeWithoutId(
-                community.key.publicKey,
-                staker.key.publicKey
-            );
-        } catch (e) {
-            trans.add(
-                await Instruction.InitializeStake(
-                    this.program_id,
-                    this.funder.publicKey,
-                    staker.key.publicKey,
-                    community.key.publicKey
-                )
-            );
-        }
+        await this.engine.stake(this, community, staker, amount);
 
-        trans.add(
-            await Instruction.Stake(
-                this.program_id,
-                this.funder.publicKey,
-                staker.key.publicKey,
-                assoc.address,
-                community.key.publicKey,
-                this.mint_id.publicKey,
-                amount
-            )
-        );
-        const sig = await sendAndConfirmTransaction(this.connection, trans, [
-            this.funder,
-            staker.key
-        ]);
-
-        console.log(`Staked: ${sig}`);
-        return sig;
+        return 'removed with engine';
     }
 
     public async withdrawUnbond(
@@ -260,28 +193,8 @@ SOL_FUNDER=${Buffer.from(this.funder.secretKey).toString('hex')}
     ): Promise<string> {
         const community = this.communities[commId];
         const staker = this.stakers[stakerId];
-        const assoc = await this.token.getOrCreateAssociatedAccountInfo(
-            staker.key.publicKey
-        );
-        const trans = new Transaction();
-        trans.add(
-            await Instruction.WithdrawUnbond(
-                this.program_id,
-                this.funder.publicKey,
-                staker.key.publicKey,
-                assoc.address,
-                community.key.publicKey
-            )
-        );
-        const sig = await sendAndConfirmTransaction(this.connection, trans, [
-            this.funder,
-            staker.key
-        ]);
-
-        console.log(
-            `Withdraw Unbond ${community.key.publicKey.toBase58()}: ${sig}`
-        );
-        return sig;
+        await this.engine.withdraw(this, community, staker);
+        return 'removed with engine';
     }
 
     public async setup() {
@@ -342,30 +255,14 @@ SOL_FUNDER=${Buffer.from(this.funder.secretKey).toString('hex')}
     }
 
     async addCommunity(noSecondary: boolean) {
-        const comm = new AppCommunity(this.communities.length, this.seed);
-        this.communities.push(comm);
+        const community = new AppCommunity(this.communities.length, this.seed);
+        this.communities.push(community);
 
-        const transaction = new Transaction().add(
-            await Instruction.RegisterCommunity(
-                this.program_id,
-                this.funder.publicKey,
-                comm.authority.publicKey,
-                comm.key.publicKey,
-                comm.primaryAuthority.publicKey,
-                noSecondary ? ZERO_KEY : comm.secondaryAuthority.publicKey
-            )
-        );
-
-        let sig = '';
         const promises: Promise<void>[] = [
             new Promise((resolve, reject) => {
-                sendAndConfirmTransaction(this.connection, transaction, [
-                    this.funder,
-                    comm.authority,
-                    comm.key
-                ])
-                    .then((siig) => {
-                        sig = siig;
+                this.engine
+                    .registerCommunity(this, community, noSecondary)
+                    .then(() => {
                         resolve();
                     })
                     .catch((r) => reject(r));
@@ -373,7 +270,7 @@ SOL_FUNDER=${Buffer.from(this.funder.secretKey).toString('hex')}
             new Promise((resolve, reject) => {
                 this.token
                     .getOrCreateAssociatedAccountInfo(
-                        comm.primaryAuthority.publicKey
+                        community.primaryAuthority.publicKey
                     )
                     .then(() => {
                         resolve();
@@ -387,7 +284,7 @@ SOL_FUNDER=${Buffer.from(this.funder.secretKey).toString('hex')}
                 new Promise((resolve, reject) => {
                     this.token
                         .getOrCreateAssociatedAccountInfo(
-                            comm.secondaryAuthority.publicKey
+                            community.secondaryAuthority.publicKey
                         )
                         .then(() => {
                             resolve();
@@ -398,12 +295,6 @@ SOL_FUNDER=${Buffer.from(this.funder.secretKey).toString('hex')}
         }
 
         await Promise.all(promises);
-
-        console.log(
-            `Added community ${
-                comm.id
-            }: ${comm.key.publicKey.toBase58()}: ${sig}`
-        );
     }
 
     async addStaker() {

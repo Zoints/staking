@@ -74,7 +74,7 @@ export class Settings {
         }
 
         if (this.totalStake.cmpn(0) > 0) {
-            let delta = new BN(0);
+            const delta = new BN(0);
             let emission = this.emission;
             let nextEmissionChange = this.nextEmissionChange.getUnixTime();
             let lastReward = this.lastReward.getUnixTime();

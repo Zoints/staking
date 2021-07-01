@@ -1,14 +1,22 @@
-import { Stake } from './staking/app';
+import { App } from './staking/app';
 import * as express from 'express';
 import { viewSettings, viewCommunity, wrap, viewStaker } from './view';
+import { EngineDirect } from './staking/engine-direct';
+import { EngineBackend } from './staking/engine-backend';
 
 const app = express.default();
 const port = 8081;
 
-const staking = new Stake(
+const engine =
+    process.env.ENGINE === 'direct'
+        ? new EngineDirect()
+        : new EngineBackend('http://localhost:8080/staking/v1/');
+
+const staking = new App(
     'http://localhost:8899',
     '../program/target/deploy/staking.so',
-    './seed.json'
+    './seed.json',
+    engine
 );
 
 // Parse URL-encoded bodies (as sent by HTML forms)
