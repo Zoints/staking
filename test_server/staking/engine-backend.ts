@@ -57,10 +57,6 @@ export class EngineBackend implements StakeEngine {
         community: AppCommunity,
         primary: boolean
     ): Promise<void> {
-        const assoc = await app.token.getOrCreateAssociatedAccountInfo(
-            community.primaryAuthority.publicKey
-        );
-
         const prep = await this.client.post(
             `community/${community.key.publicKey.toBase58()}/claim/prepare`,
             {
@@ -97,10 +93,6 @@ export class EngineBackend implements StakeEngine {
         staker: AppStaker,
         amount: number
     ): Promise<void> {
-        const assoc = await app.token.getOrCreateAssociatedAccountInfo(
-            staker.key.publicKey
-        );
-
         const prep = await this.client.post(
             `stake/${community.key.publicKey.toBase58()}/${staker.key.publicKey.toBase58()}/stake/prepare`,
             {
@@ -116,7 +108,6 @@ export class EngineBackend implements StakeEngine {
             Buffer.from(prep.data.message, 'base64'),
             staker.key.secretKey
         );
-        console.log(`=== signed with ${staker.key.publicKey.toString()}`);
 
         const result = await this.client.post(
             `stake/${community.key.publicKey.toBase58()}/${staker.key.publicKey.toBase58()}/stake`,
@@ -126,7 +117,7 @@ export class EngineBackend implements StakeEngine {
             }
         );
 
-        console.log(`Stake result:\n\tsignature: ${result.data.signature}`);
+        console.log(`Stake result: ${result.data.signature}`);
     }
 
     async withdraw(
@@ -134,26 +125,26 @@ export class EngineBackend implements StakeEngine {
         community: AppCommunity,
         staker: AppStaker
     ): Promise<void> {
-        const assoc = await app.token.getOrCreateAssociatedAccountInfo(
-            staker.key.publicKey
+        const prep = await this.client.post(
+            `stake/${community.key.publicKey.toBase58()}/${staker.key.publicKey.toBase58()}/withdraw/prepare`,
+            {
+                fund: true
+            }
         );
-        const trans = new Transaction();
-        trans.add(
-            await Instruction.WithdrawUnbond(
-                app.program_id,
-                app.funder.publicKey,
-                staker.key.publicKey,
-                assoc.address,
-                community.key.publicKey
-            )
-        );
-        const sig = await sendAndConfirmTransaction(app.connection, trans, [
-            app.funder,
-            staker.key
-        ]);
 
-        console.log(
-            `Withdraw Unbond ${community.key.publicKey.toBase58()}: ${sig}`
+        const sig = nacl.sign.detached(
+            Buffer.from(prep.data.message, 'base64'),
+            staker.key.secretKey
         );
+
+        const result = await this.client.post(
+            `stake/${community.key.publicKey.toBase58()}/${staker.key.publicKey.toBase58()}/withdraw`,
+            {
+                sig: Buffer.from(sig).toString('base64'),
+                message: prep.data.message
+            }
+        );
+
+        console.log(`Withdraw result: ${result.data.signature}`);
     }
 }
