@@ -164,13 +164,13 @@ SOL_FUNDER=${Buffer.from(this.funder.secretKey).toString('hex')}
 
     public async claimPrimary(commId: number): Promise<string> {
         const community = this.communities[commId];
-        await this.engine.claimPrimary(this, community);
+        await this.engine.claim(this, community, true);
         return 'removed with engine';
     }
 
     public async claimSecondary(commId: number): Promise<string> {
         const community = this.communities[commId];
-        await this.engine.claimSecondary(this, community);
+        await this.engine.claim(this, community, false);
         return 'removed with engine';
     }
 

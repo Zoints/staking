@@ -52,52 +52,43 @@ export class EngineBackend implements StakeEngine {
         );
     }
 
-    async claimPrimary(app: App, community: AppCommunity): Promise<void> {
+    async claim(
+        app: App,
+        community: AppCommunity,
+        primary: boolean
+    ): Promise<void> {
         const assoc = await app.token.getOrCreateAssociatedAccountInfo(
             community.primaryAuthority.publicKey
         );
-        const trans = new Transaction();
-        trans.add(
-            await Instruction.ClaimPrimary(
-                app.program_id,
-                app.funder.publicKey,
-                community.primaryAuthority.publicKey,
-                assoc.address,
-                community.key.publicKey,
-                app.mint_id.publicKey
-            )
+
+        const prep = await this.client.post(
+            `community/${community.key.publicKey.toBase58()}/claim/prepare`,
+            {
+                fund: true,
+                type: primary ? 'primary' : 'secondary'
+            }
         );
-        const sig = await sendAndConfirmTransaction(app.connection, trans, [
-            app.funder,
-            community.primaryAuthority
-        ]);
+
+        const data = Buffer.from(prep.data.message, 'base64');
+        const sig = nacl.sign.detached(
+            data,
+            primary
+                ? community.primaryAuthority.secretKey
+                : community.secondaryAuthority.secretKey
+        );
+
+        const result = await this.client.post(
+            `community/${community.key.publicKey.toBase58()}/claim`,
+            {
+                message: prep.data.message,
+                sig: Buffer.from(sig).toString('base64')
+            }
+        );
 
         console.log(
-            `Claimed Primary Harvest ${community.key.publicKey.toBase58()}: ${sig}`
-        );
-    }
-    async claimSecondary(app: App, community: AppCommunity): Promise<void> {
-        const assoc = await app.token.getOrCreateAssociatedAccountInfo(
-            community.secondaryAuthority.publicKey
-        );
-        const trans = new Transaction();
-        trans.add(
-            await Instruction.ClaimSecondary(
-                app.program_id,
-                app.funder.publicKey,
-                community.secondaryAuthority.publicKey,
-                assoc.address,
-                community.key.publicKey,
-                app.mint_id.publicKey
-            )
-        );
-        const sig = await sendAndConfirmTransaction(app.connection, trans, [
-            app.funder,
-            community.secondaryAuthority
-        ]);
-
-        console.log(
-            `Claimed Secondary Harvest ${community.key.publicKey.toBase58()}: ${sig}`
+            `Claimed primary=${primary} harvest for community ${community.key.publicKey.toBase58()}: ${
+                result.data.signature
+            }`
         );
     }
     async stake(
@@ -108,10 +99,6 @@ export class EngineBackend implements StakeEngine {
     ): Promise<void> {
         const assoc = await app.token.getOrCreateAssociatedAccountInfo(
             staker.key.publicKey
-        );
-
-        console.log(
-            `stake/${community.key.publicKey.toBase58()}/${staker.key.publicKey.toBase58()}/stake/prepare`
         );
 
         const prep = await this.client.post(

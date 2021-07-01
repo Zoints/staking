@@ -34,16 +34,28 @@ export class EngineDirect implements StakeEngine {
         );
     }
 
-    async claimPrimary(app: App, community: AppCommunity): Promise<void> {
+    async claim(
+        app: App,
+        community: AppCommunity,
+        primary: boolean
+    ): Promise<void> {
+        const authority = primary
+            ? community.primaryAuthority
+            : community.secondaryAuthority;
+
         const assoc = await app.token.getOrCreateAssociatedAccountInfo(
-            community.primaryAuthority.publicKey
+            authority.publicKey
         );
+
+        const instruction = primary
+            ? Instruction.ClaimPrimary
+            : Instruction.ClaimSecondary;
         const trans = new Transaction();
         trans.add(
-            await Instruction.ClaimPrimary(
+            await instruction(
                 app.program_id,
                 app.funder.publicKey,
-                community.primaryAuthority.publicKey,
+                authority.publicKey,
                 assoc.address,
                 community.key.publicKey,
                 app.mint_id.publicKey
@@ -51,37 +63,14 @@ export class EngineDirect implements StakeEngine {
         );
         const sig = await sendAndConfirmTransaction(app.connection, trans, [
             app.funder,
-            community.primaryAuthority
+            authority
         ]);
 
         console.log(
-            `Claimed Primary Harvest ${community.key.publicKey.toBase58()}: ${sig}`
+            `Claimed Primary=${primary} Harvest ${community.key.publicKey.toBase58()}: ${sig}`
         );
     }
-    async claimSecondary(app: App, community: AppCommunity): Promise<void> {
-        const assoc = await app.token.getOrCreateAssociatedAccountInfo(
-            community.secondaryAuthority.publicKey
-        );
-        const trans = new Transaction();
-        trans.add(
-            await Instruction.ClaimSecondary(
-                app.program_id,
-                app.funder.publicKey,
-                community.secondaryAuthority.publicKey,
-                assoc.address,
-                community.key.publicKey,
-                app.mint_id.publicKey
-            )
-        );
-        const sig = await sendAndConfirmTransaction(app.connection, trans, [
-            app.funder,
-            community.secondaryAuthority
-        ]);
 
-        console.log(
-            `Claimed Secondary Harvest ${community.key.publicKey.toBase58()}: ${sig}`
-        );
-    }
     async stake(
         app: App,
         community: AppCommunity,

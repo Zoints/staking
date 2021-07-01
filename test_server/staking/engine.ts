@@ -8,8 +8,7 @@ export interface StakeEngine {
         community: AppCommunity,
         noSecondary: boolean
     ): Promise<void>;
-    claimPrimary(app: App, community: AppCommunity): Promise<void>;
-    claimSecondary(app: App, community: AppCommunity): Promise<void>;
+    claim(app: App, community: AppCommunity, primary: boolean): Promise<void>;
     stake(
         app: App,
         community: AppCommunity,
