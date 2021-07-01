@@ -129,6 +129,7 @@ export class EngineBackend implements StakeEngine {
             Buffer.from(prep.data.message, 'base64'),
             staker.key.secretKey
         );
+        console.log(`=== signed with ${staker.key.publicKey.toString()}`);
 
         const result = await this.client.post(
             `stake/${community.key.publicKey.toBase58()}/${staker.key.publicKey.toBase58()}/stake`,
