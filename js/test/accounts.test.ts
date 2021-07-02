@@ -4,7 +4,7 @@ import 'mocha';
 import * as borsh from 'borsh';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { BASE_REWARD, Community } from '../src';
+import { BASE_REWARD, Community, Stake } from '../src';
 
 describe('Settings', () => {
     const raw = Buffer.from([
@@ -142,5 +142,49 @@ describe('Community without secondary', () => {
         expect(community.secondary.authority).to.be.eql(
             new PublicKey('11111111111111111111111111111111')
         );
+    });
+});
+
+describe('Stake', () => {
+    const raw = Buffer.from([
+        0xba, 0xd2, 0xde, 0x60, 0x00, 0x00, 0x00, 0x00, 0x57, 0x5c, 0x0c, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x06, 0xa4, 0x35, 0x69, 0xdd, 0x1a, 0x48, 0xfc,
+        0x66, 0x0a, 0x36, 0x30, 0x5f, 0xf8, 0x0f, 0xff, 0xf1, 0xca, 0xaf, 0x48,
+        0xe0, 0x87, 0x20, 0x94, 0xff, 0xa4, 0x61, 0x59, 0x20, 0x97, 0xa0, 0x32,
+        0xf4, 0x8f, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0xaa, 0x57, 0xf6, 0x04,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x31, 0xf0, 0xde, 0x60, 0x00, 0x00, 0x00, 0x00, 0x67, 0x4a, 0x01, 0x00,
+        0x00, 0x00, 0x00, 0x00
+    ]);
+
+    const stake: Stake = borsh.deserialize(Stake.schema, Stake, raw);
+
+    it('should be equal', () => {
+        expect(stake.creationDate).to.be.eql(
+            new Date('2021-07-02 08:47:54.000+00')
+        );
+
+        expect(stake.totalStake.eqn(810071)).to.be.true;
+
+        expect(stake.beneficiary.isEmpty()).to.be.false;
+        expect(stake.beneficiary.authority).to.be.eql(
+            new PublicKey('Svg3TsfzMNY8HbJzAYbVhGXeTJFwFfWbVirJSfyqPxd')
+        );
+        expect(stake.beneficiary.staked.eqn(364532)).to.be.true;
+        expect(stake.beneficiary.rewardDebt.eq(new BN('83253162'))).to.be.true;
+        expect(stake.beneficiary.pendingReward.eqn(0)).to.be.true;
+
+        expect(stake.unbondingStart).to.be.eql(
+            new Date('2021-07-02 10:53:37+00')
+        );
+        expect(stake.unbondingAmount.eqn(84583)).to.be.true;
+    });
+
+    it('should calculate right', () => {
+        expect(
+            stake.beneficiary
+                .calculateReward(new BN('2607005792451633063128294278'))
+                .eq(new BN('867083873'))
+        ).to.be.true;
     });
 });
