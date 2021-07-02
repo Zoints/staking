@@ -1,10 +1,9 @@
 import { expect } from 'chai';
-import { Settings } from '../src/accounts';
 import 'mocha';
 import * as borsh from 'borsh';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { BASE_REWARD, Community, Stake } from '../src';
+import { BASE_REWARD, Community, Stake, Settings } from '../src';
 
 describe('Settings', () => {
     const raw = Buffer.from([
