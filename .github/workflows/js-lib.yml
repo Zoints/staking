@@ -1,0 +1,35 @@
+name: Zoints staking lib CI
+
+on: [push]
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: js
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Use Node.js 15.x
+      uses: actions/setup-node@v2
+      with:
+        node-version: '15'
+    - name: Cache Node.js modules
+      uses: actions/cache@v2
+      with:
+        path: ~/.npm
+        key: ${{ runner.OS }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.OS }}-node-
+          ${{ runner.OS }}-
+    # staking lib build and test
+    - name: Install dependencies and build
+      run: npm ci && npm run build
+    - name: Lint
+      run: npm run lint
+    - name: Prettier
+      run: npm run prettier-ci
+    - name: Test
+      run: npm run test --if-present
