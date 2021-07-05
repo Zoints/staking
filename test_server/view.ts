@@ -67,15 +67,15 @@ export async function viewCommunity(staking: App, id: number): Promise<string> {
 
         secondary = `        <tr>
             <td>Authority</td>
-            <td><a href="https://explorer.solana.com/address/${assocSecondary.address.toBase58()}?customUrl=${
-            staking.connectionURL
-        }&cluster=custom">${assocSecondary.address.toBase58()}</a></td>
-        </tr>
-        <tr>
-            <td>ZEE Address</td>
             <td><a href="https://explorer.solana.com/address/${community.secondary.authority.toBase58()}?customUrl=${
             staking.connectionURL
         }&cluster=custom">${community.secondary.authority.toBase58()}</td>
+        </tr>
+        <tr>
+            <td>ZEE Address</td>
+            <td><a href="https://explorer.solana.com/address/${assocSecondary.address.toBase58()}?customUrl=${
+            staking.connectionURL
+        }&cluster=custom">${assocSecondary.address.toBase58()}</a></td>
         </tr>
         <tr>
             <td>ZEE Balance</td>

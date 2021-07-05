@@ -22,7 +22,7 @@ export enum Instructions {
     ClaimSecondary
 }
 
-class SimpleSchema {
+export class SimpleSchema {
     instructionId: number;
 
     static schema: borsh.Schema = new Map([
@@ -40,7 +40,7 @@ class SimpleSchema {
     }
 }
 
-class AmountSchema {
+export class AmountSchema {
     instructionId: number;
     amount: bigint;
 
@@ -63,7 +63,7 @@ class AmountSchema {
     }
 }
 
-class InitSchema {
+export class InitSchema {
     instructionId: number;
     start_time: bigint;
     unbonding_duration: BN;
@@ -103,7 +103,7 @@ export class Instruction {
         const rewardPoolId = await Staking.rewardPoolId(programId);
 
         const keys: AccountMeta[] = [
-            am(funder, true, false),
+            am(funder, true, true),
             am(settingsId, false, true),
             am(poolAuthorityId, false, false),
             am(stakePoolId, false, true),
@@ -141,7 +141,7 @@ export class Instruction {
         }
 
         const keys: AccountMeta[] = [
-            am(funder, true, false),
+            am(funder, true, true),
             am(owner, true, false),
             am(community, true, true),
             am(primary, false, false),
@@ -173,7 +173,7 @@ export class Instruction {
         const stakeId = await Staking.stakeAddress(programId, community, owner);
 
         const keys: AccountMeta[] = [
-            am(funder, true, false),
+            am(funder, true, true),
             am(owner, true, false),
             am(community, false, true),
             am(stakeId, false, true),
@@ -215,7 +215,7 @@ export class Instruction {
         );
 
         const keys: AccountMeta[] = [
-            am(funder, true, false),
+            am(funder, true, true),
             am(staker, true, false),
             am(stakerAssociated, false, true),
             am(community, false, true),
@@ -262,7 +262,7 @@ export class Instruction {
         );
 
         const keys: AccountMeta[] = [
-            am(funder, true, false),
+            am(funder, true, true),
             am(staker, true, false),
             am(stakerAssociated, false, true),
             am(community, false, true),
@@ -300,7 +300,7 @@ export class Instruction {
         const rewardPoolId = await Staking.rewardPoolId(programId);
 
         const keys: AccountMeta[] = [
-            am(funder, true, false),
+            am(funder, true, true),
             am(authority, true, false),
             am(authorityAssociated, false, true),
             am(community, false, true),
@@ -337,7 +337,7 @@ export class Instruction {
         const rewardPoolId = await Staking.rewardPoolId(programId);
 
         const keys: AccountMeta[] = [
-            am(funder, true, false),
+            am(funder, true, true),
             am(authority, true, false),
             am(authorityAssociated, false, true),
             am(community, false, true),
