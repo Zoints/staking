@@ -106,7 +106,7 @@ export class App {
         console.log(`#### .env file for backend dev ####
 ###################################
 STAKING_ENABLED=true
-STAKING_PROGRAMID=${this.program_id.toBase58()}
+STAKING_PROGRAM_ID=${this.program_id.toBase58()}
 STAKING_MINT=${this.mint_id.publicKey.toBase58()}
 SOL_FUNDER_PK=${this.funder.publicKey.toBase58()}
 SOL_FUNDER_ENCODING=hex

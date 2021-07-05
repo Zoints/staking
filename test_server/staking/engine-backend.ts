@@ -37,18 +37,18 @@ export class EngineBackend implements StakeEngine {
         );
 
         const data = Buffer.from(prep.data.message, 'base64');
-        const sig = nacl.sign.detached(data, community.authority.secretKey);
+        const userSig = nacl.sign.detached(data, community.authority.secretKey);
         const commSig = nacl.sign.detached(data, community.key.secretKey);
 
         const result = await this.client.post('community/register', {
             seed: prep.data.seed,
             message: prep.data.message,
-            sig: Buffer.from(sig).toString('base64'),
-            communitySig: Buffer.from(commSig).toString('base64')
+            userSignature: Buffer.from(userSig).toString('base64'),
+            communitySignature: Buffer.from(commSig).toString('base64')
         });
 
         console.log(
-            `Community create:\n\tsig: ${result.data.signature}\n\tcommunity: ${result.data.community}`
+            `Community create:\n\tsig: ${result.data.txSignature}\n\tcommunity: ${result.data.community}`
         );
     }
 
@@ -66,7 +66,7 @@ export class EngineBackend implements StakeEngine {
         );
 
         const data = Buffer.from(prep.data.message, 'base64');
-        const sig = nacl.sign.detached(
+        const userSig = nacl.sign.detached(
             data,
             primary
                 ? community.primaryAuthority.secretKey
@@ -77,13 +77,13 @@ export class EngineBackend implements StakeEngine {
             `community/${community.key.publicKey.toBase58()}/claim`,
             {
                 message: prep.data.message,
-                sig: Buffer.from(sig).toString('base64')
+                userSignature: Buffer.from(userSig).toString('base64')
             }
         );
 
         console.log(
             `Claimed primary=${primary} harvest for community ${community.key.publicKey.toBase58()}: ${
-                result.data.signature
+                result.data.txSignature
             }`
         );
     }
@@ -104,7 +104,7 @@ export class EngineBackend implements StakeEngine {
             `Stake prep: \n\trecent: ${prep.data.recent}\n\tmessage: ${prep.data.message}\n\tinitialize: ${prep.data.initialize}`
         );
 
-        const sig = nacl.sign.detached(
+        const userSig = nacl.sign.detached(
             Buffer.from(prep.data.message, 'base64'),
             staker.key.secretKey
         );
@@ -112,12 +112,12 @@ export class EngineBackend implements StakeEngine {
         const result = await this.client.post(
             `stake/${community.key.publicKey.toBase58()}/${staker.key.publicKey.toBase58()}/stake`,
             {
-                sig: Buffer.from(sig).toString('base64'),
+                userSignature: Buffer.from(userSig).toString('base64'),
                 message: prep.data.message
             }
         );
 
-        console.log(`Stake result: ${result.data.signature}`);
+        console.log(`Stake result: ${result.data.txSignature}`);
     }
 
     async withdraw(
@@ -132,7 +132,7 @@ export class EngineBackend implements StakeEngine {
             }
         );
 
-        const sig = nacl.sign.detached(
+        const userSig = nacl.sign.detached(
             Buffer.from(prep.data.message, 'base64'),
             staker.key.secretKey
         );
@@ -140,11 +140,11 @@ export class EngineBackend implements StakeEngine {
         const result = await this.client.post(
             `stake/${community.key.publicKey.toBase58()}/${staker.key.publicKey.toBase58()}/withdraw`,
             {
-                sig: Buffer.from(sig).toString('base64'),
+                userSignature: Buffer.from(userSig).toString('base64'),
                 message: prep.data.message
             }
         );
 
-        console.log(`Withdraw result: ${result.data.signature}`);
+        console.log(`Withdraw result: ${result.data.txSignature}`);
     }
 }
