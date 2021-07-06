@@ -65,6 +65,7 @@ impl Processor {
         let stake_pool_info = next_account_info(iter)?;
         let reward_pool_info = next_account_info(iter)?;
         let token_info = next_account_info(iter)?;
+        let fee_authority_info = next_account_info(iter)?;
         let rent_info = next_account_info(iter)?;
         let token_program_info = next_account_info(iter)?;
 
@@ -77,9 +78,19 @@ impl Processor {
         let seed = Settings::verify_program_address(settings_info.key, program_id)?;
         Mint::unpack(&token_info.data.borrow()).map_err(|_| StakingError::TokenNotSPLToken)?;
 
+        if !fee_authority_info.is_signer {
+            return Err(StakingError::MissingAuthoritySignature.into());
+        }
+
         let settings = Settings {
             token: *token_info.key,
             unbonding_duration,
+            fee: Beneficiary {
+                authority: *fee_authority_info.key,
+                staked: 0,
+                reward_debt: 0,
+                pending_reward: 0,
+            },
             next_emission_change: start_time + SECONDS_PER_YEAR as i64,
             emission: BASE_REWARD as u64,
             reward_per_share: 0u128,
@@ -371,13 +382,13 @@ impl Processor {
 
         settings.update_rewards(clock.unix_timestamp);
 
-        let (_, old_primary, old_secondary) = split_stake(stake.total_stake);
+        let (_, old_primary, old_secondary, old_fee) = split_stake(stake.total_stake);
         if staking {
             stake.total_stake += amount;
         } else {
             stake.total_stake -= amount;
         }
-        let (staker_share, new_primary, new_secondary) = split_stake(stake.total_stake);
+        let (staker_share, new_primary, new_secondary, new_fee) = split_stake(stake.total_stake);
 
         // PROCESS STAKER'S REWARD
         stake
