@@ -16,6 +16,7 @@ Date.prototype.getUnixTime = function (): number {
 export class Settings {
     public token: PublicKey;
     public unbondingTime: BN;
+    public fee: Beneficiary;
 
     public nextEmissionChange: Date;
     public emission: BN;
@@ -32,6 +33,10 @@ export class Settings {
                 fields: [
                     ['token', [32]],
                     ['unbondingTime', 'u64'],
+                    ['feeAuthority', [32]],
+                    ['feeStaked', 'u64'],
+                    ['feeRewardDebt', 'u64'],
+                    ['feePendingReward', 'u64'],
                     ['nextEmissionChange', 'u64'], // this is an i64 timestamp, so always > 0, u64 should be fine
                     ['emission', 'u64'],
 
@@ -46,6 +51,10 @@ export class Settings {
     constructor(params: {
         token: Uint8Array;
         unbondingTime: BN;
+        feeAuthority: Uint8Array;
+        feeStaked: BN;
+        feeRewardDebt: BN;
+        feePendingReward: BN;
         nextEmissionChange: BN;
         emission: BN;
         totalStake: BN;
@@ -54,6 +63,12 @@ export class Settings {
     }) {
         this.token = new PublicKey(params.token);
         this.unbondingTime = params.unbondingTime;
+        this.fee = new Beneficiary({
+            authority: new PublicKey(params.feeAuthority),
+            staked: params.feeStaked,
+            rewardDebt: params.feeRewardDebt,
+            pendingReward: params.feePendingReward
+        });
         this.nextEmissionChange = new Date(
             params.nextEmissionChange.toNumber() * 1000
         );
