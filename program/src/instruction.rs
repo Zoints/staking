@@ -15,6 +15,7 @@ pub enum StakingInstruction {
     WithdrawUnbond,
     ClaimPrimary,
     ClaimSecondary,
+    ClaimFee,
 }
 
 #[cfg(test)]

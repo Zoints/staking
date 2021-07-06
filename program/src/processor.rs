@@ -22,6 +22,12 @@ use crate::{
     SECONDS_PER_YEAR,
 };
 
+pub enum Claims {
+    Primary,
+    Secondary,
+    Fee,
+}
+
 pub struct Processor {}
 impl Processor {
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
@@ -47,8 +53,13 @@ impl Processor {
             StakingInstruction::WithdrawUnbond => {
                 Self::process_withdraw_unbond(program_id, accounts)
             }
-            StakingInstruction::ClaimPrimary => Self::process_claim(program_id, accounts, true),
-            StakingInstruction::ClaimSecondary => Self::process_claim(program_id, accounts, false),
+            StakingInstruction::ClaimPrimary => {
+                Self::process_claim(program_id, accounts, Claims::Primary)
+            }
+            StakingInstruction::ClaimSecondary => {
+                Self::process_claim(program_id, accounts, Claims::Secondary)
+            }
+            StakingInstruction::ClaimFee => Self::process_claim(program_id, accounts, Claims::Fee),
         }
     }
 
@@ -535,7 +546,7 @@ impl Processor {
     pub fn process_claim(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
-        primary: bool,
+        claim: Claims,
     ) -> ProgramResult {
         let iter = &mut accounts.iter();
         let _funder_info = next_account_info(iter)?;
@@ -556,10 +567,12 @@ impl Processor {
             return Err(StakingError::AuthorizedSignatureMissing.into());
         }
 
-        let beneficiary = if primary {
-            &mut community.primary
-        } else {
-            &mut community.secondary
+        settings.update_rewards(clock.unix_timestamp);
+
+        let beneficiary = match claim {
+            Claims::Primary => &mut community.primary,
+            Claims::Secondary => &mut community.secondary,
+            Claims::Fee => &mut settings.fee,
         };
 
         if beneficiary.authority != *authority_info.key {
@@ -571,8 +584,6 @@ impl Processor {
             settings.token,
             *authority_info.key
         )?;
-
-        settings.update_rewards(clock.unix_timestamp);
 
         // the stake amount doesn't change, so there's no need to update staker/secondary at the same time
         beneficiary.pay_out(beneficiary.staked, settings.reward_per_share);
@@ -588,7 +599,7 @@ impl Processor {
         beneficiary.pending_reward = 0;
 
         // burn secondary
-        if primary && community.secondary.is_empty() {
+        if community.secondary.is_empty() {
             community
                 .secondary
                 .pay_out(community.secondary.staked, settings.reward_per_share);
