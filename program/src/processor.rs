@@ -400,6 +400,12 @@ impl Processor {
             return Err(StakingError::StakerBalanceTooLow.into());
         }
 
+        // pay fee
+        settings.fee.pay_out(
+            settings.fee.staked + new_fee - old_fee,
+            settings.reward_per_share,
+        );
+
         // primary + secondary
         community.primary.pay_out(
             community.primary.staked + new_primary - old_primary,
