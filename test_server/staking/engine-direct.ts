@@ -50,9 +50,7 @@ export class EngineDirect implements StakeEngine {
                     app.program_id,
                     app.funder.publicKey,
                     app.fee_authority.publicKey,
-                    assoc.address,
-                    community.key.publicKey,
-                    app.mint_id.publicKey
+                    assoc.address
                 )
             );
 

@@ -5,6 +5,7 @@ import { AppCommunity, AppStaker } from './community';
 import { StakeEngine } from './engine';
 import axios, { AxiosInstance } from 'axios';
 import nacl from 'tweetnacl';
+import { Token } from '@solana/spl-token';
 
 export class EngineBackend implements StakeEngine {
     url: string;
@@ -58,20 +59,11 @@ export class EngineBackend implements StakeEngine {
         community: AppCommunity
     ): Promise<void> {
         if (claim == Claims.Fee) {
-            const prep = await this.client.post(`claim/prepare`, {
-                fund: true
-            });
-
-            const data = Buffer.from(prep.data.message, 'base64');
-            const userSig = nacl.sign.detached(
-                data,
-                app.fee_authority.secretKey
+            await app.token.getOrCreateAssociatedAccountInfo(
+                app.fee_authority.publicKey
             );
 
-            const result = await this.client.post(`claim`, {
-                message: prep.data.message,
-                userSignature: Buffer.from(userSig).toString('base64')
-            });
+            const result = await this.client.post(`claim`);
 
             console.log(`Claimed global fee: ${result.data.txSignature}`);
         } else {

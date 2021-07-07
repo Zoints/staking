@@ -379,7 +379,7 @@ export class Instruction {
 
         const keys: AccountMeta[] = [
             am(funder, true, true),
-            am(authority, true, false),
+            am(authority, false, false),
             am(authorityAssociated, false, true),
             am(settingsId, false, true),
             am(poolAuthorityId, false, false),

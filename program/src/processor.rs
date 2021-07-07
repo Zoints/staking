@@ -639,10 +639,6 @@ impl Processor {
         let clock = Clock::from_account_info(clock_info)?;
         let mut settings = Settings::from_account_info(settings_info, program_id)?;
 
-        if !authority_info.is_signer {
-            return Err(StakingError::AuthorizedSignatureMissing.into());
-        }
-
         settings.update_rewards(clock.unix_timestamp);
 
         if settings.fee.authority != *authority_info.key {
