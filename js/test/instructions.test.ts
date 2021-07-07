@@ -8,12 +8,14 @@ import BN from 'bn.js';
 const programId = new PublicKey('A7PR2hfpVDsBqd83mD6WSEr9Z9CvDNJ9FehcvvLdvuC2');
 const funder = new PublicKey('F5AeZLFDdEnAPtfxHMKLTzNYNa9kLvGPM9b8dJzWpHGZ');
 const mint = new PublicKey('Q2P36HbwEBwxTSj8QhiMscbA21vBi7edJKbsb9KjBRM');
+const fee = new PublicKey('11111111111111111111111111111111');
 
 describe('Serialization', () => {
     it('Initialize', async () => {
         const instruction = await Instruction.Initialize(
             programId,
             funder,
+            fee,
             mint,
             new Date('2021-07-02 08:45:51.000+00'),
             60

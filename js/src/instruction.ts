@@ -371,19 +371,34 @@ export class Instruction {
         programId: PublicKey,
         funder: PublicKey,
         authority: PublicKey,
-        authorityAssociated: PublicKey,
-        community: PublicKey,
-        mint: PublicKey
+        authorityAssociated: PublicKey
     ): Promise<TransactionInstruction> {
-        return Instruction.claim(
-            programId,
-            funder,
-            authority,
-            authorityAssociated,
-            community,
-            mint,
-            Instructions.ClaimFee
+        const settingsId = await Staking.settingsId(programId);
+        const poolAuthorityId = await Staking.poolAuthorityId(programId);
+        const rewardPoolId = await Staking.rewardPoolId(programId);
+
+        const keys: AccountMeta[] = [
+            am(funder, true, true),
+            am(authority, true, false),
+            am(authorityAssociated, false, true),
+            am(settingsId, false, true),
+            am(poolAuthorityId, false, false),
+            am(rewardPoolId, false, true),
+            am(SYSVAR_CLOCK_PUBKEY, false, false),
+            am(TOKEN_PROGRAM_ID, false, false)
+        ];
+
+        const instruction = new SimpleSchema(Instructions.ClaimFee);
+        const instructionData = borsh.serialize(
+            SimpleSchema.schema,
+            instruction
         );
+
+        return new TransactionInstruction({
+            keys: keys,
+            programId,
+            data: Buffer.from(instructionData)
+        });
     }
 }
 

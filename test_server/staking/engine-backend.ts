@@ -1,6 +1,6 @@
 import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
 import { Instruction, ZERO_KEY } from '@zoints/staking';
-import { App } from './app';
+import { App, Claims } from './app';
 import { AppCommunity, AppStaker } from './community';
 import { StakeEngine } from './engine';
 import axios, { AxiosInstance } from 'axios';
@@ -54,38 +54,58 @@ export class EngineBackend implements StakeEngine {
 
     async claim(
         app: App,
-        community: AppCommunity,
-        primary: boolean
+        claim: Claims,
+        community: AppCommunity
     ): Promise<void> {
-        const prep = await this.client.post(
-            `community/${community.key.publicKey.toBase58()}/claim/prepare`,
-            {
-                fund: true,
-                type: primary ? 'primary' : 'secondary'
-            }
-        );
+        if (claim == Claims.Fee) {
+            const prep = await this.client.post(`claim/prepare`, {
+                fund: true
+            });
 
-        const data = Buffer.from(prep.data.message, 'base64');
-        const userSig = nacl.sign.detached(
-            data,
-            primary
-                ? community.primaryAuthority.secretKey
-                : community.secondaryAuthority.secretKey
-        );
+            const data = Buffer.from(prep.data.message, 'base64');
+            const userSig = nacl.sign.detached(
+                data,
+                app.fee_authority.secretKey
+            );
 
-        const result = await this.client.post(
-            `community/${community.key.publicKey.toBase58()}/claim`,
-            {
+            const result = await this.client.post(`claim`, {
                 message: prep.data.message,
                 userSignature: Buffer.from(userSig).toString('base64')
-            }
-        );
+            });
 
-        console.log(
-            `Claimed primary=${primary} harvest for community ${community.key.publicKey.toBase58()}: ${
-                result.data.txSignature
-            }`
-        );
+            console.log(`Claimed global fee: ${result.data.txSignature}`);
+        } else {
+            const primary = claim === Claims.Primary;
+            const prep = await this.client.post(
+                `community/${community.key.publicKey.toBase58()}/claim/prepare`,
+                {
+                    fund: true,
+                    type: primary ? 'primary' : 'secondary'
+                }
+            );
+
+            const data = Buffer.from(prep.data.message, 'base64');
+            const userSig = nacl.sign.detached(
+                data,
+                primary
+                    ? community.primaryAuthority.secretKey
+                    : community.secondaryAuthority.secretKey
+            );
+
+            const result = await this.client.post(
+                `community/${community.key.publicKey.toBase58()}/claim`,
+                {
+                    message: prep.data.message,
+                    userSignature: Buffer.from(userSig).toString('base64')
+                }
+            );
+
+            console.log(
+                `Claimed primary=${primary} harvest for community ${community.key.publicKey.toBase58()}: ${
+                    result.data.txSignature
+                }`
+            );
+        }
     }
     async stake(
         app: App,

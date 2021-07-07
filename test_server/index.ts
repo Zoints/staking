@@ -8,9 +8,12 @@ const app = express.default();
 const port = 8081;
 
 const engine =
-    process.env.ENGINE === 'direct'
+    process.env.ENGINE?.toLowerCase() === 'direct'
         ? new EngineDirect()
         : new EngineBackend('http://localhost:8080/staking/v1/');
+console.log(
+    `Engine: ${process.env.ENGINE === 'direct' ? 'direct' : 'backend'}`
+);
 
 const staking = new App(
     'http://localhost:8899',
@@ -92,6 +95,11 @@ app.get(
         res.redirect('/staker/' + staker);
     }
 );
+
+app.get('/claim/fee', async (req: express.Request, res: express.Response) => {
+    await staking.claimFee();
+    res.redirect('/');
+});
 
 app.get(
     '/claim/:community/:primary',
