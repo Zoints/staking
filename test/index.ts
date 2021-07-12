@@ -16,6 +16,7 @@ import { Staking, Instruction } from '@zoints/staking';
 const config = {
     funder: new Keypair(),
     deploy_key: new Keypair(),
+    fee_authority: new Keypair(),
 
     mint_id: new Keypair(),
     mint_authority: new Keypair(),
@@ -121,6 +122,7 @@ const staking = new Staking(programId, connection);
         await Instruction.Initialize(
             programId,
             config.funder.publicKey,
+            config.fee_authority.publicKey,
             config.mint_id.publicKey,
             new Date(),
             60
@@ -128,7 +130,8 @@ const staking = new Staking(programId, connection);
     );
 
     const init_sig = await sendAndConfirmTransaction(connection, init_trans, [
-        config.funder
+        config.funder,
+        config.fee_authority
     ]);
     console.log(`Initialized: ${init_sig}`);
 

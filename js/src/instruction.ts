@@ -10,7 +10,7 @@ import {
 import { Staking, ZERO_KEY } from '.';
 import * as borsh from 'borsh';
 import './extendBorsh';
-import BN from 'bn.js';
+import BN, { min } from 'bn.js';
 
 export enum Instructions {
     Initialize,
@@ -19,7 +19,8 @@ export enum Instructions {
     Stake,
     WithdrawUnbond,
     ClaimPrimary,
-    ClaimSecondary
+    ClaimSecondary,
+    ClaimFee
 }
 
 export class SimpleSchema {
@@ -93,6 +94,7 @@ export class Instruction {
     public static async Initialize(
         programId: PublicKey,
         funder: PublicKey,
+        feeAuthority: PublicKey,
         mint: PublicKey,
         startTime: Date,
         unbondingDuration: number
@@ -109,6 +111,7 @@ export class Instruction {
             am(stakePoolId, false, true),
             am(rewardPoolId, false, true),
             am(mint, false, false),
+            am(feeAuthority, true, false),
             am(SYSVAR_RENT_PUBKEY, false, false),
             am(TOKEN_PROGRAM_ID, false, false),
             am(SystemProgram.programId, false, false)
@@ -287,14 +290,15 @@ export class Instruction {
         });
     }
 
-    public static async ClaimPrimary(
+    private static async claim(
         programId: PublicKey,
         funder: PublicKey,
         authority: PublicKey,
         authorityAssociated: PublicKey,
         community: PublicKey,
-        mint: PublicKey
-    ): Promise<TransactionInstruction> {
+        mint: PublicKey,
+        instructionType: number
+    ) {
         const settingsId = await Staking.settingsId(programId);
         const poolAuthorityId = await Staking.poolAuthorityId(programId);
         const rewardPoolId = await Staking.rewardPoolId(programId);
@@ -312,7 +316,7 @@ export class Instruction {
             am(TOKEN_PROGRAM_ID, false, false)
         ];
 
-        const instruction = new SimpleSchema(Instructions.ClaimPrimary);
+        const instruction = new SimpleSchema(instructionType);
         const instructionData = borsh.serialize(
             SimpleSchema.schema,
             instruction
@@ -324,6 +328,26 @@ export class Instruction {
             data: Buffer.from(instructionData)
         });
     }
+
+    public static async ClaimPrimary(
+        programId: PublicKey,
+        funder: PublicKey,
+        authority: PublicKey,
+        authorityAssociated: PublicKey,
+        community: PublicKey,
+        mint: PublicKey
+    ): Promise<TransactionInstruction> {
+        return Instruction.claim(
+            programId,
+            funder,
+            authority,
+            authorityAssociated,
+            community,
+            mint,
+            Instructions.ClaimPrimary
+        );
+    }
+
     public static async ClaimSecondary(
         programId: PublicKey,
         funder: PublicKey,
@@ -332,24 +356,39 @@ export class Instruction {
         community: PublicKey,
         mint: PublicKey
     ): Promise<TransactionInstruction> {
+        return Instruction.claim(
+            programId,
+            funder,
+            authority,
+            authorityAssociated,
+            community,
+            mint,
+            Instructions.ClaimSecondary
+        );
+    }
+
+    public static async ClaimFee(
+        programId: PublicKey,
+        funder: PublicKey,
+        authority: PublicKey,
+        authorityAssociated: PublicKey
+    ): Promise<TransactionInstruction> {
         const settingsId = await Staking.settingsId(programId);
         const poolAuthorityId = await Staking.poolAuthorityId(programId);
         const rewardPoolId = await Staking.rewardPoolId(programId);
 
         const keys: AccountMeta[] = [
             am(funder, true, true),
-            am(authority, true, false),
+            am(authority, false, false),
             am(authorityAssociated, false, true),
-            am(community, false, true),
             am(settingsId, false, true),
             am(poolAuthorityId, false, false),
             am(rewardPoolId, false, true),
-            am(mint, false, true),
             am(SYSVAR_CLOCK_PUBKEY, false, false),
             am(TOKEN_PROGRAM_ID, false, false)
         ];
 
-        const instruction = new SimpleSchema(Instructions.ClaimSecondary);
+        const instruction = new SimpleSchema(Instructions.ClaimFee);
         const instructionData = borsh.serialize(
             SimpleSchema.schema,
             instruction

@@ -1,6 +1,6 @@
 import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
 import { Instruction, ZERO_KEY } from '@zoints/staking';
-import { App } from './app';
+import { App, Claims } from './app';
 import { AppCommunity, AppStaker } from './community';
 import { StakeEngine } from './engine';
 
@@ -36,39 +36,63 @@ export class EngineDirect implements StakeEngine {
 
     async claim(
         app: App,
-        community: AppCommunity,
-        primary: boolean
+        claim: Claims,
+        community: AppCommunity
     ): Promise<void> {
-        const authority = primary
-            ? community.primaryAuthority
-            : community.secondaryAuthority;
+        if (claim == Claims.Fee) {
+            const assoc = await app.token.getOrCreateAssociatedAccountInfo(
+                app.fee_authority.publicKey
+            );
 
-        const assoc = await app.token.getOrCreateAssociatedAccountInfo(
-            authority.publicKey
-        );
+            const trans = new Transaction();
+            trans.add(
+                await Instruction.ClaimFee(
+                    app.program_id,
+                    app.funder.publicKey,
+                    app.fee_authority.publicKey,
+                    assoc.address
+                )
+            );
 
-        const instruction = primary
-            ? Instruction.ClaimPrimary
-            : Instruction.ClaimSecondary;
-        const trans = new Transaction();
-        trans.add(
-            await instruction(
-                app.program_id,
-                app.funder.publicKey,
-                authority.publicKey,
-                assoc.address,
-                community.key.publicKey,
-                app.mint_id.publicKey
-            )
-        );
-        const sig = await sendAndConfirmTransaction(app.connection, trans, [
-            app.funder,
-            authority
-        ]);
+            const sig = await sendAndConfirmTransaction(app.connection, trans, [
+                app.funder,
+                app.fee_authority
+            ]);
 
-        console.log(
-            `Claimed Primary=${primary} Harvest ${community.key.publicKey.toBase58()}: ${sig}`
-        );
+            console.log(`Claimed Fee Harvest: ${sig}`);
+        } else {
+            const primary = claim == Claims.Primary;
+            const authority = primary
+                ? community.primaryAuthority
+                : community.secondaryAuthority;
+
+            const assoc = await app.token.getOrCreateAssociatedAccountInfo(
+                authority.publicKey
+            );
+
+            const instruction = primary
+                ? Instruction.ClaimPrimary
+                : Instruction.ClaimSecondary;
+            const trans = new Transaction();
+            trans.add(
+                await instruction(
+                    app.program_id,
+                    app.funder.publicKey,
+                    authority.publicKey,
+                    assoc.address,
+                    community.key.publicKey,
+                    app.mint_id.publicKey
+                )
+            );
+            const sig = await sendAndConfirmTransaction(app.connection, trans, [
+                app.funder,
+                authority
+            ]);
+
+            console.log(
+                `Claimed Primary=${primary} Harvest ${community.key.publicKey.toBase58()}: ${sig}`
+            );
+        }
     }
 
     async stake(

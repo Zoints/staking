@@ -17,13 +17,17 @@ pub const PRECISION: u128 = 1_000_000_000_000_000_000_000_000;
 
 /// Split Stake
 ///
-/// Divides the staked amount of ZEE into three components
-/// for the (staker, primary beneficiary, secondary beneficiary) at the
-/// rates of (45%, 45%, 10%). Remainders go to the staker.
-pub fn split_stake(amount: u64) -> (u64, u64, u64) {
-    let secondary = amount / 10;
-    let primary = (amount - secondary) / 2;
-    (amount - primary - secondary, primary, secondary)
+/// Divides the staked amount of ZEE into four components
+/// for the (staker, owner, referrer, fee) at the
+/// rates of (45%, 45%, 5%, 5%). Remainders go to the staker.
+pub fn split_stake(amount: u64) -> (u64, u64, u64, u64) {
+    let ten_percent = amount / 10;
+    let five_percent = ten_percent / 2;
+    let remainder = ten_percent - five_percent - five_percent;
+
+    let rest = amount - ten_percent;
+    let major = rest / 2;
+    (rest - major, major, five_percent + remainder, five_percent)
 }
 
 #[cfg(test)]
@@ -33,40 +37,48 @@ mod tests {
     use super::*;
     #[test]
     pub fn test_split_stake() {
-        assert_eq!(split_stake(1), (1, 0, 0));
-        assert_eq!(split_stake(2), (1, 1, 0));
-        assert_eq!(split_stake(20), (9, 9, 2));
-        assert_eq!(split_stake(21), (10, 9, 2));
-        assert_eq!(split_stake(22), (10, 10, 2));
-        assert_eq!(split_stake(98), (45, 44, 9));
-        assert_eq!(split_stake(99), (45, 45, 9));
-        assert_eq!(split_stake(100), (45, 45, 10));
-        assert_eq!(split_stake(1_000), (450, 450, 100));
+        assert_eq!(split_stake(1), (1, 0, 0, 0));
+        assert_eq!(split_stake(2), (1, 1, 0, 0));
+        assert_eq!(split_stake(20), (9, 9, 1, 1));
+        assert_eq!(split_stake(21), (10, 9, 1, 1));
+        assert_eq!(split_stake(22), (10, 10, 1, 1));
+        assert_eq!(split_stake(98), (45, 44, 5, 4));
+        assert_eq!(split_stake(99), (45, 45, 5, 4));
+        assert_eq!(split_stake(100), (45, 45, 5, 5));
+        assert_eq!(split_stake(1_000), (450, 450, 50, 50));
+
+        for i in 0..=1_000 {
+            let split = split_stake(i);
+            assert_eq!(split.0 + split.1 + split.2 + split.3, i);
+        }
     }
 
-    //    #[test]
+    //#[test]
     // just double-checking to see if a bigger split will
     // always result in a bigger number
     // (it does)
     pub fn _test_split_increase() {
-        let mut prev: (u64, u64, u64) = (0, 0, 0);
+        let mut prev: (u64, u64, u64, u64) = (0, 0, 0, 0);
         for i in 0..1_000_000_000u64 {
             let split = split_stake(i);
+            //println!("{:?}", split);
             assert!(split.0 >= prev.0);
             assert!(split.1 >= prev.1);
             assert!(split.2 >= prev.2);
+            assert!(split.3 >= prev.3);
             prev = split
         }
     }
     //#[test]
     // reverse of the above
     pub fn _test_split_decrease() {
-        let mut prev: (u64, u64, u64) = split_stake(1_000_000_001);
+        let mut prev: (u64, u64, u64, u64) = split_stake(1_000_000_001);
         for i in (0..1_000_000_000u64).rev() {
             let split = split_stake(i);
             assert!(split.0 <= prev.0);
             assert!(split.1 <= prev.1);
             assert!(split.2 <= prev.2);
+            assert!(split.3 <= prev.3);
             prev = split
         }
     }

@@ -22,6 +22,12 @@ use crate::{
     SECONDS_PER_YEAR,
 };
 
+pub enum Claims {
+    Primary,
+    Secondary,
+    Fee,
+}
+
 pub struct Processor {}
 impl Processor {
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
@@ -47,8 +53,13 @@ impl Processor {
             StakingInstruction::WithdrawUnbond => {
                 Self::process_withdraw_unbond(program_id, accounts)
             }
-            StakingInstruction::ClaimPrimary => Self::process_claim(program_id, accounts, true),
-            StakingInstruction::ClaimSecondary => Self::process_claim(program_id, accounts, false),
+            StakingInstruction::ClaimPrimary => {
+                Self::process_claim(program_id, accounts, Claims::Primary)
+            }
+            StakingInstruction::ClaimSecondary => {
+                Self::process_claim(program_id, accounts, Claims::Secondary)
+            }
+            StakingInstruction::ClaimFee => Self::process_claim_fee(program_id, accounts),
         }
     }
 
@@ -65,6 +76,7 @@ impl Processor {
         let stake_pool_info = next_account_info(iter)?;
         let reward_pool_info = next_account_info(iter)?;
         let token_info = next_account_info(iter)?;
+        let fee_authority_info = next_account_info(iter)?;
         let rent_info = next_account_info(iter)?;
         let token_program_info = next_account_info(iter)?;
 
@@ -77,9 +89,19 @@ impl Processor {
         let seed = Settings::verify_program_address(settings_info.key, program_id)?;
         Mint::unpack(&token_info.data.borrow()).map_err(|_| StakingError::TokenNotSPLToken)?;
 
+        if !fee_authority_info.is_signer {
+            return Err(StakingError::MissingAuthoritySignature.into());
+        }
+
         let settings = Settings {
             token: *token_info.key,
             unbonding_duration,
+            fee: Beneficiary {
+                authority: *fee_authority_info.key,
+                staked: 0,
+                reward_debt: 0,
+                pending_reward: 0,
+            },
             next_emission_change: start_time + SECONDS_PER_YEAR as i64,
             emission: BASE_REWARD as u64,
             reward_per_share: 0u128,
@@ -371,13 +393,13 @@ impl Processor {
 
         settings.update_rewards(clock.unix_timestamp);
 
-        let (_, old_primary, old_secondary) = split_stake(stake.total_stake);
+        let (_, old_primary, old_secondary, old_fee) = split_stake(stake.total_stake);
         if staking {
             stake.total_stake += amount;
         } else {
             stake.total_stake -= amount;
         }
-        let (staker_share, new_primary, new_secondary) = split_stake(stake.total_stake);
+        let (staker_share, new_primary, new_secondary, new_fee) = split_stake(stake.total_stake);
 
         // PROCESS STAKER'S REWARD
         stake
@@ -388,6 +410,12 @@ impl Processor {
         if staking && staker_assoc.amount + stake.beneficiary.pending_reward < amount {
             return Err(StakingError::StakerBalanceTooLow.into());
         }
+
+        // pay fee
+        settings.fee.pay_out(
+            settings.fee.staked + new_fee - old_fee,
+            settings.reward_per_share,
+        );
 
         // primary + secondary
         community.primary.pay_out(
@@ -518,7 +546,7 @@ impl Processor {
     pub fn process_claim(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
-        primary: bool,
+        claim: Claims,
     ) -> ProgramResult {
         let iter = &mut accounts.iter();
         let _funder_info = next_account_info(iter)?;
@@ -539,10 +567,12 @@ impl Processor {
             return Err(StakingError::AuthorizedSignatureMissing.into());
         }
 
-        let beneficiary = if primary {
-            &mut community.primary
-        } else {
-            &mut community.secondary
+        settings.update_rewards(clock.unix_timestamp);
+
+        let beneficiary = match claim {
+            Claims::Primary => &mut community.primary,
+            Claims::Secondary => &mut community.secondary,
+            Claims::Fee => return Err(ProgramError::InvalidArgument),
         };
 
         if beneficiary.authority != *authority_info.key {
@@ -554,8 +584,6 @@ impl Processor {
             settings.token,
             *authority_info.key
         )?;
-
-        settings.update_rewards(clock.unix_timestamp);
 
         // the stake amount doesn't change, so there's no need to update staker/secondary at the same time
         beneficiary.pay_out(beneficiary.staked, settings.reward_per_share);
@@ -571,7 +599,7 @@ impl Processor {
         beneficiary.pending_reward = 0;
 
         // burn secondary
-        if primary && community.secondary.is_empty() {
+        if community.secondary.is_empty() {
             community
                 .secondary
                 .pay_out(community.secondary.staked, settings.reward_per_share);
@@ -594,6 +622,54 @@ impl Processor {
             .data
             .borrow_mut()
             .copy_from_slice(&community.try_to_vec()?);
+
+        Ok(())
+    }
+
+    pub fn process_claim_fee(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+        let iter = &mut accounts.iter();
+        let _funder_info = next_account_info(iter)?;
+        let authority_info = next_account_info(iter)?;
+        let authority_associated_info = next_account_info(iter)?;
+        let settings_info = next_account_info(iter)?;
+        let pool_authority_info = next_account_info(iter)?;
+        let reward_pool_info = next_account_info(iter)?;
+        let clock_info = next_account_info(iter)?;
+
+        let clock = Clock::from_account_info(clock_info)?;
+        let mut settings = Settings::from_account_info(settings_info, program_id)?;
+
+        settings.update_rewards(clock.unix_timestamp);
+
+        if settings.fee.authority != *authority_info.key {
+            return Err(StakingError::AuthorizedSignatureMissing.into());
+        }
+
+        verify_associated!(
+            authority_associated_info,
+            settings.token,
+            *authority_info.key
+        )?;
+
+        // the stake amount doesn't change, so there's no need to update staker/secondary at the same time
+        settings
+            .fee
+            .pay_out(settings.fee.staked, settings.reward_per_share);
+        // pay out pending reward
+        pool_transfer!(
+            RewardPool,
+            reward_pool_info,
+            authority_associated_info,
+            pool_authority_info,
+            program_id,
+            settings.fee.pending_reward
+        )?;
+        settings.fee.pending_reward = 0;
+
+        settings_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&settings.try_to_vec()?);
 
         Ok(())
     }

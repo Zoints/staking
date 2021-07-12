@@ -371,6 +371,7 @@ export async function wrap(staking: App, content: string): Promise<string> {
     if (remain > 0) {
         unbonding += `${remain} seconds`;
     }
+    const rps = settings.calculateRewardPerShare(new Date());
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -425,6 +426,35 @@ export async function wrap(staking: App, content: string): Promise<string> {
     <tr>
         <td>Reward Per Share</td>
         <td>${settings.rewardPerShare.div(PRECISION).toString()}</td>
+    </tr>
+    <tr>
+        <td></td>
+        <td></td>
+    </tr>
+
+    <tr>
+        <td>Authority</td>
+        <td><a href="https://explorer.solana.com/address/${settings.fee.authority.toBase58()}?customUrl=${
+        staking.connectionURL
+    }&cluster=custom">${settings.fee.authority.toBase58().substr(0, 8)}...</td>
+    </tr>
+    <tr>
+        <td>Staked</td>
+        <td>${settings.fee.staked.toString()}</td>
+    </tr>
+    <tr>
+        <td>Reward Debt</td>
+        <td>${settings.fee.rewardDebt.toString()}</td>
+    </tr>
+    <tr>
+        <td>Pending Reward</td>
+        <td>${settings.fee.pendingReward.toString()}</td>
+    </tr>
+    <tr>
+        <td>Harvestable</td>
+        <td>${settings.fee
+            .calculateReward(rps)
+            .toString()} (<a href="/claim/fee">Claim</a>)</td>
     </tr>
 </table>
 <h2>Communities</h2>

@@ -14,6 +14,7 @@ use crate::{PRECISION, SECONDS_PER_YEAR};
 pub struct Settings {
     pub token: Pubkey,           // the spl token mint used for the pools
     pub unbonding_duration: u64, // time (in seconds) that funds are locked after unstaking
+    pub fee: Beneficiary,
 
     // emissions settings
     pub next_emission_change: UnixTimestamp, // the time at which "emission" is reduced by 25%
@@ -152,6 +153,18 @@ macro_rules! pool_burn {
 
 #[macro_export]
 macro_rules! verify_associated {
+    ($assoc:expr, $token:expr) => {
+        match Account::unpack(&$assoc.data.borrow()) {
+            Ok(account) => {
+                if account.mint != $token {
+                    Err(StakingError::AssociatedInvalidToken.into())
+                } else {
+                    Ok(account)
+                }
+            }
+            _ => Err(StakingError::AssociatedInvalidAccount),
+        }
+    };
     ($assoc:expr, $token:expr, $owner:expr) => {
         match Account::unpack(&$assoc.data.borrow()) {
             Ok(account) => {
@@ -335,6 +348,12 @@ mod tests {
         let v = Settings {
             token: Pubkey::new_unique(),
             unbonding_duration: 10 * 3600 * 24,
+            fee: Beneficiary {
+                authority: Pubkey::new_unique(),
+                reward_debt: 123872935235,
+                pending_reward: 200029384234,
+                staked: 9919283918239,
+            },
 
             next_emission_change: 98123798352345,
             emission: 23458972935823,
@@ -355,6 +374,12 @@ mod tests {
         let base = Settings {
             token: Pubkey::new_unique(),
             unbonding_duration: 0,
+            fee: Beneficiary {
+                authority: Pubkey::new_unique(),
+                reward_debt: 0,
+                pending_reward: 0,
+                staked: 0,
+            },
 
             next_emission_change: SECONDS_PER_YEAR as i64,
             emission: BASE_REWARD as u64,

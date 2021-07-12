@@ -22,6 +22,12 @@ import * as crypto from 'crypto';
 import { AppCommunity, AppStaker } from './community';
 import { StakeEngine } from './engine';
 
+export enum Claims {
+    Primary,
+    Secondary,
+    Fee
+}
+
 export class App {
     seedPath: string;
     bpfPath: string;
@@ -39,6 +45,7 @@ export class App {
     deploy_key: Keypair;
     program_id: PublicKey;
 
+    fee_authority: Keypair;
     mint_id: Keypair;
     mint_authority: Keypair;
 
@@ -66,6 +73,7 @@ export class App {
         this.deploy_key = this.getKeyPair('deployKey');
         this.program_id = this.deploy_key.publicKey;
 
+        this.fee_authority = this.getKeyPair('feeAuthority');
         this.mint_id = this.getKeyPair('mint');
         this.mint_authority = this.getKeyPair('mintAuthority');
 
@@ -127,6 +135,7 @@ SOL_FUNDER=${Buffer.from(this.funder.secretKey).toString('hex')}
         this.deploy_key = this.getKeyPair('deployKey');
         this.program_id = this.deploy_key.publicKey;
 
+        this.fee_authority = this.getKeyPair('feeAuthority');
         this.mint_id = this.getKeyPair('mint');
         this.mint_authority = this.getKeyPair('mintAuthority');
 
@@ -164,13 +173,18 @@ SOL_FUNDER=${Buffer.from(this.funder.secretKey).toString('hex')}
 
     public async claimPrimary(commId: number): Promise<string> {
         const community = this.communities[commId];
-        await this.engine.claim(this, community, true);
+        await this.engine.claim(this, Claims.Primary, community);
+        return 'removed with engine';
+    }
+
+    public async claimFee(): Promise<string> {
+        await this.engine.claim(this, Claims.Fee);
         return 'removed with engine';
     }
 
     public async claimSecondary(commId: number): Promise<string> {
         const community = this.communities[commId];
-        await this.engine.claim(this, community, false);
+        await this.engine.claim(this, Claims.Secondary, community);
         return 'removed with engine';
     }
 
@@ -376,6 +390,7 @@ SOL_FUNDER=${Buffer.from(this.funder.secretKey).toString('hex')}
                 await Instruction.Initialize(
                     this.program_id,
                     this.funder.publicKey,
+                    this.fee_authority.publicKey,
                     this.mint_id.publicKey,
                     date,
                     60
@@ -384,7 +399,7 @@ SOL_FUNDER=${Buffer.from(this.funder.secretKey).toString('hex')}
         const sig = await sendAndConfirmTransaction(
             this.connection,
             transaction,
-            [this.funder, this.mint_id]
+            [this.funder, this.mint_id, this.fee_authority]
         );
         console.log(`Initialized: ${sig}`);
 
