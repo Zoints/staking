@@ -15,6 +15,7 @@ export interface StakeEngine {
         staker: AppStaker,
         amount: number
     ): Promise<void>;
+    multiclaim(app: App, staker: AppStaker): Promise<void>;
     withdraw(
         app: App,
         community: AppCommunity,

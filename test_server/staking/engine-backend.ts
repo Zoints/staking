@@ -116,6 +116,52 @@ export class EngineBackend implements StakeEngine {
         console.log(`Stake result: ${result.data.txSignature}`);
     }
 
+    async multiclaim(app: App, staker: AppStaker): Promise<void> {
+        const communities: string[] = [];
+        for (let c of app.communities) {
+            try {
+                await app.staking.getStakeWithoutId(
+                    c.key.publicKey,
+                    staker.key.publicKey
+                );
+            } catch (e) {
+                continue;
+            }
+
+            communities.push(c.key.publicKey.toBase58());
+
+            if (communities.length >= 8) {
+                break;
+            }
+        }
+
+        const prep = await this.client.post(
+            `stake/multi-claim/${staker.key.publicKey.toBase58()}/prepare`,
+            {
+                fund: true,
+                communities: communities
+            }
+        );
+        console.log(
+            `Multiclaim prep: \n\trecent: ${prep.data.recent}\n\tmessage: ${prep.data.message}`
+        );
+
+        const userSig = nacl.sign.detached(
+            Buffer.from(prep.data.message, 'base64'),
+            staker.key.secretKey
+        );
+
+        const result = await this.client.post(
+            `stake/multi-claim/${staker.key.publicKey.toBase58()}`,
+            {
+                userSignature: Buffer.from(userSig).toString('base64'),
+                message: prep.data.message
+            }
+        );
+
+        console.log(`Multiclaim result: ${result.data.txSignature}`);
+    }
+
     async withdraw(
         app: App,
         community: AppCommunity,

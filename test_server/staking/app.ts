@@ -201,6 +201,12 @@ SOL_FUNDER=${Buffer.from(this.funder.secretKey).toString('hex')}
         return 'removed with engine';
     }
 
+    public async multiclaim(stakerId: number): Promise<string> {
+        const staker = this.stakers[stakerId];
+        await this.engine.multiclaim(this, staker);
+        return 'removed with engine';
+    }
+
     public async withdrawUnbond(
         commId: number,
         stakerId: number

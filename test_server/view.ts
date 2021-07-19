@@ -293,7 +293,7 @@ export async function viewStaker(staking: App, id: number): Promise<string> {
             </td></tr></table>`;
     }
 
-    let communities = `<h2>Communities</h2>${community_list}`;
+    let communities = `<h2>Communities</h2><a href="/multiclaim/${appStaker.id}">Withdraw first 8</a><br>${community_list}`;
 
     return `<table>
         <tr>

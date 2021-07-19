@@ -140,6 +140,47 @@ export class EngineDirect implements StakeEngine {
         console.log(`Staked: ${sig}`);
     }
 
+    async multiclaim(app: App, staker: AppStaker): Promise<void> {
+        const assoc = await app.token.getOrCreateAssociatedAccountInfo(
+            staker.key.publicKey
+        );
+        const trans = new Transaction();
+
+        for (let c of app.communities) {
+            try {
+                await app.staking.getStakeWithoutId(
+                    c.key.publicKey,
+                    staker.key.publicKey
+                );
+
+                trans.add(
+                    await Instruction.Stake(
+                        app.program_id,
+                        app.funder.publicKey,
+                        staker.key.publicKey,
+                        assoc.address,
+                        c.key.publicKey,
+                        app.mint_id.publicKey,
+                        0
+                    )
+                );
+            } catch (e) {
+                continue;
+            }
+
+            if (trans.instructions.length >= 8) {
+                break;
+            }
+        }
+
+        const sig = await sendAndConfirmTransaction(app.connection, trans, [
+            app.funder,
+            staker.key
+        ]);
+
+        console.log(`Multiclaim: ${sig}`);
+    }
+
     async withdraw(
         app: App,
         community: AppCommunity,
