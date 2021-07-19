@@ -65,7 +65,7 @@ export class App {
         this.loaded = false;
 
         this.connectionURL = url;
-        this.connection = new Connection(url);
+        this.connection = new Connection(url, 'confirmed');
         this.newSeed = false;
         this.seed = this.loadSeed();
 

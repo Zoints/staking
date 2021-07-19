@@ -24,7 +24,7 @@ export class EngineDirect implements StakeEngine {
         const sig = await sendAndConfirmTransaction(
             app.connection,
             transaction,
-            [app.funder, community.authority, community.key]
+            [app.funder, community.key]
         );
 
         console.log(
@@ -55,8 +55,7 @@ export class EngineDirect implements StakeEngine {
             );
 
             const sig = await sendAndConfirmTransaction(app.connection, trans, [
-                app.funder,
-                app.fee_authority
+                app.funder
             ]);
 
             console.log(`Claimed Fee Harvest: ${sig}`);
