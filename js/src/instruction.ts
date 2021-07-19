@@ -145,7 +145,7 @@ export class Instruction {
 
         const keys: AccountMeta[] = [
             am(funder, true, true),
-            am(owner, true, false),
+            am(owner, false, false),
             am(community, true, true),
             am(primary, false, false),
             am(secondary, false, false),
