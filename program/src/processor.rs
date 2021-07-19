@@ -215,10 +215,6 @@ impl Processor {
         let rent_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
-        if !creator_info.is_signer {
-            return Err(StakingError::CommunityCreatorSignatureMissing.into());
-        }
-
         let rent = Rent::from_account_info(rent_info)?;
         let clock = Clock::from_account_info(clock_info)?;
 
