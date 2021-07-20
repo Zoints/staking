@@ -25,27 +25,11 @@ export class EngineBackend implements StakeEngine {
         community: AppCommunity,
         noSecondary: boolean
     ): Promise<void> {
-        const prep = await this.client.post('community/register/prepare', {
-            fund: true,
+        const result = await this.client.post('community/register', {
             owner: community.authority.publicKey.toBase58(),
             primary: community.primaryAuthority.publicKey.toBase58(),
             secondary: community.secondaryAuthority.publicKey.toBase58(),
-            community: community.key.publicKey.toBase58()
-        });
-
-        console.log(
-            `Community create prep: \n\tseed: ${prep.data.seed}\n\tmessage: ${prep.data.message}\n\tcommunity: ${prep.data.community}`
-        );
-
-        const data = Buffer.from(prep.data.message, 'base64');
-        const userSig = nacl.sign.detached(data, community.authority.secretKey);
-        const commSig = nacl.sign.detached(data, community.key.secretKey);
-
-        const result = await this.client.post('community/register', {
-            seed: prep.data.seed,
-            message: prep.data.message,
-            userSignature: Buffer.from(userSig).toString('base64'),
-            communitySignature: Buffer.from(commSig).toString('base64')
+            seed: Buffer.from(community.key.secretKey).toString('hex')
         });
 
         console.log(
@@ -130,6 +114,52 @@ export class EngineBackend implements StakeEngine {
         );
 
         console.log(`Stake result: ${result.data.txSignature}`);
+    }
+
+    async multiclaim(app: App, staker: AppStaker): Promise<void> {
+        const communities: string[] = [];
+        for (let c of app.communities) {
+            try {
+                await app.staking.getStakeWithoutId(
+                    c.key.publicKey,
+                    staker.key.publicKey
+                );
+            } catch (e) {
+                continue;
+            }
+
+            communities.push(c.key.publicKey.toBase58());
+
+            if (communities.length >= 8) {
+                break;
+            }
+        }
+
+        const prep = await this.client.post(
+            `stake/multi-claim/${staker.key.publicKey.toBase58()}/prepare`,
+            {
+                fund: true,
+                communities: communities
+            }
+        );
+        console.log(
+            `Multiclaim prep: \n\trecent: ${prep.data.recent}\n\tmessage: ${prep.data.message}`
+        );
+
+        const userSig = nacl.sign.detached(
+            Buffer.from(prep.data.message, 'base64'),
+            staker.key.secretKey
+        );
+
+        const result = await this.client.post(
+            `stake/multi-claim/${staker.key.publicKey.toBase58()}`,
+            {
+                userSignature: Buffer.from(userSig).toString('base64'),
+                message: prep.data.message
+            }
+        );
+
+        console.log(`Multiclaim result: ${result.data.txSignature}`);
     }
 
     async withdraw(

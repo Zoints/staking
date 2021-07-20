@@ -39,7 +39,7 @@ const config = {
     staker: [new Keypair()]
 };
 
-const connection = new Connection('http://localhost:8899');
+const connection = new Connection('http://localhost:8899', 'confirmed');
 const programId = config.deploy_key.publicKey;
 
 const token = new Token(
@@ -159,7 +159,6 @@ const staking = new Staking(programId, connection);
     );
     sendAndConfirmTransaction(connection, user_1_trans, [
         config.funder,
-        user_1,
         user_1_community
     ])
         .then((sig) => console.log(`User 1 community registered: ${sig}`))
@@ -185,7 +184,6 @@ const staking = new Staking(programId, connection);
     );
     sendAndConfirmTransaction(connection, zoints_1_trans, [
         config.funder,
-        zoints_1,
         zoints_1_community
     ])
         .then((sig) => console.log(`Zoints 1 community registered: ${sig}`))
