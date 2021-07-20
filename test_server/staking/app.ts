@@ -111,14 +111,17 @@ export class App {
     }
 
     print_config() {
+        const early = new Keypair();
         console.log(`#### .env file for backend dev ####
 ###################################
 STAKING_ENABLED=true
 STAKING_PROGRAM_ID=${this.program_id.toBase58()}
-STAKING_MINT=${this.mint_id.publicKey.toBase58()}
-SOL_FUNDER_PK=${this.funder.publicKey.toBase58()}
-SOL_FUNDER_ENCODING=hex
-SOL_FUNDER=${Buffer.from(this.funder.secretKey).toString('hex')}
+ZEE_MINT=${this.mint_id.publicKey.toBuffer().toString('base64')}
+FUNDER_PUBKEY=${this.funder.publicKey.toBase58()}
+FUNDER_SECRET=${Buffer.from(this.funder.secretKey).toString('hex')}
+ZCARDS_PROGRAM_ID=11111111111111111111111111111111
+EARLY_ADOPTERS_PUBKEY=${early.publicKey.toBase58()}
+EARLY_ADOPTERS_SECRET=${Buffer.from(early.secretKey).toString('hex')}
 ###################################
 `);
     }
