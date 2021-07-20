@@ -116,7 +116,7 @@ export class App {
 ###################################
 STAKING_ENABLED=true
 STAKING_PROGRAM_ID=${this.program_id.toBase58()}
-ZEE_MINT=${this.mint_id.publicKey.toBuffer().toString('base64')}
+ZEE_MINT=${this.mint_id.publicKey.toBase58()}
 FUNDER_PUBKEY=${this.funder.publicKey.toBase58()}
 FUNDER_SECRET=${Buffer.from(this.funder.secretKey).toString('hex')}
 ZCARDS_PROGRAM_ID=11111111111111111111111111111111
