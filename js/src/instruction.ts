@@ -204,7 +204,6 @@ export class Instruction {
         staker: PublicKey,
         stakerAssociated: PublicKey,
         community: PublicKey,
-        mint: PublicKey,
         amount: number | bigint
     ): Promise<TransactionInstruction> {
         const settingsId = await Staking.settingsId(programId);
@@ -227,7 +226,6 @@ export class Instruction {
             am(rewardPoolId, false, true),
             am(settingsId, false, true),
             am(stakeId, false, true),
-            am(mint, false, true),
             am(SYSVAR_CLOCK_PUBKEY, false, false),
             am(TOKEN_PROGRAM_ID, false, false)
         ];
@@ -296,7 +294,6 @@ export class Instruction {
         authority: PublicKey,
         authorityAssociated: PublicKey,
         community: PublicKey,
-        mint: PublicKey,
         instructionType: number
     ) {
         const settingsId = await Staking.settingsId(programId);
@@ -311,7 +308,6 @@ export class Instruction {
             am(settingsId, false, true),
             am(poolAuthorityId, false, false),
             am(rewardPoolId, false, true),
-            am(mint, false, true),
             am(SYSVAR_CLOCK_PUBKEY, false, false),
             am(TOKEN_PROGRAM_ID, false, false)
         ];
@@ -334,8 +330,7 @@ export class Instruction {
         funder: PublicKey,
         authority: PublicKey,
         authorityAssociated: PublicKey,
-        community: PublicKey,
-        mint: PublicKey
+        community: PublicKey
     ): Promise<TransactionInstruction> {
         return Instruction.claim(
             programId,
@@ -343,7 +338,6 @@ export class Instruction {
             authority,
             authorityAssociated,
             community,
-            mint,
             Instructions.ClaimPrimary
         );
     }
@@ -353,8 +347,7 @@ export class Instruction {
         funder: PublicKey,
         authority: PublicKey,
         authorityAssociated: PublicKey,
-        community: PublicKey,
-        mint: PublicKey
+        community: PublicKey
     ): Promise<TransactionInstruction> {
         return Instruction.claim(
             programId,
@@ -362,7 +355,6 @@ export class Instruction {
             authority,
             authorityAssociated,
             community,
-            mint,
             Instructions.ClaimSecondary
         );
     }
