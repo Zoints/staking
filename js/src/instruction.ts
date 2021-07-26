@@ -10,7 +10,7 @@ import {
 import { Staking, ZERO_KEY } from '.';
 import * as borsh from 'borsh';
 import './extendBorsh';
-import BN, { min } from 'bn.js';
+import BN from 'bn.js';
 
 export enum Instructions {
     Initialize,
