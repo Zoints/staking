@@ -79,8 +79,7 @@ export class EngineDirect implements StakeEngine {
                     app.funder.publicKey,
                     authority.publicKey,
                     assoc.address,
-                    community.key.publicKey,
-                    app.mint_id.publicKey
+                    community.key.publicKey
                 )
             );
             const sig = await sendAndConfirmTransaction(app.connection, trans, [
@@ -128,7 +127,6 @@ export class EngineDirect implements StakeEngine {
                 staker.key.publicKey,
                 assoc.address,
                 community.key.publicKey,
-                app.mint_id.publicKey,
                 amount
             )
         );
@@ -160,7 +158,6 @@ export class EngineDirect implements StakeEngine {
                         staker.key.publicKey,
                         assoc.address,
                         c.key.publicKey,
-                        app.mint_id.publicKey,
                         0
                     )
                 );
