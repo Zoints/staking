@@ -67,7 +67,6 @@ describe('Serialization', () => {
                     owner,
                     assoc,
                     community,
-                    mint,
                     666
                 )
             );

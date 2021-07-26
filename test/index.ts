@@ -230,7 +230,6 @@ const staking = new Staking(programId, connection);
             staker_1.publicKey,
             staker_1_associated.address,
             user_1_community.publicKey,
-            config.mint_id.publicKey,
             20_000
         )
     );
