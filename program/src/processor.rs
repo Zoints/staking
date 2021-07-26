@@ -18,8 +18,7 @@ use crate::{
     account::{Beneficiary, Community, PoolAuthority, RewardPool, Settings, StakePool, Staker},
     error::StakingError,
     instruction::StakingInstruction,
-    pool_burn, pool_transfer, split_stake, verify_associated, BASE_REWARD, MINIMUM_STAKE,
-    SECONDS_PER_YEAR,
+    pool_transfer, split_stake, verify_associated, BASE_REWARD, MINIMUM_STAKE, SECONDS_PER_YEAR,
 };
 
 pub enum Claims {
@@ -348,7 +347,6 @@ impl Processor {
         let reward_pool_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
-        let mint_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
         let clock = Clock::from_account_info(clock_info)?;
@@ -434,16 +432,11 @@ impl Processor {
         )?;
         stake.beneficiary.pending_reward = 0;
 
-        // burn secondary
+        // calculate secondary but leave funds in pool
         if community.secondary.is_empty() {
-            pool_burn!(
-                reward_pool_info,
-                pool_authority_info,
-                mint_info,
-                program_id,
-                community.secondary.pending_reward
-            )?;
-            community.secondary.pending_reward = 0;
+            community
+                .secondary
+                .pay_out(community.secondary.staked, settings.reward_per_share);
         }
 
         if staking {
@@ -552,7 +545,6 @@ impl Processor {
         let settings_info = next_account_info(iter)?;
         let pool_authority_info = next_account_info(iter)?;
         let reward_pool_info = next_account_info(iter)?;
-        let mint_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
         let clock = Clock::from_account_info(clock_info)?;
@@ -594,20 +586,11 @@ impl Processor {
         )?;
         beneficiary.pending_reward = 0;
 
-        // burn secondary
+        // calculate secondary but leave funds in pool
         if community.secondary.is_empty() {
             community
                 .secondary
                 .pay_out(community.secondary.staked, settings.reward_per_share);
-
-            pool_burn!(
-                reward_pool_info,
-                pool_authority_info,
-                mint_info,
-                program_id,
-                community.secondary.pending_reward
-            )?;
-            community.secondary.pending_reward = 0;
         }
 
         settings_info
