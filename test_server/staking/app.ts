@@ -123,6 +123,12 @@ ZCARDS_PROGRAM_ID=11111111111111111111111111111111
 EARLY_ADOPTERS_PUBKEY=${early.publicKey.toBase58()}
 EARLY_ADOPTERS_SECRET=${Buffer.from(early.secretKey).toString('hex')}
 ###################################
+#### FAUCET information
+MINT=${Buffer.from(this.mint_id.secretKey).toString(
+            'hex'
+        )} MINT_AUTHORITY=${Buffer.from(this.mint_authority.secretKey).toString(
+            'hex'
+        )} FUNDER=${Buffer.from(this.funder.secretKey).toString('hex')}
 `);
     }
 
