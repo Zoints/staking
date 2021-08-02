@@ -129,10 +129,6 @@ pub enum StakingError {
     /// Nothing to Withdraw
     #[error("Nothing to Withdraw")]
     NothingtoWithdraw,
-
-    /// placeholder
-    #[error("placeholder")]
-    Placeholder,
 }
 
 impl From<StakingError> for ProgramError {

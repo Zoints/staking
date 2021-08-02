@@ -9,10 +9,19 @@ pub mod processor;
 
 pub const ZERO_KEY: Pubkey = Pubkey::new_from_array([0; 32]);
 
+/// The minimum amount of ZEE a staker needs to stake.
+/// It is not allowed to withdraw to an amount below the minimum,
+/// unless they withdraw their entire balance.
 pub const MINIMUM_STAKE: u64 = 1_000;
+/// The amount of ZEE per year that are distributed as yield.
+/// The initial value of the emission system.
 pub const BASE_REWARD: u128 = 900_000_000_000;
+/// Helper constant
 pub const SECONDS_PER_YEAR: u128 = 31_536_000;
-
+/// Internally all yield calculations are done in integers to avoid
+/// floating point math. The precision is an arbitrary factor contained in
+/// the calculations to determine the number of significant post-decimal
+/// digits.
 pub const PRECISION: u128 = 1_000_000_000_000_000_000_000_000;
 
 /// Split Stake
@@ -87,7 +96,6 @@ mod tests {
     #[test]
     pub fn test_rps_calculation() {
         let max_years: u128 = 95;
-        let precision: u128 = 1_000_000_000_000_000_000_000_000;
         let mut emission_per_year: u128 = BASE_REWARD;
 
         let mut reward_per_share_min = 0;
@@ -98,16 +106,16 @@ mod tests {
         // calculate reward per share for x years
         for year in 0..max_years {
             let emission_per_seconds_min =
-                precision * emission_per_year / SECONDS_PER_YEAR / min_stake;
+                PRECISION * emission_per_year / SECONDS_PER_YEAR / min_stake;
             let emission_per_seconds_max =
-                precision * emission_per_year / SECONDS_PER_YEAR / max_stake;
+                PRECISION * emission_per_year / SECONDS_PER_YEAR / max_stake;
 
             println!(
                 "Year {}: ZEE per year: {}, ZEE per second per share minimum: {}, ZEE per second per share maximum: {}",
                 year + 1,
                 emission_per_year,
-                emission_per_seconds_min as f64 / precision as f64,
-                emission_per_seconds_max as f64 / precision as f64
+                emission_per_seconds_min as f64 / PRECISION as f64,
+                emission_per_seconds_max as f64 / PRECISION as f64
             );
 
             reward_per_share_min += emission_per_seconds_min * SECONDS_PER_YEAR;
@@ -118,11 +126,11 @@ mod tests {
 
         println!(
             "\nreward per share min {}\nreward per share max {}",
-            reward_per_share_min as f64 / precision as f64,
-            reward_per_share_max as f64 / precision as f64
+            reward_per_share_min as f64 / PRECISION as f64,
+            reward_per_share_max as f64 / PRECISION as f64
         );
-        let reward_min = min_stake * reward_per_share_min / precision;
-        let reward_max = max_stake * reward_per_share_max / precision;
+        let reward_min = min_stake * reward_per_share_min / PRECISION;
+        let reward_max = max_stake * reward_per_share_max / PRECISION;
 
         println!("{} year reward min: {} ZEE", max_years, reward_min);
         println!("{} year reward max: {} ZEE", max_years, reward_max);

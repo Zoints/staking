@@ -9,30 +9,40 @@ use crate::error::StakingError;
 use crate::ZERO_KEY;
 use crate::{PRECISION, SECONDS_PER_YEAR};
 
+/// Account to hold global variables commonly used by instructions
 #[repr(C)]
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
 pub struct Settings {
-    pub token: Pubkey,           // the spl token mint used for the pools
-    pub unbonding_duration: u64, // time (in seconds) that funds are locked after unstaking
+    /// SPL Token Mint accepted by instructions ("ZEE")
+    pub token: Pubkey,
+    /// Time (in seconds) that funds are locked after unstaking
+    pub unbonding_duration: u64,
+    /// The Beneficiary that receives 5% of all yield
     pub fee: Beneficiary,
 
-    // emissions settings
-    pub next_emission_change: UnixTimestamp, // the time at which "emission" is reduced by 25%
-    pub emission: u64,                       // the amount of ZEE paid out during the current period
+    /// The time at which emissions is reduced by 25%
+    pub next_emission_change: UnixTimestamp,
+    /// Amount of ZEE paid out during the current period
+    pub emission: u64,
 
     // tokenomics variables
     // for a more detailed explanation of the algorithm and variables
     // see https://www.mathcha.io/editor/j4V1YiODsYQu8dee0NiO39Z05cePQvk0f9qPex6
-    pub total_stake: u64,           // total amount of ZEE that has been staked
-    pub reward_per_share: u128,     // contains PRECISION
-    pub last_reward: UnixTimestamp, // last time the pool was updated
+    /// Total amount of ZEE staked
+    pub total_stake: u64,
+    /// The yield for every 1 ZEE staked, multiplied by PRECISION
+    pub reward_per_share: u128,
+    /// Last time the pool reward was updated
+    pub last_reward: UnixTimestamp,
 }
 
 impl Settings {
+    /// PDA of the settings account
     pub fn program_address(program_id: &Pubkey) -> (Pubkey, u8) {
         Pubkey::find_program_address(&[b"settings"], program_id)
     }
 
+    /// Verify if an address matches the settings PDA
     pub fn verify_program_address(
         address: &Pubkey,
         program_id: &Pubkey,
@@ -43,6 +53,8 @@ impl Settings {
         }
     }
 
+    /// Decode the Settings account from `AccountInfo`.
+    /// Verifies the address before deserializing the data.
     pub fn from_account_info(
         info: &AccountInfo,
         program_id: &Pubkey,
@@ -55,7 +67,7 @@ impl Settings {
     /// Update the Reward per Share variable
     ///
     /// The basic formula is:
-    ///   reward per share += <time elapsed> * <emissions during that period> / <total amount staked>
+    ///   `reward per share += <time elapsed> * <emissions during that period> / <total amount staked>`
     ///
     /// Emissions are automatically reduced by 25% every year
     pub fn update_rewards(&mut self, now: UnixTimestamp) {
@@ -126,7 +138,11 @@ macro_rules! pool_transfer {
         }
     };
 }
-
+/// Verify an Associated Account
+///
+/// Shortcut macro to verify that a passed associated account is of a specific SPL Token.
+/// If an owner is passed along, it will additionall check if the associated account
+/// is owned by that address.
 #[macro_export]
 macro_rules! verify_associated {
     ($assoc:expr, $token:expr) => {
@@ -157,6 +173,7 @@ macro_rules! verify_associated {
     };
 }
 
+/// The PDA that owns the pool associated accounts
 #[derive(Debug, PartialEq, Clone, Copy, Eq)]
 pub struct PoolAuthority {}
 impl PoolAuthority {
@@ -174,8 +191,6 @@ impl PoolAuthority {
     }
 }
 
-/// Stake Pool
-///
 /// The stake pool is the token address that all ZEE are stored at when they are
 /// staked by users. The ZEE is returned when someone withdraws their stake but
 /// is not touched otherwise.
@@ -196,9 +211,7 @@ impl StakePool {
     }
 }
 
-/// Reward Fund
-///
-/// The reward fund is the token address that pays out yield.
+/// The reward fund is the token account that pays out yield.
 #[derive(Debug, PartialEq, Clone, Copy, Eq)]
 pub struct RewardPool {}
 impl RewardPool {
@@ -216,11 +229,23 @@ impl RewardPool {
     }
 }
 
+/// A Community is a the entity that someone can stake against to share yield.
+/// Each community has an authority, which is the solana address in charge of making
+/// decisions about the Community itself, once that functionality is implemented.
+/// The Primary beneficiary receives 45% of the staker's yield, the secondary beneficiary
+/// receives 5% of the staker's yield.
+///
+/// It is possible for a Community to have no secondary Beneficiary, in which case the
+/// the 5% stay in the reward pool.
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
 pub struct Community {
+    /// The time the community was initialized
     pub creation_date: UnixTimestamp,
+    /// The Community's authority
     pub authority: Pubkey,
+    /// The primary beneficiary receiving 45% of yield
     pub primary: Beneficiary,
+    /// The secondary beneficiary receiving 5% of yield
     pub secondary: Beneficiary,
 }
 
@@ -238,24 +263,34 @@ impl Community {
     }
 }
 
+/// A Beneficiary receives yield based on the amount of ZEE staked.
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
 pub struct Beneficiary {
+    /// The address who is allowed to harvest the yield
     pub authority: Pubkey,
 
+    /// The amount of ZEE staked for the beneficiary
     pub staked: u64,
+    /// Helper variable. For more information see https://www.mathcha.io/editor/j4V1YiODsYQu8dee0NiO39Z05cePQvk0f9qPex6
     pub reward_debt: u64,
+    /// Helper variable. The amount of ZEE that has been paid out theoretically but not transferred to the user's wallet
+    /// due to technical limitations.
     pub pending_reward: u64,
 }
 
 impl Beneficiary {
+    /// True if there is no authority
     pub fn is_empty(&self) -> bool {
         self.authority == ZERO_KEY
     }
 
+    /// The total amount of theoretical ZEE owed if the amount staked had been staked
+    /// since the beginning of time.
     pub fn calculate_pending_reward(&self, reward_per_share: u128) -> u64 {
         (self.staked as u128 * reward_per_share / PRECISION) as u64
     }
 
+    /// Update the pending reward when the amount staked changes.
     pub fn pay_out(&mut self, new_stake: u64, reward_per_share: u128) {
         let pending = self.calculate_pending_reward(reward_per_share) - self.reward_debt;
 
@@ -265,15 +300,21 @@ impl Beneficiary {
     }
 }
 
+/// The account that initiated a stake
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
 pub struct Staker {
+    /// Time the account was initiated
     pub creation_date: UnixTimestamp,
 
+    /// The total amount currently staked before splitting it up to beneficiaries.
     pub total_stake: u64,
 
+    /// The beneficary for the staker themselves
     pub beneficiary: Beneficiary,
 
+    /// The most recent time an amount was unstaked
     pub unbonding_start: UnixTimestamp,
+    /// The total amount of pending funds
     pub unbonding_amount: u64,
 }
 
