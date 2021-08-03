@@ -1,6 +1,6 @@
 {
   "name": "@zoints/staking",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "The JavaScript library for staking",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
