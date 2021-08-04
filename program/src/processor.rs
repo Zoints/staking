@@ -82,12 +82,14 @@ macro_rules! verify_associated {
         }
     };
 }
-/*
+
 #[macro_export]
 macro_rules! create_beneficiary {
-    ($beneficiary_info:expr, $funder_info:expr, $rent:expr, $program_id:expr) => {
+    ($beneficiary_info:expr, $authority:expr, $funder_info:expr, $rent:expr, $program_id:expr) => {
+        let seed =
+            Beneficiary::verify_program_address($beneficiary_info.key, $authority, $program_id)?;
         let beneficiary = Beneficiary {
-            authority: *beneficiary_info.key,
+            authority: *$authority,
             staked: 0,
             reward_debt: 0,
             pending_reward: 0,
@@ -95,26 +97,22 @@ macro_rules! create_beneficiary {
         let data = beneficiary.try_to_vec()?;
 
         let space = data.len();
-        let lamports = rent.minimum_balance(space);
+        let lamports = $rent.minimum_balance(space);
 
         invoke_signed(
             &create_account(
-                funder_info.key,
-                beneficiary_info.key,
+                $funder_info.key,
+                $beneficiary_info.key,
                 lamports,
                 space as u64,
-                program_id,
+                $program_id,
             ),
-            &[funder_info.clone(), beneficiary_info.clone()],
-            &[&[
-                b"beneficiary",
-                beneficiary_info.key.as_ref(),
-                &[settings_seed],
-            ]],
+            &[$funder_info.clone(), $beneficiary_info.clone()],
+            &[&[b"beneficiary", &$authority.to_bytes(), &[seed]]],
         )?;
-        beneficiary_info.data.borrow_mut().copy_from_slice(&data);
+        $beneficiary_info.data.borrow_mut().copy_from_slice(&data);
     };
-}*/
+}
 
 pub enum Claims {
     Primary,
@@ -220,41 +218,13 @@ impl Processor {
 
         msg!("Settings account created");
 
-        // create beneficiary account
-        //create_beneficiary!(fee_beneficiary_info, funder_info, &rent, program_id);
-
-        let beneficiary_seed = Beneficiary::verify_program_address(
+        create_beneficiary!(
+            fee_beneficiary_info,
             fee_beneficiary_info.key,
-            fee_info.key,
-            program_id,
-        )?;
-
-        let beneficiary = Beneficiary {
-            authority: *fee_info.key,
-            staked: 0,
-            reward_debt: 0,
-            pending_reward: 0,
-        };
-        let data = beneficiary.try_to_vec()?;
-
-        let space = data.len();
-        let lamports = rent.minimum_balance(space);
-
-        invoke_signed(
-            &create_account(
-                funder_info.key,
-                fee_beneficiary_info.key,
-                lamports,
-                space as u64,
-                program_id,
-            ),
-            &[funder_info.clone(), fee_beneficiary_info.clone()],
-            &[&[b"beneficiary", fee_info.key.as_ref(), &[beneficiary_seed]]],
-        )?;
-        fee_beneficiary_info
-            .data
-            .borrow_mut()
-            .copy_from_slice(&data);
+            funder_info,
+            &rent,
+            program_id
+        );
         msg!("Fee Beneficiary created");
 
         // create reward pool
@@ -316,82 +286,24 @@ impl Processor {
         }
 
         if primary_beneficiary_info.data_is_empty() {
-            let beneficiary_seed = Beneficiary::verify_program_address(
-                primary_beneficiary_info.key,
+            create_beneficiary!(
+                primary_beneficiary_info,
                 primary_info.key,
-                program_id,
-            )?;
-
-            let beneficiary = Beneficiary {
-                authority: *primary_info.key,
-                staked: 0,
-                reward_debt: 0,
-                pending_reward: 0,
-            };
-            let data = beneficiary.try_to_vec()?;
-
-            let space = data.len();
-            let lamports = rent.minimum_balance(space);
-
-            invoke_signed(
-                &create_account(
-                    funder_info.key,
-                    primary_beneficiary_info.key,
-                    lamports,
-                    space as u64,
-                    program_id,
-                ),
-                &[funder_info.clone(), primary_beneficiary_info.clone()],
-                &[&[
-                    b"beneficiary",
-                    primary_info.key.as_ref(),
-                    &[beneficiary_seed],
-                ]],
-            )?;
-            primary_beneficiary_info
-                .data
-                .borrow_mut()
-                .copy_from_slice(&data);
+                funder_info,
+                &rent,
+                program_id
+            );
             msg!("Primary Beneficiary created");
         }
 
         if secondary_beneficiary_info.data_is_empty() {
-            let beneficiary_seed = Beneficiary::verify_program_address(
-                secondary_beneficiary_info.key,
+            create_beneficiary!(
+                secondary_beneficiary_info,
                 secondary_info.key,
-                program_id,
-            )?;
-
-            let beneficiary = Beneficiary {
-                authority: *secondary_info.key,
-                staked: 0,
-                reward_debt: 0,
-                pending_reward: 0,
-            };
-            let data = beneficiary.try_to_vec()?;
-
-            let space = data.len();
-            let lamports = rent.minimum_balance(space);
-
-            invoke_signed(
-                &create_account(
-                    funder_info.key,
-                    secondary_beneficiary_info.key,
-                    lamports,
-                    space as u64,
-                    program_id,
-                ),
-                &[funder_info.clone(), secondary_beneficiary_info.clone()],
-                &[&[
-                    b"beneficiary",
-                    secondary_info.key.as_ref(),
-                    &[beneficiary_seed],
-                ]],
-            )?;
-            secondary_beneficiary_info
-                .data
-                .borrow_mut()
-                .copy_from_slice(&data);
+                funder_info,
+                &rent,
+                program_id
+            );
             msg!("Secondary Beneficiary created");
         }
 
@@ -500,43 +412,14 @@ impl Processor {
             .copy_from_slice(&stake.try_to_vec()?);
 
         if staker_beneficiary_info.data_is_empty() {
-            let beneficiary_seed = Beneficiary::verify_program_address(
-                staker_beneficiary_info.key,
+            create_beneficiary!(
+                staker_beneficiary_info,
                 staker_info.key,
-                program_id,
-            )?;
-
-            let beneficiary = Beneficiary {
-                authority: *staker_info.key,
-                staked: 0,
-                reward_debt: 0,
-                pending_reward: 0,
-            };
-            let data = beneficiary.try_to_vec()?;
-
-            let space = data.len();
-            let lamports = rent.minimum_balance(space);
-
-            invoke_signed(
-                &create_account(
-                    funder_info.key,
-                    staker_beneficiary_info.key,
-                    lamports,
-                    space as u64,
-                    program_id,
-                ),
-                &[funder_info.clone(), staker_beneficiary_info.clone()],
-                &[&[
-                    b"beneficiary",
-                    staker_info.key.as_ref(),
-                    &[beneficiary_seed],
-                ]],
-            )?;
-            staker_beneficiary_info
-                .data
-                .borrow_mut()
-                .copy_from_slice(&data);
-            msg!("Secondary Beneficiary created");
+                funder_info,
+                &rent,
+                program_id
+            );
+            msg!("Staker Beneficiary created");
         }
 
         // create staker fund
@@ -619,7 +502,7 @@ impl Processor {
             program_id,
         )?;
 
-        let mut community = Community::from_account_info(community_info, program_id)?;
+        let community = Community::from_account_info(community_info, program_id)?;
         let mut primary_beneficiary = Beneficiary::from_account_info(
             primary_beneficiary_info,
             &community.primary,
@@ -735,23 +618,20 @@ impl Processor {
             .data
             .borrow_mut()
             .copy_from_slice(&settings.try_to_vec()?);
-        fee_beneficiary_info
-            .data
-            .borrow_mut()
-            .copy_from_slice(&fee_beneficiary.try_to_vec()?);
         stake_info
             .data
             .borrow_mut()
             .copy_from_slice(&stake.try_to_vec()?);
+
+        // beneficiaries
+        fee_beneficiary_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&fee_beneficiary.try_to_vec()?);
         staker_beneficiary_info
             .data
             .borrow_mut()
             .copy_from_slice(&staker_beneficiary.try_to_vec()?);
-
-        community_info
-            .data
-            .borrow_mut()
-            .copy_from_slice(&community.try_to_vec()?);
         primary_beneficiary_info
             .data
             .borrow_mut()
@@ -772,8 +652,6 @@ impl Processor {
         let staker_associated_info = next_account_info(iter)?;
         let community_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
-        let pool_authority_info = next_account_info(iter)?;
-        let stake_pool_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
