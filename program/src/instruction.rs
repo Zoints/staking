@@ -105,32 +105,7 @@ pub enum StakingInstruction {
     ///     7. `[writable]` Reward Pool
     ///     8. `[]` Clock Sysvar
     ///     9. `[]` SPL Token Program
-    ClaimPrimary,
-    /// Claim Secondary Yield
-    ///
-    /// Expected Accounts:
-    ///     1. `[writable,signer]` Transaction payer
-    ///     2. `[signer]` Secondary Authority
-    ///     3. `[writable]` Authority's ZEE Token Account
-    ///     4. `[writable]` Community
-    ///     5. `[writable]` Settings
-    ///     6. `[]` Pool Authority
-    ///     7. `[writable]` Reward Pool
-    ///     8. `[]` Clock Sysvar
-    ///     9. `[]` SPL Token Program
-    ClaimSecondary,
-    /// Claim Global Fee
-    ///
-    /// Expected Accounts:
-    ///     1. `[writable,signer]` Transaction payer
-    ///     2. `[]` Fee Authority
-    ///     3. `[writable]` Authority's ZEE Token Account
-    ///     4. `[writable]` Settings
-    ///     5. `[]` Pool Authority
-    ///     6. `[writable]` Reward Pool
-    ///     7. `[]` Clock Sysvar
-    ///     8. `[]` SPL Token Program
-    ClaimFee,
+    Claim,
 }
 
 #[cfg(test)]

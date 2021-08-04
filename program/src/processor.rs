@@ -114,12 +114,6 @@ macro_rules! create_beneficiary {
     };
 }
 
-pub enum Claims {
-    Primary,
-    Secondary,
-    Fee,
-}
-
 pub struct Processor {}
 impl Processor {
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
@@ -145,13 +139,7 @@ impl Processor {
             StakingInstruction::WithdrawUnbond => {
                 Self::process_withdraw_unbond(program_id, accounts)
             }
-            StakingInstruction::ClaimPrimary => {
-                Self::process_claim(program_id, accounts, Claims::Primary)
-            }
-            StakingInstruction::ClaimSecondary => {
-                Self::process_claim(program_id, accounts, Claims::Secondary)
-            }
-            StakingInstruction::ClaimFee => Self::process_claim_fee(program_id, accounts),
+            StakingInstruction::Claim => Self::process_claim(program_id, accounts),
         }
     }
 
@@ -722,124 +710,58 @@ impl Processor {
         Ok(())
     }
 
-    pub fn process_claim(
-        program_id: &Pubkey,
-        accounts: &[AccountInfo],
-        claim: Claims,
-    ) -> ProgramResult {
-        /*        let iter = &mut accounts.iter();
-                let _funder_info = next_account_info(iter)?;
-                let authority_info = next_account_info(iter)?;
-                let authority_associated_info = next_account_info(iter)?;
-                let community_info = next_account_info(iter)?;
-                let settings_info = next_account_info(iter)?;
-                let pool_authority_info = next_account_info(iter)?;
-                let reward_pool_info = next_account_info(iter)?;
-                let clock_info = next_account_info(iter)?;
+    pub fn process_claim(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+        let iter = &mut accounts.iter();
+        let _funder_info = next_account_info(iter)?;
 
-                let clock = Clock::from_account_info(clock_info)?;
-                let mut settings = Settings::from_account_info(settings_info, program_id)?;
-                let mut community = Community::from_account_info(community_info, program_id)?;
+        let authority_info = next_account_info(iter)?;
+        let beneficiary_info = next_account_info(iter)?;
+        let authority_associated_info = next_account_info(iter)?;
+        let settings_info = next_account_info(iter)?;
+        let pool_authority_info = next_account_info(iter)?;
+        let reward_pool_info = next_account_info(iter)?;
+        let clock_info = next_account_info(iter)?;
 
-                if !authority_info.is_signer {
-                    return Err(StakingError::AuthorizedSignatureMissing.into());
-                }
+        let clock = Clock::from_account_info(clock_info)?;
+        let mut settings = Settings::from_account_info(settings_info, program_id)?;
 
-                settings.update_rewards(clock.unix_timestamp);
+        if !authority_info.is_signer {
+            return Err(StakingError::AuthorizedSignatureMissing.into());
+        }
 
-                let beneficiary = match claim {
-                    Claims::Primary => &mut community.primary,
-                    Claims::Secondary => &mut community.secondary,
-                    Claims::Fee => return Err(ProgramError::InvalidArgument),
-                };
+        settings.update_rewards(clock.unix_timestamp);
 
-                if beneficiary.authority != *authority_info.key {
-                    return Err(StakingError::AuthorizedSignatureMissing.into());
-                }
+        let mut beneficiary =
+            Beneficiary::from_account_info(beneficiary_info, authority_info.key, program_id)?;
 
-                verify_associated!(
-                    authority_associated_info,
-                    settings.token,
-                    *authority_info.key
-                )?;
+        verify_associated!(
+            authority_associated_info,
+            settings.token,
+            *authority_info.key
+        )?;
 
-                // the stake amount doesn't change, so there's no need to update staker/secondary at the same time
-                beneficiary.pay_out(beneficiary.staked, settings.reward_per_share);
-                // pay out pending reward
-                pool_transfer!(
-                    RewardPool,
-                    reward_pool_info,
-                    authority_associated_info,
-                    pool_authority_info,
-                    program_id,
-                    beneficiary.pending_reward
-                )?;
-                beneficiary.pending_reward = 0;
+        // the stake amount doesn't change, so there's no need to update staker
+        beneficiary.pay_out(beneficiary.staked, settings.reward_per_share);
+        // pay out pending reward
+        pool_transfer!(
+            RewardPool,
+            reward_pool_info,
+            authority_associated_info,
+            pool_authority_info,
+            program_id,
+            beneficiary.pending_reward
+        )?;
+        beneficiary.pending_reward = 0;
 
-                // calculate secondary but leave funds in pool
-                if community.secondary.is_empty() {
-                    community
-                        .secondary
-                        .pay_out(community.secondary.staked, settings.reward_per_share);
-                }
+        settings_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&settings.try_to_vec()?);
+        beneficiary_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&beneficiary.try_to_vec()?);
 
-                settings_info
-                    .data
-                    .borrow_mut()
-                    .copy_from_slice(&settings.try_to_vec()?);
-                community_info
-                    .data
-                    .borrow_mut()
-                    .copy_from_slice(&community.try_to_vec()?);
-        */
-        Ok(())
-    }
-
-    pub fn process_claim_fee(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
-        /*let iter = &mut accounts.iter();
-                let _funder_info = next_account_info(iter)?;
-                let authority_info = next_account_info(iter)?;
-                let authority_associated_info = next_account_info(iter)?;
-                let settings_info = next_account_info(iter)?;
-                let pool_authority_info = next_account_info(iter)?;
-                let reward_pool_info = next_account_info(iter)?;
-                let clock_info = next_account_info(iter)?;
-
-                let clock = Clock::from_account_info(clock_info)?;
-                let mut settings = Settings::from_account_info(settings_info, program_id)?;
-
-                settings.update_rewards(clock.unix_timestamp);
-
-                if settings.fee.authority != *authority_info.key {
-                    return Err(StakingError::AuthorizedSignatureMissing.into());
-                }
-
-                verify_associated!(
-                    authority_associated_info,
-                    settings.token,
-                    *authority_info.key
-                )?;
-
-                // the stake amount doesn't change, so there's no need to update staker/secondary at the same time
-                settings
-                    .fee
-                    .pay_out(settings.fee.staked, settings.reward_per_share);
-                // pay out pending reward
-                pool_transfer!(
-                    RewardPool,
-                    reward_pool_info,
-                    authority_associated_info,
-                    pool_authority_info,
-                    program_id,
-                    settings.fee.pending_reward
-                )?;
-                settings.fee.pending_reward = 0;
-
-                settings_info
-                    .data
-                    .borrow_mut()
-                    .copy_from_slice(&settings.try_to_vec()?);
-        */
         Ok(())
     }
 }
