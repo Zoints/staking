@@ -82,6 +82,10 @@ pub enum StakingError {
     #[error("Invalid Stake Account")]
     InvalidStakeAccount,
 
+    /// Invalid Stake Fund Account
+    #[error("Invalid Stake Fund Account")]
+    InvalidStakeFundAccount,
+
     /// Invalid Community Account
     #[error("Invalid Community Account")]
     InvalidCommunityAccount,
@@ -129,6 +133,14 @@ pub enum StakingError {
     /// Nothing to Withdraw
     #[error("Nothing to Withdraw")]
     NothingtoWithdraw,
+
+    /// Invalid Beneficiary Account
+    #[error("Invalid Beneficiary Account")]
+    InvalidBeneficiaryAccount,
+
+    /// Invalid Token
+    #[error("Invalid Token")]
+    InvalidToken,
 }
 
 impl From<StakingError> for ProgramError {
