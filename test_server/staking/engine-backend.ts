@@ -1,4 +1,9 @@
-import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
+import {
+    Keypair,
+    PublicKey,
+    sendAndConfirmTransaction,
+    Transaction
+} from '@solana/web3.js';
 import { Instruction, ZERO_KEY } from '@zoints/staking';
 import { App, Claims } from './app';
 import { AppCommunity, AppStaker } from './community';
@@ -37,12 +42,8 @@ export class EngineBackend implements StakeEngine {
         );
     }
 
-    async claim(
-        app: App,
-        claim: Claims,
-        community: AppCommunity
-    ): Promise<void> {
-        if (claim == Claims.Fee) {
+    async claim(app: App, authority?: Keypair): Promise<void> {
+        /*        if (claim == Claims.Fee) {
             await app.token.getOrCreateAssociatedAccountInfo(
                 app.fee_authority.publicKey
             );
@@ -81,7 +82,7 @@ export class EngineBackend implements StakeEngine {
                     result.data.txSignature
                 }`
             );
-        }
+        }*/
     }
     async stake(
         app: App,
@@ -114,52 +115,6 @@ export class EngineBackend implements StakeEngine {
         );
 
         console.log(`Stake result: ${result.data.txSignature}`);
-    }
-
-    async multiclaim(app: App, staker: AppStaker): Promise<void> {
-        const communities: string[] = [];
-        for (let c of app.communities) {
-            try {
-                await app.staking.getStakeWithoutId(
-                    c.key.publicKey,
-                    staker.key.publicKey
-                );
-            } catch (e) {
-                continue;
-            }
-
-            communities.push(c.key.publicKey.toBase58());
-
-            if (communities.length >= 8) {
-                break;
-            }
-        }
-
-        const prep = await this.client.post(
-            `stake/multi-claim/${staker.key.publicKey.toBase58()}/prepare`,
-            {
-                fund: true,
-                communities: communities
-            }
-        );
-        console.log(
-            `Multiclaim prep: \n\trecent: ${prep.data.recent}\n\tmessage: ${prep.data.message}`
-        );
-
-        const userSig = nacl.sign.detached(
-            Buffer.from(prep.data.message, 'base64'),
-            staker.key.secretKey
-        );
-
-        const result = await this.client.post(
-            `stake/multi-claim/${staker.key.publicKey.toBase58()}`,
-            {
-                userSignature: Buffer.from(userSig).toString('base64'),
-                message: prep.data.message
-            }
-        );
-
-        console.log(`Multiclaim result: ${result.data.txSignature}`);
     }
 
     async withdraw(

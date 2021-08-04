@@ -182,18 +182,18 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
 
     public async claimPrimary(commId: number): Promise<string> {
         const community = this.communities[commId];
-        await this.engine.claim(this, Claims.Primary, community);
+        await this.engine.claim(this, community.primaryAuthority);
         return 'removed with engine';
     }
 
     public async claimFee(): Promise<string> {
-        await this.engine.claim(this, Claims.Fee);
+        await this.engine.claim(this, this.fee_authority);
         return 'removed with engine';
     }
 
     public async claimSecondary(commId: number): Promise<string> {
         const community = this.communities[commId];
-        await this.engine.claim(this, Claims.Secondary, community);
+        await this.engine.claim(this, community.secondaryAuthority);
         return 'removed with engine';
     }
 
@@ -207,12 +207,6 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
 
         await this.engine.stake(this, community, staker, amount);
 
-        return 'removed with engine';
-    }
-
-    public async multiclaim(stakerId: number): Promise<string> {
-        const staker = this.stakers[stakerId];
-        await this.engine.multiclaim(this, staker);
         return 'removed with engine';
     }
 
