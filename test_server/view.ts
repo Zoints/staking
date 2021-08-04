@@ -25,11 +25,18 @@ export async function viewCommunity(staking: App, id: number): Promise<string> {
     const rps = settings.calculateRewardPerShare(new Date());
 
     const assocPrimary = await staking.token.getOrCreateAssociatedAccountInfo(
-        community.primary.authority
+        community.primary
+    );
+    const primaryBeneficiary = await staking.staking.getBeneficiary(
+        community.primary
+    );
+
+    const secondaryBeneficiary = await staking.staking.getBeneficiary(
+        community.secondary
     );
 
     let secondary = '';
-    if (community.secondary.isEmpty()) {
+    if (secondaryBeneficiary.isEmpty()) {
         secondary = `        <tr>
             <td>Authority</td>
             <td>None</td>
@@ -45,31 +52,31 @@ export async function viewCommunity(staking: App, id: number): Promise<string> {
         </tr>
         <tr>
             <td>Staked</td>
-            <td>${community.secondary.staked.toString()}</td>
+            <td>${secondaryBeneficiary.staked.toString()}</td>
         </tr>
         <tr>
             <td>Reward Debt</td>
-            <td>${community.secondary.rewardDebt.toString()}</td>
+            <td>${secondaryBeneficiary.rewardDebt.toString()}</td>
         </tr>
         <tr>
             <td>Pending Reward</td>
-            <td>${community.secondary.pendingReward.toString()}</td>
+            <td>${secondaryBeneficiary.pendingReward.toString()}</td>
         </tr>
         <tr>
             <td>Harvestable</td>
-            <td>${community.secondary.calculateReward(rps).toString()}</td>
+            <td>${secondaryBeneficiary.calculateReward(rps).toString()}</td>
         </tr>`;
     } else {
         const assocSecondary =
             await staking.token.getOrCreateAssociatedAccountInfo(
-                community.secondary.authority
+                secondaryBeneficiary.authority
             );
 
         secondary = `        <tr>
             <td>Authority</td>
-            <td><a href="https://explorer.solana.com/address/${community.secondary.authority.toBase58()}?customUrl=${
+            <td><a href="https://explorer.solana.com/address/${secondaryBeneficiary.authority.toBase58()}?customUrl=${
             staking.connectionURL
-        }&cluster=custom">${community.secondary.authority.toBase58()}</td>
+        }&cluster=custom">${secondaryBeneficiary.authority.toBase58()}</td>
         </tr>
         <tr>
             <td>ZEE Address</td>
@@ -84,19 +91,19 @@ export async function viewCommunity(staking: App, id: number): Promise<string> {
         </tr>
         <tr>
             <td>Staked</td>
-            <td>${community.secondary.staked.toString()}</td>
+            <td>${secondaryBeneficiary.staked.toString()}</td>
         </tr>
         <tr>
             <td>Reward Debt</td>
-            <td>${community.secondary.rewardDebt.toString()}</td>
+            <td>${secondaryBeneficiary.rewardDebt.toString()}</td>
         </tr>
         <tr>
             <td>Pending Reward</td>
-            <td>${community.secondary.pendingReward.toString()}</td>
+            <td>${secondaryBeneficiary.pendingReward.toString()}</td>
         </tr>
         <tr>
             <td>Harvestable</td>
-            <td>${community.secondary
+            <td>${secondaryBeneficiary
                 .calculateReward(rps)
                 .toString()} (<a href="/claim/${
             appComm.id
@@ -132,9 +139,9 @@ export async function viewCommunity(staking: App, id: number): Promise<string> {
         </tr>
         <tr>
             <td>Authority</td>
-            <td><a href="https://explorer.solana.com/address/${community.primary.authority.toBase58()}?customUrl=${
+            <td><a href="https://explorer.solana.com/address/${primaryBeneficiary.authority.toBase58()}?customUrl=${
         staking.connectionURL
-    }&cluster=custom">${community.primary.authority.toBase58()}</td>
+    }&cluster=custom">${primaryBeneficiary.authority.toBase58()}</td>
         </tr>
         <tr>
             <td>ZEE Address</td>
@@ -149,19 +156,19 @@ export async function viewCommunity(staking: App, id: number): Promise<string> {
         </tr>
         <tr>
             <td>Staked</td>
-            <td>${community.primary.staked.toString()}</td>
+            <td>${primaryBeneficiary.staked.toString()}</td>
         </tr>
         <tr>
             <td>Reward Debt</td>
-            <td>${community.primary.rewardDebt.toString()}</td>
+            <td>${primaryBeneficiary.rewardDebt.toString()}</td>
         </tr>
         <tr>
             <td>Pending Reward</td>
-            <td>${community.primary.pendingReward.toString()}</td>
+            <td>${primaryBeneficiary.pendingReward.toString()}</td>
         </tr>
         <tr>
             <td>Harvestable</td>
-            <td>${community.primary
+            <td>${primaryBeneficiary
                 .calculateReward(rps)
                 .toString()} (<a href="/claim/${
         appComm.id
@@ -201,6 +208,18 @@ export async function viewStaker(staking: App, id: number): Promise<string> {
             const stakeAccount = await staking.staking.getStakeWithoutId(
                 community.key.publicKey,
                 appStaker.key.publicKey
+            );
+            const beneficiary = await staking.staking.getBeneficiary(
+                appStaker.key.publicKey
+            );
+
+            const stakingFundId = await Staking.stakeFundAddress(
+                community.key.publicKey,
+                appStaker.key.publicKey,
+                staking.program_id
+            );
+            const stakingFund = await staking.token.getAccountInfo(
+                stakingFundId
             );
 
             let unbonding = '';
@@ -247,6 +266,15 @@ export async function viewStaker(staking: App, id: number): Promise<string> {
                     <td>Total Stake</td>
                     <td>${stakeAccount.totalStake.toString()}</td>
                 </tr>
+
+                <td>Staking Fund</td>
+                    <td><a href="https://explorer.solana.com/address/${stakingFundId.toBase58()}?customUrl=${
+                staking.connectionURL
+            }&cluster=custom">${stakingFundId.toBase58()}</td>
+                <tr>
+                    <td>Staking Fund Balance</td>
+                    <td>${stakingFund.amount.toString()}</td>
+                </tr>
                 
                 <tr>
                     <td>Unbonding Amount</td>
@@ -260,28 +288,26 @@ export async function viewStaker(staking: App, id: number): Promise<string> {
                     <td>Withdraw Unbond</td>
                     <td>${unbonding}</td>
                 </tr>                <tr>
-                    <td>Authority</td>
-                    <td><a href="https://explorer.solana.com/address/${stakeAccount.beneficiary.authority.toBase58()}?customUrl=${
+                <td>Authority</td>
+                    <td><a href="https://explorer.solana.com/address/${beneficiary.authority.toBase58()}?customUrl=${
                 staking.connectionURL
-            }&cluster=custom">${stakeAccount.beneficiary.authority.toBase58()}</td>
+            }&cluster=custom">${beneficiary.authority.toBase58()}</td>
                 </tr>
                 <tr>
                     <td>Staked</td>
-                    <td>${stakeAccount.beneficiary.staked.toString()}</td>
+                    <td>${beneficiary.staked.toString()}</td>
                 </tr>
                 <tr>
                     <td>Reward Debt</td>
-                    <td>${stakeAccount.beneficiary.rewardDebt.toString()}</td>
+                    <td>${beneficiary.rewardDebt.toString()}</td>
                 </tr>
                 <tr>
                     <td>Pending Reward</td>
-                    <td>${stakeAccount.beneficiary.pendingReward.toString()}</td>
+                    <td>${beneficiary.pendingReward.toString()}</td>
                 </tr>
                 <tr>
                     <td>Harvestable</td>
-                    <td>${stakeAccount.beneficiary
-                        .calculateReward(rps)
-                        .toString()}</td>
+                    <td>${beneficiary.calculateReward(rps).toString()}</td>
                 </tr>
             `;
         } catch (e: any) {
@@ -293,7 +319,7 @@ export async function viewStaker(staking: App, id: number): Promise<string> {
             </td></tr></table>`;
     }
 
-    let communities = `<h2>Communities</h2><a href="/multiclaim/${appStaker.id}">Withdraw first 8</a><br>${community_list}`;
+    let communities = `<h2>Communities</h2><a href="/multiclaim/${appStaker.id}">Withdraw All</a><br>${community_list}`;
 
     return `<table>
         <tr>
@@ -348,9 +374,6 @@ export async function wrap(staking: App, content: string): Promise<string> {
     }
     const stakers = `<ol>${stakers_list}</ol> <a href="/addStaker">Add Staker</a>`;
 
-    const stakePoolId = await Staking.stakePoolId(staking.program_id);
-    const stakePool = await staking.token.getAccountInfo(stakePoolId);
-
     const rewardPoolId = await Staking.rewardPoolId(staking.program_id);
     const rewardPool = await staking.token.getAccountInfo(rewardPoolId);
 
@@ -372,6 +395,10 @@ export async function wrap(staking: App, content: string): Promise<string> {
         unbonding += `${remain} seconds`;
     }
     const rps = settings.calculateRewardPerShare(new Date());
+
+    const feeBeneficiary = await staking.staking.getBeneficiary(
+        settings.feeRecipient
+    );
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -404,10 +431,6 @@ export async function wrap(staking: App, content: string): Promise<string> {
         <td>${pretty(settings.lastReward)}</td>
     </tr>
     <tr>
-        <td>Stake Pool Balance</td>
-        <td>${stakePool.amount.toString()}</td>
-    </tr>
-    <tr>
         <td>Reward Pool Balance</td>
         <td>${rewardPool.amount.toString()}</td>
     </tr>
@@ -434,25 +457,27 @@ export async function wrap(staking: App, content: string): Promise<string> {
 
     <tr>
         <td>Authority</td>
-        <td><a href="https://explorer.solana.com/address/${settings.fee.authority.toBase58()}?customUrl=${
+        <td><a href="https://explorer.solana.com/address/${feeBeneficiary.authority.toBase58()}?customUrl=${
         staking.connectionURL
-    }&cluster=custom">${settings.fee.authority.toBase58().substr(0, 8)}...</td>
+    }&cluster=custom">${feeBeneficiary.authority
+        .toBase58()
+        .substr(0, 8)}...</td>
     </tr>
     <tr>
         <td>Staked</td>
-        <td>${settings.fee.staked.toString()}</td>
+        <td>${feeBeneficiary.staked.toString()}</td>
     </tr>
     <tr>
         <td>Reward Debt</td>
-        <td>${settings.fee.rewardDebt.toString()}</td>
+        <td>${feeBeneficiary.rewardDebt.toString()}</td>
     </tr>
     <tr>
         <td>Pending Reward</td>
-        <td>${settings.fee.pendingReward.toString()}</td>
+        <td>${feeBeneficiary.pendingReward.toString()}</td>
     </tr>
     <tr>
         <td>Harvestable</td>
-        <td>${settings.fee
+        <td>${feeBeneficiary
             .calculateReward(rps)
             .toString()} (<a href="/claim/fee">Claim</a>)</td>
     </tr>

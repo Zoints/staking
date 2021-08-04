@@ -96,6 +96,15 @@ app.get(
     }
 );
 
+app.get(
+    '/multiclaim/:staker',
+    async (req: express.Request, res: express.Response) => {
+        const staker = Number(req.params.staker);
+        await staking.claimStaker(staker);
+        res.redirect('/staker/' + staker);
+    }
+);
+
 app.get('/claim/fee', async (req: express.Request, res: express.Response) => {
     await staking.claimFee();
     res.redirect('/');

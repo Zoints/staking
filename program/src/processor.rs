@@ -691,7 +691,7 @@ impl Processor {
                 stake_info.clone(),
             ],
             &[&[
-                b"staker",
+                b"stake",
                 &community_info.key.to_bytes(),
                 &staker_info.key.to_bytes(),
                 &[stake_seed],

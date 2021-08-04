@@ -180,6 +180,12 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
         );
     }
 
+    public async claimStaker(stakerId: number): Promise<string> {
+        const staker = this.stakers[stakerId];
+        await this.engine.claim(this, staker.key);
+        return 'removed with engine';
+    }
+
     public async claimPrimary(commId: number): Promise<string> {
         const community = this.communities[commId];
         await this.engine.claim(this, community.primaryAuthority);
