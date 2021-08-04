@@ -15,7 +15,7 @@ use solana_program::{
 use spl_token::state::{Account, Mint};
 
 use crate::{
-    account::{Beneficiary, Community, PoolAuthority, RewardPool, Settings, Staker},
+    account::{Beneficiary, Community, PoolAuthority, RewardPool, Settings, Stake},
     error::StakingError,
     instruction::StakingInstruction,
     pool_transfer, split_stake, verify_associated, BASE_REWARD, MINIMUM_STAKE, SECONDS_PER_YEAR,
@@ -357,14 +357,14 @@ impl Processor {
 
         Community::from_account_info(community_info, program_id)?;
 
-        let seed = Staker::verify_program_address(
+        let seed = Stake::verify_program_address(
             stake_info.key,
             community_info.key,
             staker_info.key,
             program_id,
         )?;
 
-        let stake = Staker {
+        let stake = Stake {
             creation_date: clock.unix_timestamp,
             total_stake: 0,
             staker: *staker_info.key,
@@ -413,7 +413,7 @@ impl Processor {
         // create staker fund
         let space = Account::LEN as u64;
         let lamports = rent.minimum_balance(Account::LEN);
-        let staker_fund_seed = Staker::verify_fund_address(
+        let staker_fund_seed = Stake::verify_fund_address(
             staker_fund_info.key,
             community_info.key,
             staker_info.key,
@@ -469,7 +469,6 @@ impl Processor {
         let community_info = next_account_info(iter)?;
         let primary_beneficiary_info = next_account_info(iter)?;
         let secondary_beneficiary_info = next_account_info(iter)?;
-        let community_info = next_account_info(iter)?;
         let pool_authority_info = next_account_info(iter)?;
         let reward_pool_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
@@ -506,7 +505,7 @@ impl Processor {
             verify_associated!(staker_associated_info, settings.token, *staker_info.key)?;
 
         let mut stake =
-            Staker::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
+            Stake::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
         let mut staker_beneficiary =
             Beneficiary::from_account_info(staker_beneficiary_info, staker_info.key, program_id)?;
 
@@ -653,14 +652,14 @@ impl Processor {
 
         verify_associated!(staker_associated_info, settings.token, *staker_info.key)?;
 
-        let stake_seed = Staker::verify_program_address(
+        let stake_seed = Stake::verify_program_address(
             stake_info.key,
             community_info.key,
             staker_info.key,
             program_id,
         )?;
         let mut stake =
-            Staker::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
+            Stake::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
 
         if stake.unbonding_amount == 0 {
             return Err(StakingError::WithdrawNothingtowithdraw.into());
@@ -670,7 +669,7 @@ impl Processor {
             return Err(StakingError::WithdrawUnbondingTimeNotOverYet.into());
         }
 
-        Staker::verify_fund_address(
+        Stake::verify_fund_address(
             staker_fund_info.key,
             community_info.key,
             staker_info.key,
