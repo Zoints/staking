@@ -313,7 +313,6 @@ export class Instruction {
         community: PublicKey
     ): Promise<TransactionInstruction> {
         const settingsId = await Staking.settingsId(programId);
-        const poolAuthorityId = await Staking.poolAuthorityId(programId);
         const stakeFund = await Staking.stakeFundAddress(
             community,
             staker,

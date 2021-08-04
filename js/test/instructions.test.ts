@@ -4,7 +4,7 @@ import * as borsh from 'borsh';
 import { InitSchema, Instruction, Instructions } from '../src';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import BN from 'bn.js';
-
+/*
 const programId = new PublicKey('A7PR2hfpVDsBqd83mD6WSEr9Z9CvDNJ9FehcvvLdvuC2');
 const funder = new PublicKey('F5AeZLFDdEnAPtfxHMKLTzNYNa9kLvGPM9b8dJzWpHGZ');
 const mint = new PublicKey('Q2P36HbwEBwxTSj8QhiMscbA21vBi7edJKbsb9KjBRM');
@@ -79,3 +79,4 @@ describe('Serialization', () => {
         expect(tx).to.eql(tx2);
     });
 });
+*/
