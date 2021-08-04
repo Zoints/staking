@@ -263,7 +263,7 @@ pub struct Stake {
 impl Stake {
     pub fn fund_address(community: &Pubkey, staker: &Pubkey, program_id: &Pubkey) -> (Pubkey, u8) {
         Pubkey::find_program_address(
-            &[b"staker fund", &community.to_bytes(), &staker.to_bytes()],
+            &[b"stake fund", &community.to_bytes(), &staker.to_bytes()],
             program_id,
         )
     }
@@ -285,7 +285,7 @@ impl Stake {
         program_id: &Pubkey,
     ) -> (Pubkey, u8) {
         Pubkey::find_program_address(
-            &[b"staker", &community.to_bytes(), &staker.to_bytes()],
+            &[b"stake", &community.to_bytes(), &staker.to_bytes()],
             program_id,
         )
     }

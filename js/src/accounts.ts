@@ -16,7 +16,7 @@ Date.prototype.getUnixTime = function (): number {
 export class Settings {
     public token: PublicKey;
     public unbondingTime: BN;
-    public fee: Beneficiary;
+    public feeRecipient: PublicKey;
 
     public nextEmissionChange: Date;
     public emission: BN;
@@ -33,10 +33,7 @@ export class Settings {
                 fields: [
                     ['token', [32]],
                     ['unbondingTime', 'u64'],
-                    ['feeAuthority', [32]],
-                    ['feeStaked', 'u64'],
-                    ['feeRewardDebt', 'u64'],
-                    ['feePendingReward', 'u64'],
+                    ['feeRecipient', [32]],
                     ['nextEmissionChange', 'u64'], // this is an i64 timestamp, so always > 0, u64 should be fine
                     ['emission', 'u64'],
 
@@ -51,10 +48,7 @@ export class Settings {
     constructor(params: {
         token: Uint8Array;
         unbondingTime: BN;
-        feeAuthority: Uint8Array;
-        feeStaked: BN;
-        feeRewardDebt: BN;
-        feePendingReward: BN;
+        feeRecipient: Uint8Array;
         nextEmissionChange: BN;
         emission: BN;
         totalStake: BN;
@@ -63,12 +57,7 @@ export class Settings {
     }) {
         this.token = new PublicKey(params.token);
         this.unbondingTime = params.unbondingTime;
-        this.fee = new Beneficiary({
-            authority: new PublicKey(params.feeAuthority),
-            staked: params.feeStaked,
-            rewardDebt: params.feeRewardDebt,
-            pendingReward: params.feePendingReward
-        });
+        this.feeRecipient = new PublicKey(params.feeRecipient);
         this.nextEmissionChange = new Date(
             params.nextEmissionChange.toNumber() * 1000
         );
@@ -121,19 +110,34 @@ export class Settings {
     }
 }
 
-class Beneficiary {
+export class Beneficiary {
     public authority: PublicKey;
     public staked: BN;
     public rewardDebt: BN;
     public pendingReward: BN;
 
+    static schema: borsh.Schema = new Map([
+        [
+            Beneficiary,
+            {
+                kind: 'struct',
+                fields: [
+                    ['authority', [32]],
+                    ['staked', 'u64'],
+                    ['rewardDebt', 'u64'],
+                    ['pendingReward', 'u64']
+                ]
+            }
+        ]
+    ]);
+
     constructor(params: {
-        authority: PublicKey;
+        authority: Uint8Array;
         staked: BN;
         rewardDebt: BN;
         pendingReward: BN;
     }) {
-        this.authority = params.authority;
+        this.authority = new PublicKey(params.authority);
         this.staked = params.staked;
         this.rewardDebt = params.rewardDebt;
         this.pendingReward = params.pendingReward;
@@ -155,8 +159,8 @@ export class Community {
     public creationDate: Date;
     public authority: PublicKey;
 
-    public primary: Beneficiary;
-    public secondary: Beneficiary;
+    public primary: PublicKey;
+    public secondary: PublicKey;
 
     static schema: borsh.Schema = new Map([
         [
@@ -166,14 +170,8 @@ export class Community {
                 fields: [
                     ['creationDate', 'u64'],
                     ['authority', [32]],
-                    ['primaryAuthority', [32]],
-                    ['primaryStaked', 'u64'],
-                    ['primaryRewardDebt', 'u64'],
-                    ['primaryPendingReward', 'u64'],
-                    ['secondaryAuthority', [32]],
-                    ['secondaryStaked', 'u64'],
-                    ['secondaryRewardDebt', 'u64'],
-                    ['secondaryPendingReward', 'u64']
+                    ['primary', [32]],
+                    ['secondary', [32]]
                 ]
             }
         ]
@@ -182,36 +180,20 @@ export class Community {
     constructor(params: {
         creationDate: BN;
         authority: Uint8Array;
-        primaryAuthority: Uint8Array;
-        primaryStaked: BN;
-        primaryRewardDebt: BN;
-        primaryPendingReward: BN;
-        secondaryAuthority: Uint8Array;
-        secondaryStaked: BN;
-        secondaryRewardDebt: BN;
-        secondaryPendingReward: BN;
+        primary: Uint8Array;
+        secondary: Uint8Array;
     }) {
         this.creationDate = new Date(params.creationDate.toNumber() * 1000);
         this.authority = new PublicKey(params.authority);
-        this.primary = new Beneficiary({
-            authority: new PublicKey(params.primaryAuthority),
-            staked: params.primaryStaked,
-            rewardDebt: params.primaryRewardDebt,
-            pendingReward: params.primaryPendingReward
-        });
-        this.secondary = new Beneficiary({
-            authority: new PublicKey(params.secondaryAuthority),
-            staked: params.secondaryStaked,
-            rewardDebt: params.secondaryRewardDebt,
-            pendingReward: params.secondaryPendingReward
-        });
+        this.primary = new PublicKey(params.primary);
+        this.secondary = new PublicKey(params.secondary);
     }
 }
 
 export class Stake {
     public creationDate: Date;
     public totalStake: BN;
-    public beneficiary: Beneficiary;
+    public staker: PublicKey;
     public unbondingStart: Date;
     public unbondingAmount: BN;
 
@@ -223,10 +205,7 @@ export class Stake {
                 fields: [
                     ['creationDate', 'u64'],
                     ['totalStake', 'u64'],
-                    ['authority', [32]],
-                    ['staked', 'u64'],
-                    ['rewardDebt', 'u64'],
-                    ['pendingReward', 'u64'],
+                    ['staker', [32]],
                     ['unbondingStart', 'u64'],
                     ['unbondingAmount', 'u64']
                 ]
@@ -237,21 +216,13 @@ export class Stake {
     constructor(params: {
         creationDate: BN;
         totalStake: BN;
-        authority: Uint8Array;
-        staked: BN;
-        rewardDebt: BN;
-        pendingReward: BN;
+        staker: Uint8Array;
         unbondingStart: BN;
         unbondingAmount: BN;
     }) {
         this.creationDate = new Date(params.creationDate.toNumber() * 1000);
         this.totalStake = params.totalStake;
-        this.beneficiary = new Beneficiary({
-            authority: new PublicKey(params.authority),
-            staked: params.staked,
-            rewardDebt: params.rewardDebt,
-            pendingReward: params.pendingReward
-        });
+        this.staker = new PublicKey(params.staker);
         this.unbondingAmount = params.unbondingAmount;
         this.unbondingStart = new Date(params.unbondingStart.toNumber() * 1000);
     }

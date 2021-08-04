@@ -1,5 +1,5 @@
 import { Connection, PublicKey } from '@solana/web3.js';
-import { Community, Settings } from './';
+import { Beneficiary, Community, Settings } from './';
 import * as borsh from 'borsh';
 import { Stake } from './accounts';
 
@@ -42,13 +42,6 @@ export class Staking {
         return this.getStake(stakeId);
     }
 
-    public async getStake(stakeId: PublicKey): Promise<Stake> {
-        const account = await this.connection.getAccountInfo(stakeId);
-        if (account === null) throw new Error('Unable to find staker account');
-
-        return borsh.deserialize(Stake.schema, Stake, account.data);
-    }
-
     static async settingsId(programId: PublicKey): Promise<PublicKey> {
         return (
             await PublicKey.findProgramAddress(
@@ -84,27 +77,62 @@ export class Staking {
         return Staking.rewardPoolId(this.programId);
     }
 
-    static async stakePoolId(programId: PublicKey): Promise<PublicKey> {
+    static async beneficiary(
+        authority: PublicKey,
+        programId: PublicKey
+    ): Promise<PublicKey> {
         return (
             await PublicKey.findProgramAddress(
-                [Buffer.from('stakepool')],
+                [Buffer.from('beneficiary'), authority.toBuffer()],
                 programId
             )
         )[0];
     }
 
-    async stakePoolId(): Promise<PublicKey> {
-        return Staking.stakePoolId(this.programId);
+    public async getBeneficiary(authority: PublicKey): Promise<Beneficiary> {
+        const beneficiaryId = await Staking.beneficiary(
+            authority,
+            this.programId
+        );
+        const account = await this.connection.getAccountInfo(beneficiaryId);
+        if (account === null)
+            throw new Error('Unable to find beneficiary account');
+
+        return borsh.deserialize(Beneficiary.schema, Beneficiary, account.data);
     }
 
     static async stakeAddress(
         programId: PublicKey,
         community: PublicKey,
-        owner: PublicKey
+        staker: PublicKey
     ): Promise<PublicKey> {
         return (
             await PublicKey.findProgramAddress(
-                [Buffer.from('staker'), community.toBuffer(), owner.toBuffer()],
+                [Buffer.from('stake'), community.toBuffer(), staker.toBuffer()],
+                programId
+            )
+        )[0];
+    }
+
+    public async getStake(stakeId: PublicKey): Promise<Stake> {
+        const account = await this.connection.getAccountInfo(stakeId);
+        if (account === null) throw new Error('Unable to find stake account');
+
+        return borsh.deserialize(Stake.schema, Stake, account.data);
+    }
+
+    static async stakeFundAddress(
+        community: PublicKey,
+        staker: PublicKey,
+        programId: PublicKey
+    ): Promise<PublicKey> {
+        return (
+            await PublicKey.findProgramAddress(
+                [
+                    Buffer.from('stake fund'),
+                    community.toBuffer(),
+                    staker.toBuffer()
+                ],
                 programId
             )
         )[0];

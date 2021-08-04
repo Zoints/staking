@@ -387,7 +387,7 @@ impl Processor {
             ),
             &[funder_info.clone(), stake_info.clone()],
             &[&[
-                b"staker",
+                b"stake",
                 &community_info.key.to_bytes(),
                 &staker_info.key.to_bytes(),
                 &[seed],
@@ -430,7 +430,7 @@ impl Processor {
             ),
             &[funder_info.clone(), staker_fund_info.clone()],
             &[&[
-                b"staker fund",
+                b"stake fund",
                 community_info.key.as_ref(),
                 staker_info.key.as_ref(),
                 &[staker_fund_seed],
