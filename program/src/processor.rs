@@ -725,7 +725,7 @@ impl Processor {
         let mut settings = Settings::from_account_info(settings_info, program_id)?;
 
         if !authority_info.is_signer {
-            return Err(StakingError::AuthorizedSignatureMissing.into());
+            return Err(StakingError::MissingAuthoritySignature.into());
         }
 
         settings.update_rewards(clock.unix_timestamp);
