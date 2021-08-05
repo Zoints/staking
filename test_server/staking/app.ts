@@ -16,17 +16,11 @@ import {
     Transaction
 } from '@solana/web3.js';
 import * as fs from 'fs';
-import { Instruction, Staking, ZERO_KEY } from '@zoints/staking';
+import { Instruction, Staking } from '@zoints/staking';
 import { seededKey, sleep } from './util';
 import * as crypto from 'crypto';
 import { AppCommunity, AppStaker } from './community';
 import { StakeEngine } from './engine';
-
-export enum Claims {
-    Primary,
-    Secondary,
-    Fee
-}
 
 export class App {
     seedPath: string;

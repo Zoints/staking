@@ -4,7 +4,7 @@ import {
     Transaction
 } from '@solana/web3.js';
 import { Instruction, ZERO_KEY } from '@zoints/staking';
-import { App, Claims } from './app';
+import { App } from './app';
 import { AppCommunity, AppStaker } from './community';
 import { StakeEngine } from './engine';
 
