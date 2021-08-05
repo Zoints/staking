@@ -114,7 +114,7 @@ export class Beneficiary {
     public authority: PublicKey;
     public staked: BN;
     public rewardDebt: BN;
-    public pendingReward: BN;
+    public holding: BN;
 
     static schema: borsh.Schema = new Map([
         [
@@ -125,7 +125,7 @@ export class Beneficiary {
                     ['authority', [32]],
                     ['staked', 'u64'],
                     ['rewardDebt', 'u64'],
-                    ['pendingReward', 'u64']
+                    ['holding', 'u64']
                 ]
             }
         ]
@@ -135,12 +135,12 @@ export class Beneficiary {
         authority: Uint8Array;
         staked: BN;
         rewardDebt: BN;
-        pendingReward: BN;
+        holding: BN;
     }) {
         this.authority = new PublicKey(params.authority);
         this.staked = params.staked;
         this.rewardDebt = params.rewardDebt;
-        this.pendingReward = params.pendingReward;
+        this.holding = params.holding;
     }
 
     public calculateReward(newRewardPerShare: BN): BN {

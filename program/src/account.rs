@@ -193,7 +193,7 @@ pub struct Beneficiary {
     pub reward_debt: u64,
     /// Helper variable. The amount of ZEE that has been paid out theoretically but not transferred to the user's wallet
     /// due to technical limitations.
-    pub pending_reward: u64,
+    pub holding: u64,
 }
 
 impl Beneficiary {
@@ -228,17 +228,17 @@ impl Beneficiary {
 
     /// The total amount of theoretical ZEE owed if the amount staked had been staked
     /// since the beginning of time.
-    pub fn calculate_pending_reward(&self, reward_per_share: u128) -> u64 {
+    pub fn calculate_holding(&self, reward_per_share: u128) -> u64 {
         (self.staked as u128 * reward_per_share / PRECISION) as u64
     }
 
     /// Update the pending reward when the amount staked changes.
     pub fn pay_out(&mut self, new_stake: u64, reward_per_share: u128) {
-        let pending = self.calculate_pending_reward(reward_per_share) - self.reward_debt;
+        let pending = self.calculate_holding(reward_per_share) - self.reward_debt;
 
         self.staked = new_stake;
-        self.reward_debt = self.calculate_pending_reward(reward_per_share);
-        self.pending_reward += pending;
+        self.reward_debt = self.calculate_holding(reward_per_share);
+        self.holding += pending;
     }
 }
 

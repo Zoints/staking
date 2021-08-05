@@ -59,8 +59,8 @@ export async function viewCommunity(staking: App, id: number): Promise<string> {
             <td>${secondaryBeneficiary.rewardDebt.toString()}</td>
         </tr>
         <tr>
-            <td>Pending Reward</td>
-            <td>${secondaryBeneficiary.pendingReward.toString()}</td>
+            <td>Holding</td>
+            <td>${secondaryBeneficiary.holding.toString()}</td>
         </tr>
         <tr>
             <td>Harvestable</td>
@@ -98,8 +98,8 @@ export async function viewCommunity(staking: App, id: number): Promise<string> {
             <td>${secondaryBeneficiary.rewardDebt.toString()}</td>
         </tr>
         <tr>
-            <td>Pending Reward</td>
-            <td>${secondaryBeneficiary.pendingReward.toString()}</td>
+            <td>Holding</td>
+            <td>${secondaryBeneficiary.holding.toString()}</td>
         </tr>
         <tr>
             <td>Harvestable</td>
@@ -163,8 +163,8 @@ export async function viewCommunity(staking: App, id: number): Promise<string> {
             <td>${primaryBeneficiary.rewardDebt.toString()}</td>
         </tr>
         <tr>
-            <td>Pending Reward</td>
-            <td>${primaryBeneficiary.pendingReward.toString()}</td>
+            <td>Holding</td>
+            <td>${primaryBeneficiary.holding.toString()}</td>
         </tr>
         <tr>
             <td>Harvestable</td>
@@ -302,8 +302,8 @@ export async function viewStaker(staking: App, id: number): Promise<string> {
                     <td>${beneficiary.rewardDebt.toString()}</td>
                 </tr>
                 <tr>
-                    <td>Pending Reward</td>
-                    <td>${beneficiary.pendingReward.toString()}</td>
+                    <td>Holding</td>
+                    <td>${beneficiary.holding.toString()}</td>
                 </tr>
                 <tr>
                     <td>Harvestable</td>
@@ -472,8 +472,8 @@ export async function wrap(staking: App, content: string): Promise<string> {
         <td>${feeBeneficiary.rewardDebt.toString()}</td>
     </tr>
     <tr>
-        <td>Pending Reward</td>
-        <td>${feeBeneficiary.pendingReward.toString()}</td>
+        <td>Holding</td>
+        <td>${feeBeneficiary.holding.toString()}</td>
     </tr>
     <tr>
         <td>Harvestable</td>

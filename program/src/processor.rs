@@ -92,7 +92,7 @@ macro_rules! create_beneficiary {
             authority: *$authority,
             staked: 0,
             reward_debt: 0,
-            pending_reward: 0,
+            holding: 0,
         };
         let data = beneficiary.try_to_vec()?;
 
@@ -549,7 +549,7 @@ impl Processor {
         );
 
         // allow them to re-stake their pending reward immediately
-        if staking && staker_assoc.amount + staker_beneficiary.pending_reward < amount {
+        if staking && staker_assoc.amount + staker_beneficiary.holding < amount {
             return Err(StakingError::StakerBalanceTooLow.into());
         }
 
@@ -576,9 +576,10 @@ impl Processor {
             staker_associated_info,
             pool_authority_info,
             program_id,
-            staker_beneficiary.pending_reward
+            staker_beneficiary.holding
         )?;
-        staker_beneficiary.pending_reward = 0;
+        msg!("zee claimed: {}", staker_beneficiary.holding);
+        staker_beneficiary.holding = 0;
 
         if staking {
             // transfer the new staked amount to fund pool
@@ -700,6 +701,7 @@ impl Processor {
                 &[stake_seed],
             ]],
         )?;
+        msg!("zee amount transferred: {}", stake.unbonding_amount);
 
         stake.unbonding_amount = 0;
         stake.unbonding_start = clock.unix_timestamp;
@@ -751,9 +753,10 @@ impl Processor {
             authority_associated_info,
             pool_authority_info,
             program_id,
-            beneficiary.pending_reward
+            beneficiary.holding
         )?;
-        beneficiary.pending_reward = 0;
+        msg!("zee claimed: {}", beneficiary.holding);
+        beneficiary.holding = 0;
 
         settings_info
             .data
