@@ -533,17 +533,20 @@ impl Processor {
 
         settings.update_rewards(clock.unix_timestamp);
 
-        let (_, old_primary, old_secondary, old_fee) = split_stake(stake.total_stake);
+        let (old_staker, old_primary, old_secondary, old_fee) = split_stake(stake.total_stake);
         if staking {
             stake.total_stake += amount;
         } else {
             stake.total_stake -= amount;
         }
-        let (staker_share, new_primary, new_secondary, new_fee) = split_stake(stake.total_stake);
+        let (new_staker, new_primary, new_secondary, new_fee) = split_stake(stake.total_stake);
 
         // PROCESS STAKER'S REWARD
 
-        staker_beneficiary.pay_out(staker_share, settings.reward_per_share);
+        staker_beneficiary.pay_out(
+            staker_beneficiary.staked + new_staker - old_staker,
+            settings.reward_per_share,
+        );
 
         // allow them to re-stake their pending reward immediately
         if staking && staker_assoc.amount + staker_beneficiary.pending_reward < amount {
