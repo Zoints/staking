@@ -4,7 +4,7 @@ import * as borsh from 'borsh';
 import { InitSchema, Instruction, Instructions } from '../src';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import BN from 'bn.js';
-/*
+
 const programId = new PublicKey('A7PR2hfpVDsBqd83mD6WSEr9Z9CvDNJ9FehcvvLdvuC2');
 const funder = new PublicKey('F5AeZLFDdEnAPtfxHMKLTzNYNa9kLvGPM9b8dJzWpHGZ');
 const mint = new PublicKey('Q2P36HbwEBwxTSj8QhiMscbA21vBi7edJKbsb9KjBRM');
@@ -44,11 +44,21 @@ describe('Serialization', () => {
         const community = new PublicKey(
             '2VqNb6Y1CmrZefiVL2shgudkxrTF9VuqDteqwV8jJ7D5'
         );
-        const owner = new PublicKey(
+        const staker = new PublicKey(
             'Svg3TsfzMNY8HbJzAYbVhGXeTJFwFfWbVirJSfyqPxd'
         );
         const assoc = new PublicKey(
             '8G9cBnmyqH2sQDqdUjEk5T4dpUTXaUqCkWEKgY4GJv1B'
+        );
+
+        const primary = new PublicKey(
+            '2bvn5d4krBDdCXEMH9KKHPx8xGauv6wEsaPZWAyYnUJh'
+        );
+        const secondary = new PublicKey(
+            '73aD1aXy4Z1arEYHCVxefmZHm4PgHTY7fxXTD34bSirf'
+        );
+        const feeRecipient = new PublicKey(
+            '274Mk1JY6sKNtbeWtZsW5DSC3SWmCknmx7qsPR1EWxpQ'
         );
 
         const tx = new Transaction()
@@ -56,17 +66,21 @@ describe('Serialization', () => {
                 await Instruction.InitializeStake(
                     programId,
                     funder,
-                    owner,
-                    community
+                    staker,
+                    community,
+                    mint
                 )
             )
             .add(
                 await Instruction.Stake(
                     programId,
                     funder,
-                    owner,
+                    staker,
                     assoc,
                     community,
+                    feeRecipient,
+                    primary,
+                    secondary,
                     666
                 )
             );
@@ -79,4 +93,3 @@ describe('Serialization', () => {
         expect(tx).to.eql(tx2);
     });
 });
-*/
