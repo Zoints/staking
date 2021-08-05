@@ -1,5 +1,5 @@
-import { PublicKey } from '@solana/web3.js';
-import { App, Claims } from './app';
+import { Keypair } from '@solana/web3.js';
+import { App } from './app';
 import { AppCommunity, AppStaker } from './community';
 
 export interface StakeEngine {
@@ -8,14 +8,13 @@ export interface StakeEngine {
         community: AppCommunity,
         noSecondary: boolean
     ): Promise<void>;
-    claim(app: App, claim: Claims, community?: AppCommunity): Promise<void>;
+    claim(app: App, authority?: Keypair): Promise<void>;
     stake(
         app: App,
         community: AppCommunity,
         staker: AppStaker,
         amount: number
     ): Promise<void>;
-    multiclaim(app: App, staker: AppStaker): Promise<void>;
     withdraw(
         app: App,
         community: AppCommunity,

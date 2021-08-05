@@ -18,7 +18,7 @@ pub struct Settings {
     /// Time (in seconds) that funds are locked after unstaking
     pub unbonding_duration: u64,
     /// The Beneficiary that receives 5% of all yield
-    pub fee: Beneficiary,
+    pub fee_recipient: Pubkey,
 
     /// The time at which emissions is reduced by 25%
     pub next_emission_change: UnixTimestamp,
@@ -111,68 +111,6 @@ impl Settings {
     }
 }
 
-/// Transfer ZEE from a Pool
-///
-/// The type of pool (RewardPool/StakePool) has to be specified as the first parameter.
-/// The recipient has to be verified to be ZEE before this is used.
-#[macro_export]
-macro_rules! pool_transfer {
-    ($fund_type:ident, $fund:expr, $recipient:expr, $authority:expr, $program_id:expr, $amount:expr) => {
-        match PoolAuthority::verify_program_address($authority.key, $program_id) {
-            Ok(seed) => match $fund_type::verify_program_address($fund.key, $program_id) {
-                Ok(_) => invoke_signed(
-                    &spl_token::instruction::transfer(
-                        &spl_token::id(),
-                        $fund.key,
-                        $recipient.key,
-                        $authority.key,
-                        &[],
-                        $amount,
-                    )?,
-                    &[$fund.clone(), $recipient.clone(), $authority.clone()],
-                    &[&[b"poolauthority", &[seed]]],
-                ),
-                Err(err) => Err(err),
-            },
-            Err(err) => Err(err),
-        }
-    };
-}
-/// Verify an Associated Account
-///
-/// Shortcut macro to verify that a passed associated account is of a specific SPL Token.
-/// If an owner is passed along, it will additionall check if the associated account
-/// is owned by that address.
-#[macro_export]
-macro_rules! verify_associated {
-    ($assoc:expr, $token:expr) => {
-        match Account::unpack(&$assoc.data.borrow()) {
-            Ok(account) => {
-                if account.mint != $token {
-                    Err(StakingError::AssociatedInvalidToken.into())
-                } else {
-                    Ok(account)
-                }
-            }
-            _ => Err(StakingError::AssociatedInvalidAccount),
-        }
-    };
-    ($assoc:expr, $token:expr, $owner:expr) => {
-        match Account::unpack(&$assoc.data.borrow()) {
-            Ok(account) => {
-                if account.mint != $token {
-                    Err(StakingError::AssociatedInvalidToken.into())
-                } else if account.owner != $owner {
-                    Err(StakingError::AssociatedInvalidOwner.into())
-                } else {
-                    Ok(account)
-                }
-            }
-            _ => Err(StakingError::AssociatedInvalidAccount),
-        }
-    };
-}
-
 /// The PDA that owns the pool associated accounts
 #[derive(Debug, PartialEq, Clone, Copy, Eq)]
 pub struct PoolAuthority {}
@@ -187,26 +125,6 @@ impl PoolAuthority {
         match Self::program_address(program_id) {
             (real, seed) if real == *address => Ok(seed),
             _ => Err(StakingError::InvalidPoolAuthorityAccount.into()),
-        }
-    }
-}
-
-/// The stake pool is the token address that all ZEE are stored at when they are
-/// staked by users. The ZEE is returned when someone withdraws their stake but
-/// is not touched otherwise.
-#[derive(Debug, PartialEq, Clone, Copy, Eq)]
-pub struct StakePool {}
-impl StakePool {
-    pub fn program_address(program_id: &Pubkey) -> (Pubkey, u8) {
-        Pubkey::find_program_address(&[b"stakepool"], program_id)
-    }
-    pub fn verify_program_address(
-        address: &Pubkey,
-        program_id: &Pubkey,
-    ) -> Result<u8, ProgramError> {
-        match Self::program_address(program_id) {
-            (real, seed) if real == *address => Ok(seed),
-            _ => Err(StakingError::InvalidStakePoolAccount.into()),
         }
     }
 }
@@ -244,9 +162,9 @@ pub struct Community {
     /// The Community's authority
     pub authority: Pubkey,
     /// The primary beneficiary receiving 45% of yield
-    pub primary: Beneficiary,
+    pub primary: Pubkey,
     /// The secondary beneficiary receiving 5% of yield
-    pub secondary: Beneficiary,
+    pub secondary: Pubkey,
 }
 
 impl Community {
@@ -275,10 +193,34 @@ pub struct Beneficiary {
     pub reward_debt: u64,
     /// Helper variable. The amount of ZEE that has been paid out theoretically but not transferred to the user's wallet
     /// due to technical limitations.
-    pub pending_reward: u64,
+    pub holding: u64,
 }
 
 impl Beneficiary {
+    pub fn program_address(authority: &Pubkey, program_id: &Pubkey) -> (Pubkey, u8) {
+        Pubkey::find_program_address(&[b"beneficiary", authority.as_ref()], program_id)
+    }
+    pub fn verify_program_address(
+        address: &Pubkey,
+        authority: &Pubkey,
+        program_id: &Pubkey,
+    ) -> Result<u8, ProgramError> {
+        match Self::program_address(authority, program_id) {
+            (real, seed) if real == *address => Ok(seed),
+            _ => Err(StakingError::InvalidBeneficiaryAccount.into()),
+        }
+    }
+
+    pub fn from_account_info(
+        info: &AccountInfo,
+        authority: &Pubkey,
+        program_id: &Pubkey,
+    ) -> Result<Beneficiary, ProgramError> {
+        Self::verify_program_address(info.key, authority, program_id)?;
+        Self::try_from_slice(&info.data.borrow())
+            .map_err(|_| StakingError::InvalidBeneficiaryAccount.into())
+    }
+
     /// True if there is no authority
     pub fn is_empty(&self) -> bool {
         self.authority == ZERO_KEY
@@ -286,31 +228,31 @@ impl Beneficiary {
 
     /// The total amount of theoretical ZEE owed if the amount staked had been staked
     /// since the beginning of time.
-    pub fn calculate_pending_reward(&self, reward_per_share: u128) -> u64 {
+    pub fn calculate_holding(&self, reward_per_share: u128) -> u64 {
         (self.staked as u128 * reward_per_share / PRECISION) as u64
     }
 
     /// Update the pending reward when the amount staked changes.
     pub fn pay_out(&mut self, new_stake: u64, reward_per_share: u128) {
-        let pending = self.calculate_pending_reward(reward_per_share) - self.reward_debt;
+        let pending = self.calculate_holding(reward_per_share) - self.reward_debt;
 
         self.staked = new_stake;
-        self.reward_debt = self.calculate_pending_reward(reward_per_share);
-        self.pending_reward += pending;
+        self.reward_debt = self.calculate_holding(reward_per_share);
+        self.holding += pending;
     }
 }
 
 /// The account that initiated a stake
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
-pub struct Staker {
+pub struct Stake {
     /// Time the account was initiated
     pub creation_date: UnixTimestamp,
 
     /// The total amount currently staked before splitting it up to beneficiaries.
     pub total_stake: u64,
 
-    /// The beneficary for the staker themselves
-    pub beneficiary: Beneficiary,
+    /// The staker's address
+    pub staker: Pubkey,
 
     /// The most recent time an amount was unstaked
     pub unbonding_start: UnixTimestamp,
@@ -318,14 +260,32 @@ pub struct Staker {
     pub unbonding_amount: u64,
 }
 
-impl Staker {
+impl Stake {
+    pub fn fund_address(community: &Pubkey, staker: &Pubkey, program_id: &Pubkey) -> (Pubkey, u8) {
+        Pubkey::find_program_address(
+            &[b"stake fund", &community.to_bytes(), &staker.to_bytes()],
+            program_id,
+        )
+    }
+    pub fn verify_fund_address(
+        address: &Pubkey,
+        community: &Pubkey,
+        staker: &Pubkey,
+        program_id: &Pubkey,
+    ) -> Result<u8, ProgramError> {
+        match Self::fund_address(community, staker, program_id) {
+            (real, seed) if real == *address => Ok(seed),
+            _ => Err(StakingError::InvalidStakeFundAccount.into()),
+        }
+    }
+
     pub fn program_address(
         community: &Pubkey,
         staker: &Pubkey,
         program_id: &Pubkey,
     ) -> (Pubkey, u8) {
         Pubkey::find_program_address(
-            &[b"staker", &community.to_bytes(), &staker.to_bytes()],
+            &[b"stake", &community.to_bytes(), &staker.to_bytes()],
             program_id,
         )
     }
@@ -347,9 +307,9 @@ impl Staker {
         community: &Pubkey,
         staker: &Pubkey,
         program_id: &Pubkey,
-    ) -> Result<Staker, ProgramError> {
-        Staker::verify_program_address(info.key, community, staker, program_id)?;
-        Staker::try_from_slice(&info.data.borrow())
+    ) -> Result<Stake, ProgramError> {
+        Self::verify_program_address(info.key, community, staker, program_id)?;
+        Self::try_from_slice(&info.data.borrow())
             .map_err(|_| StakingError::StakerInvalidStakeAccount.into())
     }
 }
@@ -365,13 +325,7 @@ mod tests {
         let v = Settings {
             token: Pubkey::new_unique(),
             unbonding_duration: 10 * 3600 * 24,
-            fee: Beneficiary {
-                authority: Pubkey::new_unique(),
-                reward_debt: 123872935235,
-                pending_reward: 200029384234,
-                staked: 9919283918239,
-            },
-
+            fee_recipient: Pubkey::new_unique(),
             next_emission_change: 98123798352345,
             emission: 23458972935823,
 
@@ -391,12 +345,7 @@ mod tests {
         let base = Settings {
             token: Pubkey::new_unique(),
             unbonding_duration: 0,
-            fee: Beneficiary {
-                authority: Pubkey::new_unique(),
-                reward_debt: 0,
-                pending_reward: 0,
-                staked: 0,
-            },
+            fee_recipient: Pubkey::new_unique(),
 
             next_emission_change: SECONDS_PER_YEAR as i64,
             emission: BASE_REWARD as u64,

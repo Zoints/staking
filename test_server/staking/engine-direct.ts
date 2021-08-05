@@ -1,6 +1,10 @@
-import { sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
+import {
+    Keypair,
+    sendAndConfirmTransaction,
+    Transaction
+} from '@solana/web3.js';
 import { Instruction, ZERO_KEY } from '@zoints/staking';
-import { App, Claims } from './app';
+import { App } from './app';
 import { AppCommunity, AppStaker } from './community';
 import { StakeEngine } from './engine';
 
@@ -34,63 +38,26 @@ export class EngineDirect implements StakeEngine {
         );
     }
 
-    async claim(
-        app: App,
-        claim: Claims,
-        community: AppCommunity
-    ): Promise<void> {
-        if (claim == Claims.Fee) {
-            const assoc = await app.token.getOrCreateAssociatedAccountInfo(
-                app.fee_authority.publicKey
-            );
+    async claim(app: App, authority: Keypair): Promise<void> {
+        const assoc = await app.token.getOrCreateAssociatedAccountInfo(
+            authority.publicKey
+        );
+        const trans = new Transaction().add(
+            await Instruction.Claim(
+                app.program_id,
+                app.funder.publicKey,
+                authority.publicKey,
+                assoc.address
+            )
+        );
+        const sig = await sendAndConfirmTransaction(app.connection, trans, [
+            app.funder,
+            authority
+        ]);
 
-            const trans = new Transaction();
-            trans.add(
-                await Instruction.ClaimFee(
-                    app.program_id,
-                    app.funder.publicKey,
-                    app.fee_authority.publicKey,
-                    assoc.address
-                )
-            );
-
-            const sig = await sendAndConfirmTransaction(app.connection, trans, [
-                app.funder
-            ]);
-
-            console.log(`Claimed Fee Harvest: ${sig}`);
-        } else {
-            const primary = claim == Claims.Primary;
-            const authority = primary
-                ? community.primaryAuthority
-                : community.secondaryAuthority;
-
-            const assoc = await app.token.getOrCreateAssociatedAccountInfo(
-                authority.publicKey
-            );
-
-            const instruction = primary
-                ? Instruction.ClaimPrimary
-                : Instruction.ClaimSecondary;
-            const trans = new Transaction();
-            trans.add(
-                await instruction(
-                    app.program_id,
-                    app.funder.publicKey,
-                    authority.publicKey,
-                    assoc.address,
-                    community.key.publicKey
-                )
-            );
-            const sig = await sendAndConfirmTransaction(app.connection, trans, [
-                app.funder,
-                authority
-            ]);
-
-            console.log(
-                `Claimed Primary=${primary} Harvest ${community.key.publicKey.toBase58()}: ${sig}`
-            );
-        }
+        console.log(
+            `Claimed Harvest ${authority.publicKey.toBase58()}: ${sig}`
+        );
     }
 
     async stake(
@@ -115,7 +82,8 @@ export class EngineDirect implements StakeEngine {
                     app.program_id,
                     app.funder.publicKey,
                     staker.key.publicKey,
-                    community.key.publicKey
+                    community.key.publicKey,
+                    app.mint_id.publicKey
                 )
             );
         }
@@ -127,6 +95,9 @@ export class EngineDirect implements StakeEngine {
                 staker.key.publicKey,
                 assoc.address,
                 community.key.publicKey,
+                app.fee_authority.publicKey,
+                community.primaryAuthority.publicKey,
+                community.secondaryAuthority.publicKey,
                 amount
             )
         );
@@ -136,46 +107,6 @@ export class EngineDirect implements StakeEngine {
         ]);
 
         console.log(`Staked: ${sig}`);
-    }
-
-    async multiclaim(app: App, staker: AppStaker): Promise<void> {
-        const assoc = await app.token.getOrCreateAssociatedAccountInfo(
-            staker.key.publicKey
-        );
-        const trans = new Transaction();
-
-        for (let c of app.communities) {
-            try {
-                await app.staking.getStakeWithoutId(
-                    c.key.publicKey,
-                    staker.key.publicKey
-                );
-
-                trans.add(
-                    await Instruction.Stake(
-                        app.program_id,
-                        app.funder.publicKey,
-                        staker.key.publicKey,
-                        assoc.address,
-                        c.key.publicKey,
-                        0
-                    )
-                );
-            } catch (e) {
-                continue;
-            }
-
-            if (trans.instructions.length >= 8) {
-                break;
-            }
-        }
-
-        const sig = await sendAndConfirmTransaction(app.connection, trans, [
-            app.funder,
-            staker.key
-        ]);
-
-        console.log(`Multiclaim: ${sig}`);
     }
 
     async withdraw(

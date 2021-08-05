@@ -16,17 +16,11 @@ import {
     Transaction
 } from '@solana/web3.js';
 import * as fs from 'fs';
-import { Instruction, Staking, ZERO_KEY } from '@zoints/staking';
+import { Instruction, Staking } from '@zoints/staking';
 import { seededKey, sleep } from './util';
 import * as crypto from 'crypto';
 import { AppCommunity, AppStaker } from './community';
 import { StakeEngine } from './engine';
-
-export enum Claims {
-    Primary,
-    Secondary,
-    Fee
-}
 
 export class App {
     seedPath: string;
@@ -180,20 +174,26 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
         );
     }
 
+    public async claimStaker(stakerId: number): Promise<string> {
+        const staker = this.stakers[stakerId];
+        await this.engine.claim(this, staker.key);
+        return 'removed with engine';
+    }
+
     public async claimPrimary(commId: number): Promise<string> {
         const community = this.communities[commId];
-        await this.engine.claim(this, Claims.Primary, community);
+        await this.engine.claim(this, community.primaryAuthority);
         return 'removed with engine';
     }
 
     public async claimFee(): Promise<string> {
-        await this.engine.claim(this, Claims.Fee);
+        await this.engine.claim(this);
         return 'removed with engine';
     }
 
     public async claimSecondary(commId: number): Promise<string> {
         const community = this.communities[commId];
-        await this.engine.claim(this, Claims.Secondary, community);
+        await this.engine.claim(this, community.secondaryAuthority);
         return 'removed with engine';
     }
 
@@ -207,12 +207,6 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
 
         await this.engine.stake(this, community, staker, amount);
 
-        return 'removed with engine';
-    }
-
-    public async multiclaim(stakerId: number): Promise<string> {
-        const staker = this.stakers[stakerId];
-        await this.engine.multiclaim(this, staker);
         return 'removed with engine';
     }
 

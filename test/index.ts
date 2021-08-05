@@ -147,6 +147,7 @@ const staking = new Staking(programId, connection);
     const user_1 = config.user_community[0].authority;
     const user_1_community = config.user_community[0].community;
     const user_1_primary = new Keypair();
+    const user_1_secondary = new Keypair();
 
     const user_1_trans = new Transaction().add(
         await Instruction.RegisterCommunity(
@@ -154,7 +155,8 @@ const staking = new Staking(programId, connection);
             config.funder.publicKey,
             user_1.publicKey,
             user_1_community.publicKey,
-            user_1_primary.publicKey
+            user_1_primary.publicKey,
+            user_1_secondary.publicKey
         )
     );
     sendAndConfirmTransaction(connection, user_1_trans, [
@@ -202,7 +204,8 @@ const staking = new Staking(programId, connection);
             programId,
             config.funder.publicKey,
             staker_1.publicKey,
-            user_1_community.publicKey
+            user_1_community.publicKey,
+            config.mint_id.publicKey
         )
     );
     const staker_1_sig = await sendAndConfirmTransaction(
@@ -230,6 +233,9 @@ const staking = new Staking(programId, connection);
             staker_1.publicKey,
             staker_1_associated.address,
             user_1_community.publicKey,
+            config.fee_authority.publicKey,
+            user_1_primary.publicKey,
+            user_1_secondary.publicKey,
             20_000
         )
     );

@@ -30,10 +30,6 @@ pub enum StakingError {
     #[error("Invalid Pool Authority Account")]
     InvalidPoolAuthorityAccount,
 
-    /// Invalid Stake Pool Account
-    #[error("Invalid Stake Pool Account")]
-    InvalidStakePoolAccount,
-
     /// Token is not a valid SPL token
     #[error("Token is not a valid SPL token")]
     TokenNotSPLToken,
@@ -42,45 +38,13 @@ pub enum StakingError {
     #[error("Community Account Already Exists")]
     CommunityAccountAlreadyExists,
 
-    /// Authorized Signature Missing
-    #[error("Authorized Signature Missing")]
-    AuthorizedSignatureMissing,
-
-    /// Primary Associated Invalid Account
-    #[error("Primary Associated Invalid Account")]
-    PrimaryAssociatedInvalidAccount,
-
-    /// Primary Associated Invalid Owner
-    #[error("Primary Associated Invalid Owner")]
-    PrimaryAssociatedInvalidOwner,
-
-    /// Primary Associated Invalid Token
-    #[error("Primary Associated Invalid Token")]
-    PrimaryAssociatedInvalidToken,
-
-    /// Secondary Signature Missing
-    #[error("Secondary Signature Missing")]
-    SecondarySignatureMissing,
-
-    /// Secondary Associated Invalid Owner
-    #[error("Secondary Associated Invalid Owner")]
-    SecondaryAssociatedInvalidOwner,
-
-    /// Secondary Associated Invalid Token
-    #[error("Secondary Associated Invalid Token")]
-    SecondaryAssociatedInvalidToken,
-
-    /// Secondary Associated Invalid Account
-    #[error("Secondary Associated Invalid Account")]
-    SecondaryAssociatedInvalidAccount,
-
-    /// Community Creator Signature Missing
-    #[error("Community Creator Signature Missing")]
-    CommunityCreatorSignatureMissing,
-
     /// Invalid Stake Account
     #[error("Invalid Stake Account")]
     InvalidStakeAccount,
+
+    /// Invalid Stake Fund Account
+    #[error("Invalid Stake Fund Account")]
+    InvalidStakeFundAccount,
 
     /// Invalid Community Account
     #[error("Invalid Community Account")]
@@ -126,9 +90,13 @@ pub enum StakingError {
     #[error("Withdraw Unbonding Time Not Over Yet")]
     WithdrawUnbondingTimeNotOverYet,
 
-    /// Nothing to Withdraw
-    #[error("Nothing to Withdraw")]
-    NothingtoWithdraw,
+    /// Invalid Beneficiary Account
+    #[error("Invalid Beneficiary Account")]
+    InvalidBeneficiaryAccount,
+
+    /// Invalid Token
+    #[error("Invalid Token")]
+    InvalidToken,
 }
 
 impl From<StakingError> for ProgramError {

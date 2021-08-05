@@ -68,20 +68,6 @@ app.get('/staker/:id', async (req: express.Request, res: express.Response) => {
     res.send(await wrap(staking, await viewStaker(staking, id)));
 });
 
-app.get(
-    '/multiclaim/:id',
-    async (req: express.Request, res: express.Response) => {
-        const id = Number(req.params.id);
-        if (id >= staking.stakers.length) {
-            console.log(`tried to access nonexistent staker`);
-            res.redirect('/');
-            return;
-        }
-        await staking.multiclaim(id);
-        res.redirect('/staker/' + id);
-    }
-);
-
 app.get('/addStaker', async (req: express.Request, res: express.Response) => {
     await staking.addStaker();
     res.redirect('/');
@@ -106,6 +92,15 @@ app.get(
         const staker = Number(req.params.staker);
 
         await staking.withdrawUnbond(community, staker);
+        res.redirect('/staker/' + staker);
+    }
+);
+
+app.get(
+    '/multiclaim/:staker',
+    async (req: express.Request, res: express.Response) => {
+        const staker = Number(req.params.staker);
+        await staking.claimStaker(staker);
         res.redirect('/staker/' + staker);
     }
 );

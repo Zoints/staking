@@ -18,9 +18,7 @@ export enum Instructions {
     InitializeStake,
     Stake,
     WithdrawUnbond,
-    ClaimPrimary,
-    ClaimSecondary,
-    ClaimFee
+    Claim
 }
 
 export class SimpleSchema {
@@ -94,24 +92,27 @@ export class Instruction {
     public static async Initialize(
         programId: PublicKey,
         funder: PublicKey,
-        feeAuthority: PublicKey,
+        feeRecipient: PublicKey,
         mint: PublicKey,
         startTime: Date,
         unbondingDuration: number
     ): Promise<TransactionInstruction> {
         const settingsId = await Staking.settingsId(programId);
         const poolAuthorityId = await Staking.poolAuthorityId(programId);
-        const stakePoolId = await Staking.stakePoolId(programId);
         const rewardPoolId = await Staking.rewardPoolId(programId);
+        const feeBeneficiary = await Staking.beneficiary(
+            feeRecipient,
+            programId
+        );
 
         const keys: AccountMeta[] = [
             am(funder, true, true),
             am(settingsId, false, true),
             am(poolAuthorityId, false, false),
-            am(stakePoolId, false, true),
             am(rewardPoolId, false, true),
             am(mint, false, false),
-            am(feeAuthority, true, false),
+            am(feeRecipient, true, false),
+            am(feeBeneficiary, false, true),
             am(SYSVAR_RENT_PUBKEY, false, false),
             am(TOKEN_PROGRAM_ID, false, false),
             am(SystemProgram.programId, false, false)
@@ -143,12 +144,23 @@ export class Instruction {
             secondary = ZERO_KEY;
         }
 
+        const primaryBeneficiary = await Staking.beneficiary(
+            primary,
+            programId
+        );
+        const secondaryBeneficiary = await Staking.beneficiary(
+            secondary,
+            programId
+        );
+
         const keys: AccountMeta[] = [
             am(funder, true, true),
             am(owner, false, false),
             am(community, true, true),
             am(primary, false, false),
+            am(primaryBeneficiary, false, true),
             am(secondary, false, false),
+            am(secondaryBeneficiary, false, true),
             am(SYSVAR_RENT_PUBKEY, false, false),
             am(SYSVAR_CLOCK_PUBKEY, false, false),
             am(SystemProgram.programId, false, false)
@@ -170,18 +182,39 @@ export class Instruction {
     public static async InitializeStake(
         programId: PublicKey,
         funder: PublicKey,
-        owner: PublicKey,
-        community: PublicKey
+        staker: PublicKey,
+        community: PublicKey,
+        mint: PublicKey
     ): Promise<TransactionInstruction> {
-        const stakeId = await Staking.stakeAddress(programId, community, owner);
+        const stakeId = await Staking.stakeAddress(
+            programId,
+            community,
+            staker
+        );
+
+        const settings = await Staking.settingsId(programId);
+
+        const stakerFund = await Staking.stakeFundAddress(
+            community,
+            staker,
+            programId
+        );
+        const stakerBeneficiary = await Staking.beneficiary(staker, programId);
 
         const keys: AccountMeta[] = [
             am(funder, true, true),
-            am(owner, true, false),
-            am(community, false, true),
+            am(staker, true, false),
+            am(stakerFund, false, true),
+            am(stakerBeneficiary, false, true),
+            am(community, false, true), // true because of pairing
             am(stakeId, false, true),
+
+            am(mint, false, false),
+            am(settings, false, true), // true because of pairing
+
             am(SYSVAR_RENT_PUBKEY, false, false),
             am(SYSVAR_CLOCK_PUBKEY, false, false),
+            am(TOKEN_PROGRAM_ID, false, false),
             am(SystemProgram.programId, false, false)
         ];
 
@@ -204,11 +237,13 @@ export class Instruction {
         staker: PublicKey,
         stakerAssociated: PublicKey,
         community: PublicKey,
+        feeRecipient: PublicKey,
+        primary: PublicKey,
+        secondary: PublicKey,
         amount: number | bigint
     ): Promise<TransactionInstruction> {
         const settingsId = await Staking.settingsId(programId);
         const poolAuthorityId = await Staking.poolAuthorityId(programId);
-        const stakePoolId = await Staking.stakePoolId(programId);
         const rewardPoolId = await Staking.rewardPoolId(programId);
         const stakeId = await Staking.stakeAddress(
             programId,
@@ -216,15 +251,39 @@ export class Instruction {
             staker
         );
 
+        const stakerBeneficiary = await Staking.beneficiary(staker, programId);
+        const stakerFund = await Staking.stakeFundAddress(
+            community,
+            staker,
+            programId
+        );
+
+        const feeBeneficiary = await Staking.beneficiary(
+            feeRecipient,
+            programId
+        );
+        const primaryBeneficiary = await Staking.beneficiary(
+            primary,
+            programId
+        );
+        const secondaryBeneficiary = await Staking.beneficiary(
+            secondary,
+            programId
+        );
+
         const keys: AccountMeta[] = [
             am(funder, true, true),
             am(staker, true, false),
+            am(stakerBeneficiary, false, true),
+            am(stakerFund, false, true),
             am(stakerAssociated, false, true),
             am(community, false, true),
+            am(primaryBeneficiary, false, true),
+            am(secondaryBeneficiary, false, true),
             am(poolAuthorityId, false, false),
-            am(stakePoolId, false, true),
             am(rewardPoolId, false, true),
             am(settingsId, false, true),
+            am(feeBeneficiary, false, true),
             am(stakeId, false, true),
             am(SYSVAR_CLOCK_PUBKEY, false, false),
             am(TOKEN_PROGRAM_ID, false, false)
@@ -254,8 +313,11 @@ export class Instruction {
         community: PublicKey
     ): Promise<TransactionInstruction> {
         const settingsId = await Staking.settingsId(programId);
-        const poolAuthorityId = await Staking.poolAuthorityId(programId);
-        const stakePoolId = await Staking.stakePoolId(programId);
+        const stakeFund = await Staking.stakeFundAddress(
+            community,
+            staker,
+            programId
+        );
         const stakeId = await Staking.stakeAddress(
             programId,
             community,
@@ -265,11 +327,10 @@ export class Instruction {
         const keys: AccountMeta[] = [
             am(funder, true, true),
             am(staker, true, false),
+            am(stakeFund, false, true),
             am(stakerAssociated, false, true),
             am(community, false, false),
             am(settingsId, false, false),
-            am(poolAuthorityId, false, false),
-            am(stakePoolId, false, true),
             am(stakeId, false, true),
             am(SYSVAR_CLOCK_PUBKEY, false, false),
             am(TOKEN_PROGRAM_ID, false, false)
@@ -288,23 +349,22 @@ export class Instruction {
         });
     }
 
-    private static async claim(
+    public static async Claim(
         programId: PublicKey,
         funder: PublicKey,
         authority: PublicKey,
-        authorityAssociated: PublicKey,
-        community: PublicKey,
-        instructionType: number
+        authorityAssociated: PublicKey
     ) {
         const settingsId = await Staking.settingsId(programId);
         const poolAuthorityId = await Staking.poolAuthorityId(programId);
         const rewardPoolId = await Staking.rewardPoolId(programId);
+        const beneficiary = await Staking.beneficiary(authority, programId);
 
         const keys: AccountMeta[] = [
             am(funder, true, true),
             am(authority, true, false),
+            am(beneficiary, false, true),
             am(authorityAssociated, false, true),
-            am(community, false, true),
             am(settingsId, false, true),
             am(poolAuthorityId, false, false),
             am(rewardPoolId, false, true),
@@ -312,7 +372,7 @@ export class Instruction {
             am(TOKEN_PROGRAM_ID, false, false)
         ];
 
-        const instruction = new SimpleSchema(instructionType);
+        const instruction = new SimpleSchema(Instructions.Claim);
         const instructionData = borsh.serialize(
             SimpleSchema.schema,
             instruction
@@ -325,53 +385,21 @@ export class Instruction {
         });
     }
 
-    public static async ClaimPrimary(
-        programId: PublicKey,
-        funder: PublicKey,
-        authority: PublicKey,
-        authorityAssociated: PublicKey,
-        community: PublicKey
-    ): Promise<TransactionInstruction> {
-        return Instruction.claim(
-            programId,
-            funder,
-            authority,
-            authorityAssociated,
-            community,
-            Instructions.ClaimPrimary
-        );
-    }
-
-    public static async ClaimSecondary(
-        programId: PublicKey,
-        funder: PublicKey,
-        authority: PublicKey,
-        authorityAssociated: PublicKey,
-        community: PublicKey
-    ): Promise<TransactionInstruction> {
-        return Instruction.claim(
-            programId,
-            funder,
-            authority,
-            authorityAssociated,
-            community,
-            Instructions.ClaimSecondary
-        );
-    }
-
     public static async ClaimFee(
         programId: PublicKey,
         funder: PublicKey,
         authority: PublicKey,
         authorityAssociated: PublicKey
-    ): Promise<TransactionInstruction> {
+    ) {
         const settingsId = await Staking.settingsId(programId);
         const poolAuthorityId = await Staking.poolAuthorityId(programId);
         const rewardPoolId = await Staking.rewardPoolId(programId);
+        const beneficiary = await Staking.beneficiary(authority, programId);
 
         const keys: AccountMeta[] = [
             am(funder, true, true),
             am(authority, false, false),
+            am(beneficiary, false, true),
             am(authorityAssociated, false, true),
             am(settingsId, false, true),
             am(poolAuthorityId, false, false),
@@ -380,7 +408,7 @@ export class Instruction {
             am(TOKEN_PROGRAM_ID, false, false)
         ];
 
-        const instruction = new SimpleSchema(Instructions.ClaimFee);
+        const instruction = new SimpleSchema(Instructions.Claim);
         const instructionData = borsh.serialize(
             SimpleSchema.schema,
             instruction
