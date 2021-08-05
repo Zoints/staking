@@ -43,46 +43,32 @@ export class EngineBackend implements StakeEngine {
     }
 
     async claim(app: App, authority?: Keypair): Promise<void> {
-        /*        if (claim == Claims.Fee) {
+        if (authority === undefined) {
             await app.token.getOrCreateAssociatedAccountInfo(
                 app.fee_authority.publicKey
             );
-
-            const result = await this.client.post(`claim`);
-
+            const result = await this.client.post(`claim-fee`);
             console.log(`Claimed global fee: ${result.data.txSignature}`);
         } else {
-            const primary = claim === Claims.Primary;
-            const prep = await this.client.post(
-                `community/${community.key.publicKey.toBase58()}/claim/prepare`,
-                {
-                    fund: true,
-                    type: primary ? 'primary' : 'secondary'
-                }
-            );
+            const prep = await this.client.post(`claim/prepare`, {
+                fund: true,
+                authority: authority.publicKey.toBase58()
+            });
 
             const data = Buffer.from(prep.data.message, 'base64');
-            const userSig = nacl.sign.detached(
-                data,
-                primary
-                    ? community.primaryAuthority.secretKey
-                    : community.secondaryAuthority.secretKey
-            );
+            const userSig = nacl.sign.detached(data, authority.secretKey);
 
-            const result = await this.client.post(
-                `community/${community.key.publicKey.toBase58()}/claim`,
-                {
-                    message: prep.data.message,
-                    userSignature: Buffer.from(userSig).toString('base64')
-                }
-            );
+            const result = await this.client.post(`claim`, {
+                message: prep.data.message,
+                userSignature: Buffer.from(userSig).toString('base64')
+            });
 
             console.log(
-                `Claimed primary=${primary} harvest for community ${community.key.publicKey.toBase58()}: ${
+                `Claimed harvest for authority ${authority.publicKey.toBase58()}: ${
                     result.data.txSignature
                 }`
             );
-        }*/
+        }
     }
     async stake(
         app: App,

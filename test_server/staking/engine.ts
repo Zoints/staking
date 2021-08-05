@@ -1,5 +1,4 @@
-import { Keypair, PublicKey } from '@solana/web3.js';
-import { Community } from '@zoints/staking';
+import { Keypair } from '@solana/web3.js';
 import { App } from './app';
 import { AppCommunity, AppStaker } from './community';
 
@@ -9,7 +8,7 @@ export interface StakeEngine {
         community: AppCommunity,
         noSecondary: boolean
     ): Promise<void>;
-    claim(app: App, authority: Keypair): Promise<void>;
+    claim(app: App, authority?: Keypair): Promise<void>;
     stake(
         app: App,
         community: AppCommunity,

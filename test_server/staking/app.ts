@@ -193,7 +193,7 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
     }
 
     public async claimFee(): Promise<string> {
-        await this.engine.claim(this, this.fee_authority);
+        await this.engine.claim(this);
         return 'removed with engine';
     }
 
