@@ -9,10 +9,10 @@ pub enum StakingInstruction {
     ///     1. `[writable,signer]` Transaction payer
     ///     2. `[writable]` Settings account
     ///     3. `[]` Pool Authority
-    ///     4. `[writable]` Stake Pool
-    ///     5. `[writable]` Reward Pool
-    ///     6. `[]` ZEE Token Mint
-    ///     7. `[signer]` Fee Recipient Authority
+    ///     4. `[writable]` Reward Pool
+    ///     5. `[]` ZEE Token Mint
+    ///     6. `[signer]` Fee Beneficiary Authority
+    ///     7. `[writable]` Fee Beneficiary
     ///     8. `[]` Rent Sysvar
     ///     9. `[]` SPL Token Program
     ///     10. `[]` System Program
@@ -27,24 +27,15 @@ pub enum StakingInstruction {
     /// Expected Accounts:
     ///     1. `[writable,signer]` Transaction payer
     ///     2. `[]` Community Owner
-    ///     3. `[writable]` Community Account
+    ///     3. `[writable,signer]` Community Account
     ///     4. `[]` Primary Beneficiary Authority
-    ///     5. `[]` Secondary Beneficiary Authority
-    ///     6. `[]` Rent Sysvar
-    ///     7. `[]` Clock Sysvar
-    ///     8. `[]` System Program
+    ///     5. `[]` Primary Beneficiary
+    ///     6. `[]` Secondary Beneficiary Authority
+    ///     7. `[]` Secondary Beneficiary
+    ///     8. `[]` Rent Sysvar
+    ///     9. `[]` Clock Sysvar
+    ///     10. `[]` System Program
     RegisterCommunity,
-    /*
-        const keys: AccountMeta[] = [
-        am(funder, true, true),
-        am(owner, true, false),
-        am(community, false, true),
-        am(stakeId, false, true),
-        am(SYSVAR_RENT_PUBKEY, false, false),
-        am(SYSVAR_CLOCK_PUBKEY, false, false),
-        am(SystemProgram.programId, false, false)
-    ];
-    */
     /// Initialize a new stake
     ///
     /// Must be done before being able to stake ZEE to a community
@@ -52,11 +43,16 @@ pub enum StakingInstruction {
     /// Expected Accounts:
     ///     1. `[writable,signer]` Transaction payer
     ///     2. `[signer]` Staker
-    ///     3. `[writable]` Community Account
-    ///     4. `[writable]` Stake Account
-    ///     5. `[]` Rent Sysvar
-    ///     6. `[]` Clock Sysvar
-    ///     7. `[]` System Program
+    ///     3. `[writable]` Staker Fund
+    ///     4. `[writable]` Staker Beneficiary
+    ///     5. `[writable]` Community Account
+    ///     6. `[writable]` Stake Account
+    ///     7. `[]` ZEE Token Mint
+    ///     8. `[]` Settings Account
+    ///     9. `[]` Rent Sysvar
+    ///     10. `[]` Clock Sysvar
+    ///     11. `[]` SPL Token Program
+    ///     12. `[]` System Program
     InitializeStake,
     /// Stake ZEE
     ///
@@ -67,15 +63,19 @@ pub enum StakingInstruction {
     /// Expected Accounts:
     ///     1. `[writable,signer]` Transaction payer
     ///     2. `[signer]` Staker
-    ///     3. `[writable]` Staker's ZEE Token Account
-    ///     4. `[writable]` Community
-    ///     5. `[]` Pool Authority
-    ///     6. `[writable]` Stake Pool
-    ///     7. `[writable]` Reward Pool
-    ///     8. `[writable]` Settings
-    ///     9. `[writable]` Stake Account
-    ///     10. `[]` Clock Sysvar
-    ///     11. `[]` SPL Token Program
+    ///     3. `[writable]` Staker Beneficiary
+    ///     4. `[writable]` Staker Fund
+    ///     5. `[writable]` Staker ZEE Token Account
+    ///     6. `[writable]` Community
+    ///     7. `[writable]` Community Primary Beneficiary
+    ///     8. `[writable]` Community Secondary Beneficiary
+    ///     9. `[]` Pool Authority
+    ///     10. `[writable]` Reward Pool
+    ///     11. `[writable]` Settings
+    ///     12. `[writable]` Fee Beneficiary
+    ///     13. `[writable]` Stake Account
+    ///     14. `[]` Clock Sysvar
+    ///     15. `[]` SPL Token Program
     Stake { amount: i64 },
     /// Withdraw Unbounded Tokens
     ///
@@ -84,22 +84,22 @@ pub enum StakingInstruction {
     /// Expected Accounts:
     ///     1. `[writable,signer]` Transaction payer
     ///     2. `[signer]` Staker
-    ///     3. `[writable]` Staker's ZEE Token Account
-    ///     4. `[]` Community
-    ///     5. `[]` Settings
-    ///     6. `[]` Pool Authority
-    ///     7. `[writable]` Stake Pool
+    ///     3. `[signer]` Staker Fund
+    ///     4. `[writable]` Staker's ZEE Token Account
+    ///     5. `[]` Community
+    ///     6. `[]` Settings
+    ///     7. `[]` Pool Authority
     ///     8. `[writable]` Stake Account
     ///     9. `[]` Clock Sysvar
     ///     10. `[]` SPL Token Program
     WithdrawUnbond,
-    /// Claim Primary Yield
+    /// Claim Beneficiary Yield
     ///
     /// Expected Accounts:
     ///     1. `[writable,signer]` Transaction payer
-    ///     2. `[signer]` Primary Authority
-    ///     3. `[writable]` Authority's ZEE Token Account
-    ///     4. `[writable]` Community
+    ///     2. `[signer]` Beneficiary Authority
+    ///     3. `[writable]` Beneficiary Account
+    ///     4. `[writable]` Authority's ZEE Token Account
     ///     5. `[writable]` Settings
     ///     6. `[]` Pool Authority
     ///     7. `[writable]` Reward Pool

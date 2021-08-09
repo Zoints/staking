@@ -3,14 +3,7 @@ import 'mocha';
 import * as borsh from 'borsh';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import {
-    BASE_REWARD,
-    Community,
-    Stake,
-    Settings,
-    Staking,
-    Beneficiary
-} from '../src';
+import { BASE_REWARD, Community, Stake, Settings, Beneficiary } from '../src';
 
 describe('Settings', () => {
     const raw = Buffer.from([
