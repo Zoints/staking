@@ -158,11 +158,6 @@ describe('Stake', () => {
 });
 
 describe('Beneficiary', () => {
-    Staking.beneficiary(
-        new PublicKey('2BmEn6gnEDEPstnVW8Ek7gAmsVRhK5J9V1h6idSvcSrQ'),
-        new PublicKey('GGgStUEFvrGGj3aBH6mcLzyrMM6EyKDDuLZYbgZczq4Q')
-    ).then((key) => console.log(key.toBase58()));
-
     const raw = Buffer.from([
         0x11, 0x9d, 0x83, 0xba, 0xb3, 0x55, 0x8b, 0x28, 0xee, 0xba, 0x2d, 0xe8,
         0xec, 0x95, 0xad, 0x03, 0x3f, 0x38, 0x2a, 0x12, 0x8f, 0xe1, 0x32, 0xec,

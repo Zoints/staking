@@ -10,8 +10,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@solana/spl-token": "^0.1.5",
-    "@solana/web3.js": "^1.15.0",
+    "@solana/spl-token": "^0.1.6",
+    "@solana/web3.js": "^1.22.0",
     "@zoints/staking": "file:../js",
     "bn.js": "^5.2.0",
     "borsh": "^0.4.0"
