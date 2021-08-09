@@ -414,4 +414,14 @@ mod tests {
             previous.push(settings);
         }
     }
+
+    #[test]
+    pub fn test_deserialize_empty() {
+        let data = [0; 56];
+        let beneficiary: Beneficiary = Beneficiary::try_from_slice(&data).unwrap();
+        assert_eq!(beneficiary.authority, Pubkey::default());
+        assert_eq!(beneficiary.staked, 0);
+        assert_eq!(beneficiary.reward_debt, 0);
+        assert_eq!(beneficiary.holding, 0);
+    }
 }
