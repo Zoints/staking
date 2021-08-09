@@ -384,42 +384,6 @@ export class Instruction {
             data: Buffer.from(instructionData)
         });
     }
-
-    public static async ClaimFee(
-        programId: PublicKey,
-        funder: PublicKey,
-        authority: PublicKey,
-        authorityAssociated: PublicKey
-    ) {
-        const settingsId = await Staking.settingsId(programId);
-        const poolAuthorityId = await Staking.poolAuthorityId(programId);
-        const rewardPoolId = await Staking.rewardPoolId(programId);
-        const beneficiary = await Staking.beneficiary(authority, programId);
-
-        const keys: AccountMeta[] = [
-            am(funder, true, true),
-            am(authority, false, false),
-            am(beneficiary, false, true),
-            am(authorityAssociated, false, true),
-            am(settingsId, false, true),
-            am(poolAuthorityId, false, false),
-            am(rewardPoolId, false, true),
-            am(SYSVAR_CLOCK_PUBKEY, false, false),
-            am(TOKEN_PROGRAM_ID, false, false)
-        ];
-
-        const instruction = new SimpleSchema(Instructions.Claim);
-        const instructionData = borsh.serialize(
-            SimpleSchema.schema,
-            instruction
-        );
-
-        return new TransactionInstruction({
-            keys: keys,
-            programId,
-            data: Buffer.from(instructionData)
-        });
-    }
 }
 
 function am(
