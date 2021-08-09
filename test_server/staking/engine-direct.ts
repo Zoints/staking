@@ -38,7 +38,10 @@ export class EngineDirect implements StakeEngine {
         );
     }
 
-    async claim(app: App, authority: Keypair): Promise<void> {
+    async claim(app: App, authority?: Keypair): Promise<void> {
+        if (authority === undefined) {
+            authority = app.fee_authority;
+        }
         const assoc = await app.token.getOrCreateAssociatedAccountInfo(
             authority.publicKey
         );
@@ -88,6 +91,8 @@ export class EngineDirect implements StakeEngine {
             );
         }
 
+        const comm = await app.staking.getCommunity(community.key.publicKey);
+
         trans.add(
             await Instruction.Stake(
                 app.program_id,
@@ -96,8 +101,8 @@ export class EngineDirect implements StakeEngine {
                 assoc.address,
                 community.key.publicKey,
                 app.fee_authority.publicKey,
-                community.primaryAuthority.publicKey,
-                community.secondaryAuthority.publicKey,
+                comm.primary,
+                comm.secondary,
                 amount
             )
         );
