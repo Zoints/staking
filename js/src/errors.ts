@@ -26,6 +26,14 @@ export enum StakingErrors {
 
 const custom = /custom program error: 0x([0-9a-fA-F]+)/;
 
+export function extractErrorId(err: Error): number {
+    const match = err.message.match(custom);
+    if (match) {
+        return parseInt(match[1], 16); // won't be NaN if regex matched
+    }
+    return -1;
+}
+
 export function parseError(err: Error): Error {
     const match = err.message.match(custom);
     if (match) {
