@@ -93,7 +93,9 @@ export class EngineBackend implements StakeEngine {
             }
         );
 
-        console.log(`Stake result: ${result.data.txSignature}`);
+        if (result.data.error !== undefined) {
+            console.log(`Error: ${result.data.error}`);
+        } else console.log(`Stake result: ${result.data.txSignature}`);
     }
 
     async withdraw(
@@ -121,6 +123,8 @@ export class EngineBackend implements StakeEngine {
             }
         );
 
-        console.log(`Withdraw result: ${result.data.txSignature}`);
+        if (result.data.error !== undefined) {
+            console.log(`Error: ${result.data.error}`);
+        } else console.log(`Withdraw result: ${result.data.txSignature}`);
     }
 }
