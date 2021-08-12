@@ -56,11 +56,14 @@ export class EngineBackend implements StakeEngine {
                 userSignature: Buffer.from(userSig).toString('base64')
             });
 
-            console.log(
-                `Claimed harvest for authority ${authority.publicKey.toBase58()}: ${
-                    result.data.txSignature
-                }`
-            );
+            if (result.data.error !== undefined) {
+                console.log(`Error: ${result.data.error}`);
+            } else
+                console.log(
+                    `Claimed harvest for authority ${authority.publicKey.toBase58()}: ${
+                        result.data.txSignature
+                    }`
+                );
         }
     }
     async stake(
@@ -93,7 +96,9 @@ export class EngineBackend implements StakeEngine {
             }
         );
 
-        console.log(`Stake result: ${result.data.txSignature}`);
+        if (result.data.error !== undefined) {
+            console.log(`Error: ${result.data.error}`);
+        } else console.log(`Stake result: ${result.data.txSignature}`);
     }
 
     async withdraw(
@@ -121,6 +126,8 @@ export class EngineBackend implements StakeEngine {
             }
         );
 
-        console.log(`Withdraw result: ${result.data.txSignature}`);
+        if (result.data.error !== undefined) {
+            console.log(`Error: ${result.data.error}`);
+        } else console.log(`Withdraw result: ${result.data.txSignature}`);
     }
 }
