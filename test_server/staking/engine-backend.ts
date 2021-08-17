@@ -16,6 +16,17 @@ export class EngineBackend implements StakeEngine {
             timeout: 30000
             // todo: auth
         });
+        this.client.interceptors.response.use(
+            (response) => response,
+            (error) => {
+                if (error.response.data.message !== undefined) {
+                    return Promise.reject(
+                        `http error: ${error}\n\t${error.response.data.message}`
+                    );
+                }
+                return Promise.reject(error);
+            }
+        );
     }
 
     async registerCommunity(
