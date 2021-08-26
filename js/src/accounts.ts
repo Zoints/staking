@@ -1,7 +1,7 @@
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import * as borsh from 'borsh';
-import { PRECISION, SECONDS_PER_YEAR, ZERO_KEY } from '.';
+import { PRECISION, SECONDS_PER_YEAR } from '.';
 
 declare global {
     interface Date {
@@ -151,7 +151,7 @@ export class Beneficiary {
     }
 
     public isEmpty(): boolean {
-        return this.authority.equals(ZERO_KEY);
+        return this.authority.equals(PublicKey.default);
     }
 }
 

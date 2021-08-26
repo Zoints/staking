@@ -7,7 +7,7 @@ import {
     SYSVAR_RENT_PUBKEY,
     TransactionInstruction
 } from '@solana/web3.js';
-import { Staking, ZERO_KEY } from '.';
+import { Staking } from '.';
 import * as borsh from 'borsh';
 import './extendBorsh';
 import BN from 'bn.js';
@@ -141,7 +141,7 @@ export class Instruction {
         secondary?: PublicKey
     ): Promise<TransactionInstruction> {
         if (secondary === undefined) {
-            secondary = ZERO_KEY;
+            secondary = PublicKey.default;
         }
 
         const primaryBeneficiary = await Staking.beneficiary(

@@ -1,6 +1,6 @@
 {
   "name": "@zoints/staking",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "The JavaScript library for staking",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -20,8 +20,8 @@
   "author": "Who Soup",
   "license": "UNLICENSED",
   "dependencies": {
-    "@solana/spl-token": "^0.1.6",
-    "@solana/web3.js": "^1.22.0",
+    "@solana/spl-token": "^0.1.8",
+    "@solana/web3.js": "^1.24.0",
     "bn.js": "^5.2.0",
     "borsh": "^0.4.0"
   },
