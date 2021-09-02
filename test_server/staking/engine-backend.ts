@@ -81,7 +81,7 @@ export class EngineBackend implements StakeEngine {
             );
             const result = await this.post(`staking/v1/claim-fee`);
             const confirm = await this.get(
-                `general/v1/confirm/${result.txSignature}?extract=true`
+                `general/v1/confirm/${result.txSignature}?stakingExtract=true`
             );
             console.log(
                 `Claimed global fee: ${result.txSignature}\n\t${confirm.status}, ${confirm.claimed} ZEE`
@@ -101,7 +101,7 @@ export class EngineBackend implements StakeEngine {
             });
 
             const confirm = await this.get(
-                `general/v1/confirm/${result.txSignature}?extract=true`
+                `general/v1/confirm/${result.txSignature}?stakingExtract=true`
             );
             console.log(
                 `Claimed harvest for authority ${authority.publicKey.toBase58()}: ${
@@ -141,7 +141,7 @@ export class EngineBackend implements StakeEngine {
         );
 
         const confirm = await this.get(
-            `general/v1/confirm/${result.txSignature}?extract=true`
+            `general/v1/confirm/${result.txSignature}?stakingExtract=true`
         );
         console.log(
             `Stake result: ${result.txSignature}\n\t${confirm.status}, ${confirm.claimed} ZEE`
@@ -174,7 +174,7 @@ export class EngineBackend implements StakeEngine {
         );
 
         const confirm = await this.get(
-            `general/v1/confirm/${result.txSignature}?extract=true`
+            `general/v1/confirm/${result.txSignature}?stakingExtract=true`
         );
         console.log(
             `Withdraw result: ${result.txSignature}, ${confirm.status}`
