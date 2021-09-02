@@ -10,7 +10,7 @@ const port = 8081;
 const engine =
     process.env.ENGINE?.toLowerCase() === 'direct'
         ? new EngineDirect()
-        : new EngineBackend('http://localhost:8080/staking/v1/');
+        : new EngineBackend('http://localhost:8080/');
 console.log(
     `Engine: ${process.env.ENGINE === 'direct' ? 'direct' : 'backend'}`
 );
