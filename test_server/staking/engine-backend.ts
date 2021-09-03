@@ -74,7 +74,11 @@ export class EngineBackend implements StakeEngine {
         );
     }
 
-    async claim(app: App, authority?: Keypair): Promise<void> {
+    async claim(
+        app: App,
+        authority?: Keypair,
+        communities?: AppCommunity[]
+    ): Promise<void> {
         if (authority === undefined) {
             await app.token.getOrCreateAssociatedAccountInfo(
                 app.fee_authority.publicKey
@@ -87,9 +91,17 @@ export class EngineBackend implements StakeEngine {
                 `Claimed global fee: ${result.txSignature}\n\t${confirm.status}, ${confirm.claimed} ZEE`
             );
         } else {
+            const commKeys: string[] = [];
+            if (communities) {
+                for (const comm of communities) {
+                    commKeys.push(comm.key.publicKey.toBase58());
+                }
+            }
+
             const prep = await this.post(`staking/v1/claim/prepare`, {
                 fund: true,
-                authority: authority.publicKey.toBase58()
+                authority: authority.publicKey.toBase58(),
+                withdraw: commKeys
             });
 
             const data = Buffer.from(prep.message, 'base64');
@@ -150,28 +162,29 @@ export class EngineBackend implements StakeEngine {
 
     async withdraw(
         app: App,
-        community: AppCommunity,
-        staker: AppStaker
+
+        staker: AppStaker,
+        communities: AppCommunity[]
     ): Promise<void> {
-        const prep = await this.post(
-            `staking/v1/stake/${community.key.publicKey.toBase58()}/${staker.key.publicKey.toBase58()}/withdraw/prepare`,
-            {
-                fund: true
-            }
-        );
+        const clist = [];
+        for (const comm of communities) {
+            clist.push(comm.key.publicKey.toBase58());
+        }
+
+        const prep = await this.post(`staking/v1/claim/prepare`, {
+            fund: true,
+            withdraw: clist
+        });
 
         const userSig = nacl.sign.detached(
             Buffer.from(prep.message, 'base64'),
             staker.key.secretKey
         );
 
-        const result = await this.post(
-            `staking/v1/stake/${community.key.publicKey.toBase58()}/${staker.key.publicKey.toBase58()}/withdraw`,
-            {
-                userSignature: Buffer.from(userSig).toString('base64'),
-                message: prep.message
-            }
-        );
+        const result = await this.post(`staking/v1/claim`, {
+            userSignature: Buffer.from(userSig).toString('base64'),
+            message: prep.message
+        });
 
         const confirm = await this.get(
             `general/v1/confirm/${result.txSignature}?stakingExtract=true`

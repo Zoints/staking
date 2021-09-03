@@ -40,7 +40,7 @@ describe('Serialization', () => {
         expect(instruction.data).to.be.eql(data);
     });
 
-    it('batching', async () => {
+    it('batching initialize + stake', async () => {
         const community = new PublicKey(
             '2VqNb6Y1CmrZefiVL2shgudkxrTF9VuqDteqwV8jJ7D5'
         );
@@ -86,6 +86,39 @@ describe('Serialization', () => {
             );
         tx.feePayer = funder;
         tx.recentBlockhash = '11111111111111111111111111111111';
+
+        const data = tx.serialize({ verifySignatures: false });
+        const tx2 = Transaction.from(data);
+
+        expect(tx).to.eql(tx2);
+    });
+
+    it('batching claim + withdraw', async () => {
+        const community = new PublicKey(
+            '2VqNb6Y1CmrZefiVL2shgudkxrTF9VuqDteqwV8jJ7D5'
+        );
+        const staker = new PublicKey(
+            'Svg3TsfzMNY8HbJzAYbVhGXeTJFwFfWbVirJSfyqPxd'
+        );
+        const assoc = new PublicKey(
+            '8G9cBnmyqH2sQDqdUjEk5T4dpUTXaUqCkWEKgY4GJv1B'
+        );
+
+        let tx = new Transaction()
+            .add(await Instruction.Claim(programId, funder, staker, assoc))
+            .add(
+                await Instruction.WithdrawUnbond(
+                    programId,
+                    funder,
+                    staker,
+                    assoc,
+                    community
+                )
+            );
+        tx.feePayer = funder;
+        tx.recentBlockhash = '11111111111111111111111111111111';
+
+        tx = Transaction.from(tx.serialize({ verifySignatures: false })); // requires transformation
 
         const data = tx.serialize({ verifySignatures: false });
         const tx2 = Transaction.from(data);
