@@ -116,29 +116,31 @@ export class EngineDirect implements StakeEngine {
 
     async withdraw(
         app: App,
-        community: AppCommunity,
-        staker: AppStaker
+        staker: AppStaker,
+        communities: AppCommunity[]
     ): Promise<void> {
-        const assoc = await app.token.getOrCreateAssociatedAccountInfo(
-            staker.key.publicKey
-        );
-        const trans = new Transaction();
-        trans.add(
-            await Instruction.WithdrawUnbond(
-                app.program_id,
-                app.funder.publicKey,
-                staker.key.publicKey,
-                assoc.address,
-                community.key.publicKey
-            )
-        );
-        const sig = await sendAndConfirmTransaction(app.connection, trans, [
-            app.funder,
-            staker.key
-        ]);
+        for (const community of communities) {
+            const assoc = await app.token.getOrCreateAssociatedAccountInfo(
+                staker.key.publicKey
+            );
+            const trans = new Transaction();
+            trans.add(
+                await Instruction.WithdrawUnbond(
+                    app.program_id,
+                    app.funder.publicKey,
+                    staker.key.publicKey,
+                    assoc.address,
+                    community.key.publicKey
+                )
+            );
+            const sig = await sendAndConfirmTransaction(app.connection, trans, [
+                app.funder,
+                staker.key
+            ]);
 
-        console.log(
-            `Withdraw Unbond ${community.key.publicKey.toBase58()}: ${sig}`
-        );
+            console.log(
+                `Withdraw Unbond ${community.key.publicKey.toBase58()}: ${sig}`
+            );
+        }
     }
 }

@@ -8,7 +8,11 @@ export interface StakeEngine {
         community: AppCommunity,
         noSecondary: boolean
     ): Promise<void>;
-    claim(app: App, authority?: Keypair): Promise<void>;
+    claim(
+        app: App,
+        authority?: Keypair,
+        communities?: AppCommunity[]
+    ): Promise<void>;
     stake(
         app: App,
         community: AppCommunity,
@@ -17,7 +21,7 @@ export interface StakeEngine {
     ): Promise<void>;
     withdraw(
         app: App,
-        community: AppCommunity,
-        staker: AppStaker
+        staker: AppStaker,
+        communities: AppCommunity[]
     ): Promise<void>;
 }

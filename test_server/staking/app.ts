@@ -176,7 +176,26 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
 
     public async claimStaker(stakerId: number): Promise<string> {
         const staker = this.stakers[stakerId];
-        await this.engine.claim(this, staker.key);
+
+        const communities = [];
+        for (const comm of this.communities) {
+            try {
+                const stake = await this.staking.getStakeWithoutId(
+                    comm.key.publicKey,
+                    staker.key.publicKey
+                );
+                if (
+                    stake.unbondingAmount.gtn(0) &&
+                    stake.unbondingStart.valueOf() + 60000 <
+                        new Date().valueOf()
+                ) {
+                    communities.push(comm);
+                }
+            } catch (e) {}
+            if (communities.length >= 6) break;
+        }
+
+        await this.engine.claim(this, staker.key, communities);
         return 'removed with engine';
     }
 
@@ -216,7 +235,7 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
     ): Promise<string> {
         const community = this.communities[commId];
         const staker = this.stakers[stakerId];
-        await this.engine.withdraw(this, community, staker);
+        await this.engine.withdraw(this, staker, [community]);
         return 'removed with engine';
     }
 
