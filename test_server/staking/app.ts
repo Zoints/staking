@@ -186,8 +186,7 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
                 );
                 if (
                     stake.unbondingAmount.gtn(0) &&
-                    stake.unbondingStart.valueOf() + 60000 <
-                        new Date().valueOf()
+                    stake.unbondingEnd.valueOf() <= new Date().valueOf()
                 ) {
                     communities.push(comm);
                 }

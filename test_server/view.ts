@@ -224,11 +224,11 @@ export async function viewStaker(staking: App, id: number): Promise<string> {
 
             let unbonding = '';
             const now = Math.floor(new Date().getTime() / 1000);
-            const expired =
-                Math.floor(stakeAccount.unbondingStart.getTime() / 1000) +
-                settings.unbondingTime.toNumber();
+            const expired = Math.floor(
+                stakeAccount.unbondingEnd.getTime() / 1000
+            );
 
-            if (now <= expired) {
+            if (now < expired) {
                 let remain = expired - now;
                 const ub_days = Math.floor(remain / 86400);
                 remain -= ub_days * 86400;
@@ -281,8 +281,8 @@ export async function viewStaker(staking: App, id: number): Promise<string> {
                     <td>${stakeAccount.unbondingAmount.toString()}</td>
                 </tr>
                 <tr>
-                    <td>Unbonding Start</td>
-                    <td>${pretty(stakeAccount.unbondingStart)}</td>
+                    <td>Unbonding End</td>
+                    <td>${pretty(stakeAccount.unbondingEnd)}</td>
                 </tr>
                 <tr>
                     <td>Withdraw Unbond</td>
