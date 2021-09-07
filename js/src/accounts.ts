@@ -194,7 +194,7 @@ export class Stake {
     public creationDate: Date;
     public totalStake: BN;
     public staker: PublicKey;
-    public unbondingStart: Date;
+    public unbondingEnd: Date;
     public unbondingAmount: BN;
 
     static schema: borsh.Schema = new Map([
@@ -206,7 +206,7 @@ export class Stake {
                     ['creationDate', 'u64'],
                     ['totalStake', 'u64'],
                     ['staker', [32]],
-                    ['unbondingStart', 'u64'],
+                    ['unbondingEnd', 'u64'],
                     ['unbondingAmount', 'u64']
                 ]
             }
@@ -217,13 +217,13 @@ export class Stake {
         creationDate: BN;
         totalStake: BN;
         staker: Uint8Array;
-        unbondingStart: BN;
+        unbondingEnd: BN;
         unbondingAmount: BN;
     }) {
         this.creationDate = new Date(params.creationDate.toNumber() * 1000);
         this.totalStake = params.totalStake;
         this.staker = new PublicKey(params.staker);
         this.unbondingAmount = params.unbondingAmount;
-        this.unbondingStart = new Date(params.unbondingStart.toNumber() * 1000);
+        this.unbondingEnd = new Date(params.unbondingEnd.toNumber() * 1000);
     }
 }

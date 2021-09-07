@@ -162,35 +162,36 @@ export class EngineBackend implements StakeEngine {
 
     async withdraw(
         app: App,
-
         staker: AppStaker,
         communities: AppCommunity[]
     ): Promise<void> {
-        const clist = [];
-        for (const comm of communities) {
-            clist.push(comm.key.publicKey.toBase58());
+        for (const community of communities) {
+            const prep = await this.post(
+                `staking/v1/stake/${community.key.publicKey.toBase58()}/${staker.key.publicKey.toBase58()}/withdraw/prepare`,
+                {
+                    fund: true
+                }
+            );
+
+            const userSig = nacl.sign.detached(
+                Buffer.from(prep.message, 'base64'),
+                staker.key.secretKey
+            );
+
+            const result = await this.post(
+                `staking/v1/stake/${community.key.publicKey.toBase58()}/${staker.key.publicKey.toBase58()}/withdraw`,
+                {
+                    userSignature: Buffer.from(userSig).toString('base64'),
+                    message: prep.message
+                }
+            );
+
+            const confirm = await this.get(
+                `general/v1/confirm/${result.txSignature}`
+            );
+            console.log(
+                `Withdraw result: ${result.txSignature}, ${confirm.status}`
+            );
         }
-
-        const prep = await this.post(`staking/v1/claim/prepare`, {
-            fund: true,
-            withdraw: clist
-        });
-
-        const userSig = nacl.sign.detached(
-            Buffer.from(prep.message, 'base64'),
-            staker.key.secretKey
-        );
-
-        const result = await this.post(`staking/v1/claim`, {
-            userSignature: Buffer.from(userSig).toString('base64'),
-            message: prep.message
-        });
-
-        const confirm = await this.get(
-            `general/v1/confirm/${result.txSignature}?stakingExtract=true`
-        );
-        console.log(
-            `Withdraw result: ${result.txSignature}, ${confirm.status}`
-        );
     }
 }

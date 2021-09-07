@@ -368,7 +368,7 @@ impl Processor {
             creation_date: clock.unix_timestamp,
             total_stake: 0,
             staker: *staker_info.key,
-            unbonding_start: clock.unix_timestamp,
+            unbonding_end: clock.unix_timestamp,
             unbonding_amount: 0,
         };
 
@@ -601,7 +601,7 @@ impl Processor {
             settings.total_stake += amount;
         } else {
             stake.unbonding_amount += amount;
-            stake.unbonding_start = clock.unix_timestamp;
+            stake.unbonding_end = settings.unbonding_duration as i64 + clock.unix_timestamp;
             settings.total_stake -= amount;
         }
 
@@ -669,7 +669,7 @@ impl Processor {
             return Err(StakingError::WithdrawNothingtowithdraw.into());
         }
 
-        if clock.unix_timestamp - stake.unbonding_start < settings.unbonding_duration as i64 {
+        if clock.unix_timestamp < stake.unbonding_end {
             return Err(StakingError::WithdrawUnbondingTimeNotOverYet.into());
         }
 
@@ -704,7 +704,7 @@ impl Processor {
         msg!("zee amount transferred: {}", stake.unbonding_amount);
 
         stake.unbonding_amount = 0;
-        stake.unbonding_start = clock.unix_timestamp;
+        stake.unbonding_end = clock.unix_timestamp;
 
         stake_info
             .data

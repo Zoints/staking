@@ -1,9 +1,10 @@
 import {
     Keypair,
+    PublicKey,
     sendAndConfirmTransaction,
     Transaction
 } from '@solana/web3.js';
-import { Instruction, ZERO_KEY } from '@zoints/staking';
+import { Instruction } from '@zoints/staking';
 import { App } from './app';
 import { AppCommunity, AppStaker } from './community';
 import { StakeEngine } from './engine';
@@ -21,7 +22,9 @@ export class EngineDirect implements StakeEngine {
                 community.authority.publicKey,
                 community.key.publicKey,
                 community.primaryAuthority.publicKey,
-                noSecondary ? ZERO_KEY : community.secondaryAuthority.publicKey
+                noSecondary
+                    ? PublicKey.default
+                    : community.secondaryAuthority.publicKey
             )
         );
 
