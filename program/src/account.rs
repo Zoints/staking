@@ -255,7 +255,7 @@ pub struct Stake {
     pub staker: Pubkey,
 
     /// The most recent time an amount was unstaked
-    pub unbonding_start: UnixTimestamp,
+    pub unbonding_end: UnixTimestamp,
     /// The total amount of pending funds
     pub unbonding_amount: u64,
 }
