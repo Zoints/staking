@@ -143,7 +143,7 @@ describe('Stake', () => {
             new PublicKey('2BmEn6gnEDEPstnVW8Ek7gAmsVRhK5J9V1h6idSvcSrQ')
         );
 
-        expect(stake.unbondingStart).to.be.eql(
+        expect(stake.unbondingEnd).to.be.eql(
             new Date('2021-08-09 07:53:06.000+00')
         );
         expect(stake.unbondingAmount.eqn(500)).to.be.true;
