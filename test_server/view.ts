@@ -108,6 +108,12 @@ export async function viewCommunity(staking: App, id: number): Promise<string> {
                 .toString()} (<a href="/claim/${
             appComm.id
         }/secondary">Claim</a>)</td>
+        </tr>        <tr>
+            <td>Combined</td>
+            <td>${secondaryBeneficiary
+                .calculateReward(rps)
+                .add(secondaryBeneficiary.holding)
+                .toString()}</td>
         </tr>`;
     }
 
@@ -173,6 +179,13 @@ export async function viewCommunity(staking: App, id: number): Promise<string> {
                 .toString()} (<a href="/claim/${
         appComm.id
     }/primary">Claim</a>)</td>
+        </tr>
+        <tr>
+            <td>Combined</td>
+            <td>${primaryBeneficiary
+                .calculateReward(rps)
+                .add(primaryBeneficiary.holding)
+                .toString()}</td>
         </tr>
         <tr>
             <td colspan="2"><br><b>Secondary</b></td>
