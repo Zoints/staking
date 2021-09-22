@@ -1,6 +1,10 @@
 import { clusterApiUrl, Connection, PublicKey } from '@solana/web3.js';
 import { Staking } from '@zoints/staking';
 
+// Run a simple audit on the reward pool to see how much has been paid out so far.
+// The reward pool balance should be somewhere between the initial balance and
+// the the theoretical minimum balance.
+
 const ONE_YEAR = 365 * 24 * 3600;
 const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
 const staking = new Staking(
