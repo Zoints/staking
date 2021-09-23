@@ -1,5 +1,4 @@
 import { PublicKey } from '@solana/web3.js';
-import BN from 'bn.js';
 import { BinaryReader, BinaryWriter } from 'borsh';
 declare module 'borsh' {
     interface BinaryWriter {
