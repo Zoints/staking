@@ -3,7 +3,14 @@ import 'mocha';
 import * as borsh from 'borsh';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { BASE_REWARD, Community, Stake, Settings, Beneficiary } from '../src';
+import {
+    BASE_REWARD,
+    Community,
+    Stake,
+    Settings,
+    Beneficiary,
+    ACCOUNT_SCHEMA
+} from '../src';
 
 describe('Settings', () => {
     const raw = Buffer.from([
@@ -19,11 +26,7 @@ describe('Settings', () => {
         0x00, 0x00, 0x00, 0x00, 0x2f, 0xd7, 0x10, 0x61, 0x00, 0x00, 0x00, 0x00
     ]);
 
-    const settings: Settings = borsh.deserialize(
-        Settings.schema,
-        Settings,
-        raw
-    );
+    const settings: Settings = borsh.deserialize(ACCOUNT_SCHEMA, Settings, raw);
 
     it('should be equal', () => {
         expect(settings.token).to.eql(
@@ -60,7 +63,7 @@ describe('Community', () => {
     ]);
 
     const community: Community = borsh.deserialize(
-        Community.schema,
+        ACCOUNT_SCHEMA,
         Community,
         raw
     );
@@ -98,7 +101,7 @@ describe('Community without secondary', () => {
     ]);
 
     const community: Community = borsh.deserialize(
-        Community.schema,
+        ACCOUNT_SCHEMA,
         Community,
         raw
     );
@@ -130,7 +133,7 @@ describe('Stake', () => {
         0x00, 0x00, 0x00, 0x00
     ]);
 
-    const stake: Stake = borsh.deserialize(Stake.schema, Stake, raw);
+    const stake: Stake = borsh.deserialize(ACCOUNT_SCHEMA, Stake, raw);
 
     it('should be equal', () => {
         expect(stake.creationDate).to.be.eql(
@@ -160,7 +163,7 @@ describe('Beneficiary', () => {
     ]);
 
     const beneficiary: Beneficiary = borsh.deserialize(
-        Beneficiary.schema,
+        ACCOUNT_SCHEMA,
         Beneficiary,
         raw
     );

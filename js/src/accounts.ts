@@ -25,46 +25,24 @@ export class Settings {
     public rewardPerShare: BN;
     public lastReward: Date;
 
-    static schema: borsh.Schema = new Map([
-        [
-            Settings,
-            {
-                kind: 'struct',
-                fields: [
-                    ['token', [32]],
-                    ['unbondingTime', 'u64'],
-                    ['feeRecipient', [32]],
-                    ['nextEmissionChange', 'u64'], // this is an i64 timestamp, so always > 0, u64 should be fine
-                    ['emission', 'u64'],
-
-                    ['totalStake', 'u64'],
-                    ['rewardPerShare', 'u128'],
-                    ['lastReward', 'u64'] // this is an i64 timestamp, so always > 0, u64 should be fine
-                ]
-            }
-        ]
-    ]);
-
     constructor(params: {
-        token: Uint8Array;
+        token: PublicKey;
         unbondingTime: BN;
-        feeRecipient: Uint8Array;
-        nextEmissionChange: BN;
+        feeRecipient: PublicKey;
+        nextEmissionChange: Date;
         emission: BN;
         totalStake: BN;
         rewardPerShare: BN;
-        lastReward: BN;
+        lastReward: Date;
     }) {
-        this.token = new PublicKey(params.token);
+        this.token = params.token;
         this.unbondingTime = params.unbondingTime;
-        this.feeRecipient = new PublicKey(params.feeRecipient);
-        this.nextEmissionChange = new Date(
-            params.nextEmissionChange.toNumber() * 1000
-        );
+        this.feeRecipient = params.feeRecipient;
+        this.nextEmissionChange = params.nextEmissionChange;
         this.emission = params.emission;
         this.totalStake = params.totalStake;
         this.rewardPerShare = params.rewardPerShare;
-        this.lastReward = new Date(params.lastReward.toNumber() * 1000);
+        this.lastReward = params.lastReward;
     }
 
     public calculateRewardPerShare(now: Date): BN {
@@ -116,28 +94,13 @@ export class Beneficiary {
     public rewardDebt: BN;
     public holding: BN;
 
-    static schema: borsh.Schema = new Map([
-        [
-            Beneficiary,
-            {
-                kind: 'struct',
-                fields: [
-                    ['authority', [32]],
-                    ['staked', 'u64'],
-                    ['rewardDebt', 'u64'],
-                    ['holding', 'u64']
-                ]
-            }
-        ]
-    ]);
-
     constructor(params: {
-        authority: Uint8Array;
+        authority: PublicKey;
         staked: BN;
         rewardDebt: BN;
         holding: BN;
     }) {
-        this.authority = new PublicKey(params.authority);
+        this.authority = params.authority;
         this.staked = params.staked;
         this.rewardDebt = params.rewardDebt;
         this.holding = params.holding;
@@ -162,31 +125,16 @@ export class Community {
     public primary: PublicKey;
     public secondary: PublicKey;
 
-    static schema: borsh.Schema = new Map([
-        [
-            Community,
-            {
-                kind: 'struct',
-                fields: [
-                    ['creationDate', 'u64'],
-                    ['authority', [32]],
-                    ['primary', [32]],
-                    ['secondary', [32]]
-                ]
-            }
-        ]
-    ]);
-
     constructor(params: {
-        creationDate: BN;
-        authority: Uint8Array;
-        primary: Uint8Array;
-        secondary: Uint8Array;
+        creationDate: Date;
+        authority: PublicKey;
+        primary: PublicKey;
+        secondary: PublicKey;
     }) {
-        this.creationDate = new Date(params.creationDate.toNumber() * 1000);
-        this.authority = new PublicKey(params.authority);
-        this.primary = new PublicKey(params.primary);
-        this.secondary = new PublicKey(params.secondary);
+        this.creationDate = params.creationDate;
+        this.authority = params.authority;
+        this.primary = params.primary;
+        this.secondary = params.secondary;
     }
 }
 
@@ -197,33 +145,74 @@ export class Stake {
     public unbondingEnd: Date;
     public unbondingAmount: BN;
 
-    static schema: borsh.Schema = new Map([
-        [
-            Stake,
-            {
-                kind: 'struct',
-                fields: [
-                    ['creationDate', 'u64'],
-                    ['totalStake', 'u64'],
-                    ['staker', [32]],
-                    ['unbondingEnd', 'u64'],
-                    ['unbondingAmount', 'u64']
-                ]
-            }
-        ]
-    ]);
-
     constructor(params: {
-        creationDate: BN;
+        creationDate: Date;
         totalStake: BN;
-        staker: Uint8Array;
-        unbondingEnd: BN;
+        staker: PublicKey;
+        unbondingEnd: Date;
         unbondingAmount: BN;
     }) {
-        this.creationDate = new Date(params.creationDate.toNumber() * 1000);
+        this.creationDate = params.creationDate;
         this.totalStake = params.totalStake;
-        this.staker = new PublicKey(params.staker);
+        this.staker = params.staker;
+        this.unbondingEnd = params.unbondingEnd;
         this.unbondingAmount = params.unbondingAmount;
-        this.unbondingEnd = new Date(params.unbondingEnd.toNumber() * 1000);
     }
 }
+
+export const ACCOUNT_SCHEMA: borsh.Schema = new Map<any, any>([
+    [
+        Settings,
+        {
+            kind: 'struct',
+            fields: [
+                ['token', 'PublicKey'],
+                ['unbondingTime', 'u64'],
+                ['feeRecipient', 'PublicKey'],
+                ['nextEmissionChange', 'Date'],
+                ['emission', 'u64'],
+
+                ['totalStake', 'u64'],
+                ['rewardPerShare', 'u128'],
+                ['lastReward', 'Date']
+            ]
+        }
+    ],
+    [
+        Beneficiary,
+        {
+            kind: 'struct',
+            fields: [
+                ['authority', 'PublicKey'],
+                ['staked', 'u64'],
+                ['rewardDebt', 'u64'],
+                ['holding', 'u64']
+            ]
+        }
+    ],
+    [
+        Community,
+        {
+            kind: 'struct',
+            fields: [
+                ['creationDate', 'Date'],
+                ['authority', 'PublicKey'],
+                ['primary', 'PublicKey'],
+                ['secondary', 'PublicKey']
+            ]
+        }
+    ],
+    [
+        Stake,
+        {
+            kind: 'struct',
+            fields: [
+                ['creationDate', 'Date'],
+                ['totalStake', 'u64'],
+                ['staker', 'PublicKey'],
+                ['unbondingEnd', 'Date'],
+                ['unbondingAmount', 'u64']
+            ]
+        }
+    ]
+]);
