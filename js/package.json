@@ -1,11 +1,11 @@
 {
   "name": "@zoints/staking",
-  "version": "0.7.4",
+  "version": "0.8.1",
   "description": "The JavaScript library for staking",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
-    "prepublish": "npm run build",
+    "prepare": "npm run build",
     "build": "tsc -p .",
     "lint": "eslint src",
     "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",

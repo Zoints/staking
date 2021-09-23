@@ -236,7 +236,7 @@ const staking = new Staking(programId, connection);
             config.fee_authority.publicKey,
             user_1_primary.publicKey,
             user_1_secondary.publicKey,
-            20_000
+            20_000n
         )
     );
 
