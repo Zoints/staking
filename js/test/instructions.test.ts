@@ -3,10 +3,12 @@ import 'mocha';
 import * as borsh from 'borsh';
 import {
     AmountSchema,
+    decodeInstructionData,
     InitSchema,
     Instruction,
     Instructions,
-    INSTRUCTION_SCHEMA
+    INSTRUCTION_SCHEMA,
+    SimpleSchema
 } from '../src';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import BN from 'bn.js';
@@ -34,7 +36,7 @@ describe('Serialization', () => {
             borsh.serialize(
                 INSTRUCTION_SCHEMA,
                 new InitSchema({
-                    id: Instructions.Initialize,
+                    instructionId: Instructions.Initialize,
                     startTime: new Date('2021-07-02 08:45:51.000+00'),
                     unbondingDuration: new BN(60)
                 })
@@ -128,5 +130,43 @@ describe('Serialization', () => {
         const tx2 = Transaction.from(data);
 
         expect(tx).to.eql(tx2);
+    });
+
+    it('decode unknown initialize instruction data', async () => {
+        const init = new InitSchema({
+            instructionId: Instructions.Initialize, // only this uses init schema
+            startTime: new Date('2021-07-02 08:45:51.000+00'),
+            unbondingDuration: new BN(60)
+        });
+
+        const data = Buffer.from(borsh.serialize(INSTRUCTION_SCHEMA, init));
+
+        const reverse = decodeInstructionData(data);
+        expect(reverse.instructionId).to.be.eql(init.instructionId);
+        expect((reverse as InitSchema).startTime).to.be.eql(init.startTime);
+        expect(
+            (reverse as InitSchema).unbondingDuration.eq(init.unbondingDuration)
+        ).to.be.true;
+    });
+
+    it('decode unknown amount instruction data', async () => {
+        const init = new AmountSchema({
+            instructionId: Instructions.Stake, // only this uses amount schema
+            amount: 1234234n
+        });
+
+        const data = Buffer.from(borsh.serialize(INSTRUCTION_SCHEMA, init));
+        const reverse = decodeInstructionData(data);
+        expect(reverse).to.be.eql(init);
+    });
+
+    it('decode unknown simple instruction data', async () => {
+        const init = new SimpleSchema({
+            instructionId: Instructions.RegisterCommunity // uses simple schema
+        });
+
+        const data = Buffer.from(borsh.serialize(INSTRUCTION_SCHEMA, init));
+        const reverse = decodeInstructionData(data);
+        expect(reverse).to.be.eql(init);
     });
 });

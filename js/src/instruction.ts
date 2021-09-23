@@ -24,8 +24,8 @@ export enum Instructions {
 export class SimpleSchema {
     instructionId: number;
 
-    constructor(params: { id: number }) {
-        this.instructionId = params.id;
+    constructor(params: { instructionId: number }) {
+        this.instructionId = params.instructionId;
     }
 }
 
@@ -33,8 +33,8 @@ export class AmountSchema {
     instructionId: number;
     amount: bigint;
 
-    constructor(params: { id: number; amount: bigint }) {
-        this.instructionId = params.id;
+    constructor(params: { instructionId: number; amount: bigint }) {
+        this.instructionId = params.instructionId;
         this.amount = params.amount;
     }
 }
@@ -45,11 +45,11 @@ export class InitSchema {
     unbondingDuration: BN;
 
     constructor(params: {
-        id: number;
+        instructionId: number;
         startTime: Date;
         unbondingDuration: BN;
     }) {
-        this.instructionId = params.id;
+        this.instructionId = params.instructionId;
         this.startTime = params.startTime;
         this.unbondingDuration = params.unbondingDuration;
     }
@@ -86,7 +86,7 @@ export class Instruction {
         ];
 
         const instruction = new InitSchema({
-            id: Instructions.Initialize,
+            instructionId: Instructions.Initialize,
             startTime: startTime,
             unbondingDuration: new BN(unbondingDuration)
         });
@@ -137,7 +137,7 @@ export class Instruction {
         ];
 
         const instruction = new SimpleSchema({
-            id: Instructions.RegisterCommunity
+            instructionId: Instructions.RegisterCommunity
         });
         const instructionData = borsh.serialize(
             INSTRUCTION_SCHEMA,
@@ -191,7 +191,7 @@ export class Instruction {
         ];
 
         const instruction = new SimpleSchema({
-            id: Instructions.InitializeStake
+            instructionId: Instructions.InitializeStake
         });
         const instructionData = borsh.serialize(
             INSTRUCTION_SCHEMA,
@@ -264,7 +264,7 @@ export class Instruction {
         ];
 
         const instruction = new AmountSchema({
-            id: Instructions.Stake,
+            instructionId: Instructions.Stake,
             amount
         });
         const instructionData = borsh.serialize(
@@ -311,7 +311,7 @@ export class Instruction {
         ];
 
         const instruction = new SimpleSchema({
-            id: Instructions.WithdrawUnbond
+            instructionId: Instructions.WithdrawUnbond
         });
         const instructionData = borsh.serialize(
             INSTRUCTION_SCHEMA,
@@ -348,7 +348,9 @@ export class Instruction {
             am(TOKEN_PROGRAM_ID, false, false)
         ];
 
-        const instruction = new SimpleSchema({ id: Instructions.Claim });
+        const instruction = new SimpleSchema({
+            instructionId: Instructions.Claim
+        });
         const instructionData = borsh.serialize(
             INSTRUCTION_SCHEMA,
             instruction
@@ -368,6 +370,19 @@ function am(
     isWritable: boolean
 ): AccountMeta {
     return { pubkey, isSigner, isWritable };
+}
+
+export function decodeInstructionData(
+    data: Buffer
+): SimpleSchema | AmountSchema | InitSchema {
+    switch (data[0]) {
+        case Instructions.Initialize:
+            return borsh.deserialize(INSTRUCTION_SCHEMA, InitSchema, data);
+        case Instructions.Stake:
+            return borsh.deserialize(INSTRUCTION_SCHEMA, AmountSchema, data);
+        default:
+            return borsh.deserialize(INSTRUCTION_SCHEMA, SimpleSchema, data);
+    }
 }
 
 export const INSTRUCTION_SCHEMA: borsh.Schema = new Map<any, any>([

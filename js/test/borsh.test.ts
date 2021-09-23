@@ -42,7 +42,7 @@ describe('borsh extensions', () => {
             borsh.serialize(
                 INSTRUCTION_SCHEMA,
                 new AmountSchema({
-                    id: Instructions.Stake,
+                    instructionId: Instructions.Stake,
                     amount: amount
                 })
             )
