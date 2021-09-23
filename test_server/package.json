@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
-    "start": "nodemon index.ts --ignore seed.json"
+    "start": "nodemon index.ts --ignore seed.json --ignore 'scripts/*.*'"
   },
   "author": "",
   "license": "ISC",
