@@ -1,5 +1,5 @@
 import { Connection, PublicKey } from '@solana/web3.js';
-import { Beneficiary, Community, Settings } from './';
+import { ACCOUNT_SCHEMA, Beneficiary, Community, Settings } from './';
 import * as borsh from 'borsh';
 import { Stake } from './accounts';
 
@@ -19,7 +19,7 @@ export class Staking {
         if (account === null)
             throw new Error('Unable to find settings account');
 
-        return borsh.deserialize(Settings.schema, Settings, account.data);
+        return borsh.deserialize(ACCOUNT_SCHEMA, Settings, account.data);
     }
 
     public async getFeeRecipient(): Promise<PublicKey> {
@@ -36,7 +36,7 @@ export class Staking {
             throw new Error('Unable to find community account');
         if (!account.owner.equals(this.programId))
             throw new Error('Not a recognized community account');
-        return borsh.deserialize(Community.schema, Community, account.data);
+        return borsh.deserialize(ACCOUNT_SCHEMA, Community, account.data);
     }
 
     public async getStakeWithoutId(
@@ -107,7 +107,7 @@ export class Staking {
         if (account === null)
             throw new Error('Unable to find beneficiary account');
 
-        return borsh.deserialize(Beneficiary.schema, Beneficiary, account.data);
+        return borsh.deserialize(ACCOUNT_SCHEMA, Beneficiary, account.data);
     }
 
     static async stakeAddress(
@@ -127,7 +127,7 @@ export class Staking {
         const account = await this.connection.getAccountInfo(stakeId);
         if (account === null) throw new Error('Unable to find stake account');
 
-        return borsh.deserialize(Stake.schema, Stake, account.data);
+        return borsh.deserialize(ACCOUNT_SCHEMA, Stake, account.data);
     }
 
     static async stakeFundAddress(

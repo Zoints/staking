@@ -36,7 +36,7 @@ export class EngineBackend implements StakeEngine {
                 .then((result) => resolve(result.data))
                 .catch((e) => {
                     if (e.response) reject(JSON.stringify(e.response.data));
-                    else reject(`unknown server error`);
+                    else reject(`unknown server error ${JSON.stringify(e)}`);
                 });
         });
     }
@@ -48,7 +48,7 @@ export class EngineBackend implements StakeEngine {
                 .then((result) => resolve(result.data))
                 .catch((e) => {
                     if (e.response) reject(JSON.stringify(e.response.data));
-                    else reject(`unknown server error`);
+                    else reject(`unknown server error ${JSON.stringify(e)}`);
                 });
         });
     }
@@ -126,13 +126,13 @@ export class EngineBackend implements StakeEngine {
         app: App,
         community: AppCommunity,
         staker: AppStaker,
-        amount: number
+        amount: bigint
     ): Promise<void> {
         const prep = await this.post(
             `staking/v1/stake/${community.key.publicKey.toBase58()}/${staker.key.publicKey.toBase58()}/stake/prepare`,
             {
                 fund: true,
-                amount
+                amount: Number(amount)
             }
         );
         console.log(

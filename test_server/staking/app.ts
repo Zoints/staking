@@ -223,7 +223,7 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
         const community = this.communities[commId];
         const staker = this.stakers[stakerId];
 
-        await this.engine.stake(this, community, staker, amount);
+        await this.engine.stake(this, community, staker, BigInt(amount));
 
         return 'removed with engine';
     }

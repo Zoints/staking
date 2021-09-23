@@ -17,7 +17,7 @@ export interface StakeEngine {
         app: App,
         community: AppCommunity,
         staker: AppStaker,
-        amount: number
+        amount: bigint
     ): Promise<void>;
     withdraw(
         app: App,

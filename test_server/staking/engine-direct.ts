@@ -70,7 +70,7 @@ export class EngineDirect implements StakeEngine {
         app: App,
         community: AppCommunity,
         staker: AppStaker,
-        amount: number
+        amount: bigint
     ): Promise<void> {
         const assoc = await app.token.getOrCreateAssociatedAccountInfo(
             staker.key.publicKey
