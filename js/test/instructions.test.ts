@@ -1,7 +1,13 @@
 import { expect } from 'chai';
 import 'mocha';
 import * as borsh from 'borsh';
-import { InitSchema, Instruction, Instructions } from '../src';
+import {
+    AmountSchema,
+    InitSchema,
+    Instruction,
+    Instructions,
+    INSTRUCTION_SCHEMA
+} from '../src';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import BN from 'bn.js';
 
@@ -26,14 +32,12 @@ describe('Serialization', () => {
 
         const data = Buffer.from(
             borsh.serialize(
-                InitSchema.schema,
-                new InitSchema(
-                    Instructions.Initialize,
-                    BigInt(
-                        new Date('2021-07-02 08:45:51.000+00').getUnixTime()
-                    ),
-                    new BN(60)
-                )
+                INSTRUCTION_SCHEMA,
+                new InitSchema({
+                    id: Instructions.Initialize,
+                    startTime: new Date('2021-07-02 08:45:51.000+00'),
+                    unbondingDuration: new BN(60)
+                })
             )
         );
 
@@ -81,7 +85,7 @@ describe('Serialization', () => {
                     feeRecipient,
                     primary,
                     secondary,
-                    666
+                    666n
                 )
             );
         tx.feePayer = funder;

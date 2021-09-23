@@ -24,18 +24,8 @@ export enum Instructions {
 export class SimpleSchema {
     instructionId: number;
 
-    static schema: borsh.Schema = new Map([
-        [
-            SimpleSchema,
-            {
-                kind: 'struct',
-                fields: [['instructionId', 'u8']]
-            }
-        ]
-    ]);
-
-    constructor(id: number) {
-        this.instructionId = id;
+    constructor(params: { id: number }) {
+        this.instructionId = params.id;
     }
 }
 
@@ -43,48 +33,25 @@ export class AmountSchema {
     instructionId: number;
     amount: bigint;
 
-    static schema: borsh.Schema = new Map([
-        [
-            AmountSchema,
-            {
-                kind: 'struct',
-                fields: [
-                    ['instructionId', 'u8'],
-                    ['amount', 'i64']
-                ]
-            }
-        ]
-    ]);
-
-    constructor(id: number, amount: bigint) {
-        this.instructionId = id;
-        this.amount = amount;
+    constructor(params: { id: number; amount: bigint }) {
+        this.instructionId = params.id;
+        this.amount = params.amount;
     }
 }
 
 export class InitSchema {
     instructionId: number;
-    start_time: bigint;
-    unbonding_duration: BN;
+    startTime: Date;
+    unbondingDuration: BN;
 
-    static schema: borsh.Schema = new Map([
-        [
-            InitSchema,
-            {
-                kind: 'struct',
-                fields: [
-                    ['instructionId', 'u8'],
-                    ['start_time', 'i64'],
-                    ['unbonding_duration', 'u64']
-                ]
-            }
-        ]
-    ]);
-
-    constructor(id: number, start_time: bigint, unbonding_duration: BN) {
-        this.instructionId = id;
-        this.start_time = start_time;
-        this.unbonding_duration = unbonding_duration;
+    constructor(params: {
+        id: number;
+        startTime: Date;
+        unbondingDuration: BN;
+    }) {
+        this.instructionId = params.id;
+        this.startTime = params.startTime;
+        this.unbondingDuration = params.unbondingDuration;
     }
 }
 
@@ -118,12 +85,15 @@ export class Instruction {
             am(SystemProgram.programId, false, false)
         ];
 
-        const instruction = new InitSchema(
-            Instructions.Initialize,
-            BigInt(Math.floor(startTime.getTime() / 1000)),
-            new BN(unbondingDuration)
+        const instruction = new InitSchema({
+            id: Instructions.Initialize,
+            startTime: startTime,
+            unbondingDuration: new BN(unbondingDuration)
+        });
+        const instructionData = borsh.serialize(
+            INSTRUCTION_SCHEMA,
+            instruction
         );
-        const instructionData = borsh.serialize(InitSchema.schema, instruction);
 
         return new TransactionInstruction({
             keys: keys,
@@ -166,9 +136,11 @@ export class Instruction {
             am(SystemProgram.programId, false, false)
         ];
 
-        const instruction = new SimpleSchema(Instructions.RegisterCommunity);
+        const instruction = new SimpleSchema({
+            id: Instructions.RegisterCommunity
+        });
         const instructionData = borsh.serialize(
-            SimpleSchema.schema,
+            INSTRUCTION_SCHEMA,
             instruction
         );
 
@@ -218,9 +190,11 @@ export class Instruction {
             am(SystemProgram.programId, false, false)
         ];
 
-        const instruction = new SimpleSchema(Instructions.InitializeStake);
+        const instruction = new SimpleSchema({
+            id: Instructions.InitializeStake
+        });
         const instructionData = borsh.serialize(
-            SimpleSchema.schema,
+            INSTRUCTION_SCHEMA,
             instruction
         );
 
@@ -240,7 +214,7 @@ export class Instruction {
         feeRecipient: PublicKey,
         primary: PublicKey,
         secondary: PublicKey,
-        amount: number | bigint
+        amount: bigint
     ): Promise<TransactionInstruction> {
         const settingsId = await Staking.settingsId(programId);
         const poolAuthorityId = await Staking.poolAuthorityId(programId);
@@ -289,12 +263,12 @@ export class Instruction {
             am(TOKEN_PROGRAM_ID, false, false)
         ];
 
-        const instruction = new AmountSchema(
-            Instructions.Stake,
-            BigInt(amount)
-        );
+        const instruction = new AmountSchema({
+            id: Instructions.Stake,
+            amount
+        });
         const instructionData = borsh.serialize(
-            AmountSchema.schema,
+            INSTRUCTION_SCHEMA,
             instruction
         );
 
@@ -336,9 +310,11 @@ export class Instruction {
             am(TOKEN_PROGRAM_ID, false, false)
         ];
 
-        const instruction = new SimpleSchema(Instructions.WithdrawUnbond);
+        const instruction = new SimpleSchema({
+            id: Instructions.WithdrawUnbond
+        });
         const instructionData = borsh.serialize(
-            SimpleSchema.schema,
+            INSTRUCTION_SCHEMA,
             instruction
         );
 
@@ -372,9 +348,9 @@ export class Instruction {
             am(TOKEN_PROGRAM_ID, false, false)
         ];
 
-        const instruction = new SimpleSchema(Instructions.Claim);
+        const instruction = new SimpleSchema({ id: Instructions.Claim });
         const instructionData = borsh.serialize(
-            SimpleSchema.schema,
+            INSTRUCTION_SCHEMA,
             instruction
         );
 
@@ -393,3 +369,34 @@ function am(
 ): AccountMeta {
     return { pubkey, isSigner, isWritable };
 }
+
+export const INSTRUCTION_SCHEMA: borsh.Schema = new Map<any, any>([
+    [
+        SimpleSchema,
+        {
+            kind: 'struct',
+            fields: [['instructionId', 'u8']]
+        }
+    ],
+    [
+        AmountSchema,
+        {
+            kind: 'struct',
+            fields: [
+                ['instructionId', 'u8'],
+                ['amount', 'BigInt']
+            ]
+        }
+    ],
+    [
+        InitSchema,
+        {
+            kind: 'struct',
+            fields: [
+                ['instructionId', 'u8'],
+                ['startTime', 'Date'],
+                ['unbondingDuration', 'u64']
+            ]
+        }
+    ]
+]);

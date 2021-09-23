@@ -3,25 +3,26 @@ import BN from 'bn.js';
 import { BinaryReader, BinaryWriter } from 'borsh';
 declare module 'borsh' {
     interface BinaryWriter {
-        writeI64(value: bigint): void;
+        writeBigInt(value: bigint): void;
         writePublicKey(value: PublicKey): void;
         writeDate(value: Date): void;
     }
     interface BinaryReader {
-        readI64(): BN;
+        readBigInt(): bigint;
         readPublicKey(): PublicKey;
         readDate(): Date;
     }
 }
 
-BinaryWriter.prototype.writeI64 = function (value: bigint) {
-    const buffer = Buffer.alloc(8);
-    buffer.writeBigInt64LE(value);
-    this.writeFixedArray(buffer);
+BinaryWriter.prototype.writeBigInt = function (value: bigint) {
+    const buf = Buffer.alloc(8);
+    buf.writeBigInt64LE(value);
+    this.writeFixedArray(buf);
 };
 
-BinaryReader.prototype.readI64 = function () {
-    return new BN(this.readFixedArray(8), 'le');
+BinaryReader.prototype.readBigInt = function () {
+    const buf = Buffer.from(this.readFixedArray(8));
+    return buf.readBigInt64LE();
 };
 
 BinaryWriter.prototype.writePublicKey = function (value: PublicKey) {
