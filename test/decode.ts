@@ -1,7 +1,7 @@
 import { AccountInfo, Connection, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import * as borsh from 'borsh';
-import { Community, Settings } from '../js/src';
+import { ACCOUNT_SCHEMA, Community, Settings } from '../js/src';
 
 const connection = new Connection('http://localhost:8899');
 
@@ -34,7 +34,7 @@ async function ga(key: PublicKey): Promise<AccountInfo<Buffer>> {
     );
 
     const community = borsh.deserialize(
-        Community.schema,
+        ACCOUNT_SCHEMA,
         Community,
         account.data
     );
