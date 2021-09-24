@@ -1,23 +1,21 @@
+// goal of the script is to simulate what happens to a community owner's beneficiary account
+// when someone unsubscribes from community.
+// for more info, see https://github.com/Zoints/Communities/issues/604
+
 // requires a running local node set up with the staking system
 // ie a running test_server is enough
 // staking program id, funder, and mint authority needs to be copied from existing setup
 
-import {
-    ASSOCIATED_TOKEN_PROGRAM_ID,
-    Token,
-    TOKEN_PROGRAM_ID
-} from '@solana/spl-token';
+import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import {
     Connection,
     Keypair,
     PublicKey,
     sendAndConfirmTransaction,
-    SystemProgram,
     Transaction
 } from '@solana/web3.js';
-import { Instruction, Instructions, Staking } from '@zoints/staking';
+import { Instruction, Staking } from '@zoints/staking';
 import BN from 'bn.js';
-import { create } from 'domain';
 
 const programId = new PublicKey('GGgStUEFvrGGj3aBH6mcLzyrMM6EyKDDuLZYbgZczq4Q');
 const mint = new PublicKey('5JKMQjbzy1T4w8e84wZ6rVmRZXi7gz4t7ugA9BrYNJuj');
