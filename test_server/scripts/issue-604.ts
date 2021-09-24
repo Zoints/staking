@@ -126,7 +126,7 @@ async function stake(staker: Address, community: Community, amount: bigint) {
     ]);
     const claimed = await extractClaimed(txid);
     console.log(
-        `${staker.name} staked ${amount} ZEE with ${community.name}. claimed ${claimed} ZEE during the process`
+        `${staker.name} staked ${amount} ZEE with ${community.name}. claimed ${claimed} ZEE during the process\n\t${txid}`
     );
 }
 
@@ -184,7 +184,11 @@ async function printBeneficiary(rps: BN, address: Address) {
     console.log(`==============`);
     console.log(`\t       staked = ${bene.staked.toNumber()}`);
     console.log(
-        `\t  harvestable = ${bene.holding.add(bene.calculateReward(rps))}`
+        `\t  harvestable = ${bene.holding.add(
+            bene.calculateReward(rps)
+        )} (holding ${bene.holding.toNumber()}, reward ${bene.calculateReward(
+            rps
+        )})`
     );
     const balance = await connection.getTokenAccountBalance(address.assoc);
     console.log(`\twallet balance = ${balance.value.uiAmount}`);
@@ -259,7 +263,11 @@ async function printBeneficiary(rps: BN, address: Address) {
 
     const printState = async () => {
         const settings = await staking.getSettings();
-        const rps = settings.calculateRewardPerShare(new Date());
+        const date = new Date();
+        const rps = settings.calculateRewardPerShare(date);
+
+        console.log(`Reward Per Share: ${rps}`);
+        console.log(`Unix Timestamp: ${date.getUnixTime()}`);
 
         await printBeneficiary(rps, staked1Primary);
         await printBeneficiary(rps, staked1Secondary);
