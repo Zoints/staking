@@ -120,8 +120,62 @@ async function stake(staker: Address, community: Community, amount: bigint) {
             amount
         )
     );
-    await sendAndConfirmTransaction(connection, tx, [funder, staker.key]);
-    console.log(`${staker.name} staked ${amount} ZEE with ${community.name}`);
+    const txid = await sendAndConfirmTransaction(connection, tx, [
+        funder,
+        staker.key
+    ]);
+    const claimed = await extractClaimed(txid);
+    console.log(
+        `${staker.name} staked ${amount} ZEE with ${community.name}. claimed ${claimed} ZEE during the process`
+    );
+}
+
+async function claim(staker: Address) {
+    const tx = new Transaction().add(
+        await Instruction.Claim(
+            programId,
+            funder.publicKey,
+            staker.pubkey,
+            staker.assoc
+        )
+    );
+    const txid = await sendAndConfirmTransaction(connection, tx, [
+        funder,
+        staker.key
+    ]);
+
+    const claimed = await extractClaimed(txid);
+
+    console.log(`${staker.name} claimed ${claimed} ZEE`);
+}
+
+const claimed = /zee claimed: (\d+)/;
+
+async function extractClaimed(sig: string): Promise<number> {
+    const result = await connection.getTransaction(sig);
+
+    if (result === null) {
+        throw new Error('unable to retrieve transaction');
+    }
+
+    if (result.meta === null) {
+        throw new Error('transaction has no meta');
+    }
+
+    if (
+        result.meta.logMessages === null ||
+        result.meta.logMessages === undefined
+    ) {
+        throw new Error('transaction has no logs');
+    }
+
+    for (const line of result.meta.logMessages) {
+        const match = line.match(claimed);
+        if (match) {
+            return Number(match[1]);
+        }
+    }
+    return 0;
 }
 
 async function printBeneficiary(rps: BN, address: Address) {
@@ -221,11 +275,15 @@ async function printBeneficiary(rps: BN, address: Address) {
     await printState();
 
     await stake(outsideStaker1, stakerCommunity, 50_000n);
+    await printState();
+    await stake(outsideStaker2, stakerCommunity, 100_000n);
     await stake(staker, staked1Community, 75_000n);
     await stake(staker, staked2Community, 100_000n);
 
     await wait(2000);
+    await printState();
 
+    await stake(outsideStaker1, stakerCommunity, -25_000n);
     await printState();
 })()
     .then(() => process.exit(0))
