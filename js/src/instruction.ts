@@ -21,31 +21,41 @@ export enum Instructions {
     Claim
 }
 
-export class SimpleSchema {
-    instructionId: number;
+export type InstructionSchema = SimpleSchema | AmountSchema | InitSchema;
 
-    constructor(params: { instructionId: number }) {
+export class SimpleSchema {
+    instructionId: Exclude<
+        Instructions,
+        Instructions.Initialize | Instructions.Stake
+    >;
+
+    constructor(params: {
+        instructionId: Exclude<
+            Instructions,
+            Instructions.Initialize | Instructions.Stake
+        >;
+    }) {
         this.instructionId = params.instructionId;
     }
 }
 
 export class AmountSchema {
-    instructionId: number;
+    instructionId: Instructions.Stake;
     amount: bigint;
 
-    constructor(params: { instructionId: number; amount: bigint }) {
+    constructor(params: { instructionId: Instructions.Stake; amount: bigint }) {
         this.instructionId = params.instructionId;
         this.amount = params.amount;
     }
 }
 
 export class InitSchema {
-    instructionId: number;
+    instructionId: Instructions.Initialize;
     startTime: Date;
     unbondingDuration: BN;
 
     constructor(params: {
-        instructionId: number;
+        instructionId: Instructions.Initialize;
         startTime: Date;
         unbondingDuration: BN;
     }) {
@@ -330,7 +340,7 @@ export class Instruction {
         funder: PublicKey,
         authority: PublicKey,
         authorityAssociated: PublicKey
-    ) {
+    ): Promise<TransactionInstruction> {
         const settingsId = await Staking.settingsId(programId);
         const poolAuthorityId = await Staking.poolAuthorityId(programId);
         const rewardPoolId = await Staking.rewardPoolId(programId);
@@ -372,9 +382,7 @@ function am(
     return { pubkey, isSigner, isWritable };
 }
 
-export function decodeInstructionData(
-    data: Buffer
-): SimpleSchema | AmountSchema | InitSchema {
+export function decodeInstructionData(data: Buffer): InstructionSchema {
     switch (data[0]) {
         case Instructions.Initialize:
             return borsh.deserialize(INSTRUCTION_SCHEMA, InitSchema, data);
