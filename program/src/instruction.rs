@@ -117,7 +117,7 @@ mod tests {
         let init = StakingInstruction::Stake { amount };
         let data = init.try_to_vec().unwrap();
 
-        let mut should = vec![0];
+        let mut should = vec![3];
         should.extend(amount.to_le_bytes().iter());
 
         assert_eq!(data, should);
