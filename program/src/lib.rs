@@ -125,8 +125,10 @@ mod tests {
         }
 
         println!(
-            "\nreward per share min {}\nreward per share max {}",
+            "\nreward per share min {} ({})\nreward per share max {} ({})",
+            reward_per_share_min,
             reward_per_share_min as f64 / PRECISION as f64,
+            reward_per_share_max,
             reward_per_share_max as f64 / PRECISION as f64
         );
         let reward_min = min_stake * reward_per_share_min / PRECISION;
