@@ -418,7 +418,13 @@ mod tests {
             ),
             (
                 SECONDS_PER_YEAR * 3 + 1,
-                PRECISION * BASE_REWARD / SECONDS_PER_YEAR * SECONDS_PER_YEAR
+                PRECISION
+                    .checked_mul(BASE_REWARD)
+                    .unwrap()
+                    .checked_div(SECONDS_PER_YEAR)
+                    .unwrap()
+                    .checked_mul(SECONDS_PER_YEAR)
+                    .unwrap()
                     + PRECISION * (BASE_REWARD * 3 / 4) / SECONDS_PER_YEAR * SECONDS_PER_YEAR
                     + PRECISION * (BASE_REWARD * 3 / 4 * 3 / 4) / SECONDS_PER_YEAR
                         * SECONDS_PER_YEAR
@@ -451,19 +457,19 @@ mod tests {
         assert_eq!(beneficiary.holding, 0);
     }
 
-    /*#[test]
+    #[test]
     pub fn test_audit_beneficiary() {
         let bene = Beneficiary {
             authority: Pubkey::new_unique(),
             staked: 450100175u64,
-            reward_debt: 180058082997113u64,
-            holding: 0,
+            reward_debt: 180637733882444u64,
+            holding: 1621703692,
         };
 
-        let rps = 1156054873849615829562856588354u128;
+        let rps = 1156062048806495040690850880650u128;
 
         println!("{}", bene.calculate_holding(rps) - bene.reward_debt);
-    }*/
+    }
 
     #[test]
     pub fn test_math() {
