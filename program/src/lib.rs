@@ -22,7 +22,7 @@ pub const SECONDS_PER_YEAR: u128 = 31_536_000;
 /// floating point math. The precision is an arbitrary factor contained in
 /// the calculations to determine the number of significant post-decimal
 /// digits.
-pub const PRECISION: u128 = 1_000_000_000_000_000_000_000_000;
+pub const PRECISION: u128 = 1_000_000_000_000;
 
 /// Split Stake
 ///
@@ -100,15 +100,25 @@ mod tests {
 
         let mut reward_per_share_min = 0;
         let mut reward_per_share_max = 0;
-        let max_stake = 6_400_000_000_000; // 100% of supply - 36% of token rewards
+        let max_stake = 10_000_000_000_000; // 100% of supply
         let min_stake = 1;
 
         // calculate reward per share for x years
         for year in 0..max_years {
-            let emission_per_seconds_min =
-                PRECISION * emission_per_year / SECONDS_PER_YEAR / min_stake;
-            let emission_per_seconds_max =
-                PRECISION * emission_per_year / SECONDS_PER_YEAR / max_stake;
+            let emission_per_seconds_min = PRECISION
+                .checked_mul(emission_per_year)
+                .unwrap()
+                .checked_div(SECONDS_PER_YEAR)
+                .unwrap()
+                .checked_div(min_stake)
+                .unwrap();
+            let emission_per_seconds_max = PRECISION
+                .checked_mul(emission_per_year)
+                .unwrap()
+                .checked_div(SECONDS_PER_YEAR)
+                .unwrap()
+                .checked_div(max_stake)
+                .unwrap();
 
             println!(
                 "Year {}: ZEE per year: {}, ZEE per second per share minimum: {}, ZEE per second per share maximum: {}",
@@ -118,8 +128,12 @@ mod tests {
                 emission_per_seconds_max as f64 / PRECISION as f64
             );
 
-            reward_per_share_min += emission_per_seconds_min * SECONDS_PER_YEAR;
-            reward_per_share_max += emission_per_seconds_max * SECONDS_PER_YEAR;
+            reward_per_share_min += emission_per_seconds_min
+                .checked_mul(SECONDS_PER_YEAR)
+                .unwrap();
+            reward_per_share_max += emission_per_seconds_max
+                .checked_mul(SECONDS_PER_YEAR)
+                .unwrap();
 
             emission_per_year = (emission_per_year * 3) / 4; // *.75
         }
@@ -131,10 +145,27 @@ mod tests {
             reward_per_share_max,
             reward_per_share_max as f64 / PRECISION as f64
         );
-        let reward_min = min_stake * reward_per_share_min / PRECISION;
-        let reward_max = max_stake * reward_per_share_max / PRECISION;
+        let reward_min = min_stake
+            .checked_mul(reward_per_share_min)
+            .unwrap()
+            .checked_div(PRECISION)
+            .unwrap();
+        let reward_max = max_stake
+            .checked_mul(reward_per_share_max)
+            .unwrap()
+            .checked_div(PRECISION)
+            .unwrap();
+        let reward_overflow = max_stake
+            .checked_mul(reward_per_share_min)
+            .unwrap()
+            .checked_div(PRECISION)
+            .unwrap();
 
         println!("{} year reward min: {} ZEE", max_years, reward_min);
         println!("{} year reward max: {} ZEE", max_years, reward_max);
+        println!(
+            "{} year reward overflow: {} ZEE",
+            max_years, reward_overflow
+        );
     }
 }
