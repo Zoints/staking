@@ -79,7 +79,7 @@ impl Settings {
         let old_rps = self.reward_per_share;
 
         if self.total_stake > 0 {
-            let mut reward = 0;
+            let mut reward: u128 = 0;
 
             // emissions reduce by 25% every year, so if the period between `last_reward`
             // and `now` crosses the year threshold, we calculate the period in each year
@@ -91,14 +91,18 @@ impl Settings {
                     .next_emission_change
                     .checked_sub(self.last_reward)
                     .unwrap()) as u128;
-                reward += PRECISION
-                    .checked_mul(self.emission as u128)
-                    .unwrap()
-                    .checked_div(SECONDS_PER_YEAR)
-                    .unwrap()
-                    .checked_div(self.total_stake as u128)
-                    .unwrap()
-                    .checked_mul(seconds)
+                reward = reward
+                    .checked_add(
+                        PRECISION
+                            .checked_mul(self.emission as u128)
+                            .unwrap()
+                            .checked_div(SECONDS_PER_YEAR)
+                            .unwrap()
+                            .checked_div(self.total_stake as u128)
+                            .unwrap()
+                            .checked_mul(seconds)
+                            .unwrap(),
+                    )
                     .unwrap();
 
                 self.last_reward = self.next_emission_change;
@@ -107,14 +111,18 @@ impl Settings {
             }
 
             let seconds = (now - self.last_reward) as u128;
-            reward += PRECISION
-                .checked_mul(self.emission as u128)
-                .unwrap()
-                .checked_div(SECONDS_PER_YEAR)
-                .unwrap()
-                .checked_div(self.total_stake as u128)
-                .unwrap()
-                .checked_mul(seconds)
+            reward = reward
+                .checked_add(
+                    PRECISION
+                        .checked_mul(self.emission as u128)
+                        .unwrap()
+                        .checked_div(SECONDS_PER_YEAR)
+                        .unwrap()
+                        .checked_div(self.total_stake as u128)
+                        .unwrap()
+                        .checked_mul(seconds)
+                        .unwrap(),
+                )
                 .unwrap();
 
             self.reward_per_share += reward;
@@ -122,7 +130,7 @@ impl Settings {
         self.last_reward = now;
 
         msg!(
-            "updated pool rewards: from {} to {} ({}), old rps = {}, new rps = {}, stake = {}",
+            "updated pool rewards:\n\tlast_reward: {} -> {} ({} seconds)\n\treward_per_share: {} -> {}\n\tstake = {}",
             old_last_reward,
             self.last_reward,
             self.last_reward - old_last_reward,
