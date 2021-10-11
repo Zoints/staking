@@ -10,11 +10,11 @@
   "license": "ISC",
   "dependencies": {
     "@solana/spl-token": "^0.1.8",
-    "@solana/web3.js": "^1.22.0",
+    "@solana/web3.js": "^1.29.2",
     "@zoints/staking": "file:../js",
     "axios": "^0.21.1",
     "bn.js": "^5.2.0",
-    "borsh": "^0.4.0",
+    "borsh": "^0.6.0",
     "crypto": "^1.0.1",
     "express": "^4.17.1",
     "tweetnacl": "^1.0.3"

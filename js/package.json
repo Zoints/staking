@@ -1,6 +1,6 @@
 {
   "name": "@zoints/staking",
-  "version": "0.8.2",
+  "version": "0.9.0",
   "description": "The JavaScript library for staking",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -21,9 +21,9 @@
   "license": "UNLICENSED",
   "dependencies": {
     "@solana/spl-token": "^0.1.8",
-    "@solana/web3.js": "^1.24.0",
+    "@solana/web3.js": "^1.29.2",
     "bn.js": "^5.2.0",
-    "borsh": "^0.4.0"
+    "borsh": "^0.6.0"
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.1",

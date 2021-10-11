@@ -125,12 +125,12 @@ impl Settings {
                 )
                 .unwrap();
 
-            self.reward_per_share += reward;
+            self.reward_per_share = self.reward_per_share.checked_add(reward).unwrap();
         }
         self.last_reward = now;
 
         msg!(
-            "updated pool rewards:\n\tlast_reward: {} -> {} ({} seconds)\n\treward_per_share: {} -> {}\n\tstake = {}",
+            "updated pool rewards. last_reward: {} -> {} ({} seconds), reward_per_share: {} -> {}, stake = {}",
             old_last_reward,
             self.last_reward,
             self.last_reward - old_last_reward,
