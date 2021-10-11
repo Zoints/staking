@@ -15,7 +15,7 @@ use solana_program::{
 use spl_token::state::{Account, Mint};
 
 use crate::{
-    account::{Beneficiary, Community, PoolAuthority, RewardPool, Settings, Stake},
+    account::{Beneficiary, Endpoint, PoolAuthority, RewardPool, Settings, Stake},
     error::StakingError,
     instruction::StakingInstruction,
     pool_transfer, split_stake, verify_associated, BASE_REWARD, MINIMUM_STAKE, SECONDS_PER_YEAR,
@@ -127,8 +127,8 @@ impl Processor {
                 start_time,
                 unbonding_duration,
             } => Self::process_initialize(program_id, accounts, start_time, unbonding_duration),
-            StakingInstruction::RegisterCommunity => {
-                Self::process_register_community(program_id, accounts)
+            StakingInstruction::RegisterEndpoint => {
+                Self::process_register_endpoint(program_id, accounts)
             }
             StakingInstruction::InitializeStake => {
                 Self::process_initialize_stake(program_id, accounts)
@@ -251,14 +251,14 @@ impl Processor {
         )
     }
 
-    pub fn process_register_community(
+    pub fn process_register_endpoint(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let iter = &mut accounts.iter();
         let funder_info = next_account_info(iter)?;
         let creator_info = next_account_info(iter)?;
-        let community_info = next_account_info(iter)?;
+        let endpoint_info = next_account_info(iter)?;
         let primary_info = next_account_info(iter)?;
         let primary_beneficiary_info = next_account_info(iter)?;
         let secondary_info = next_account_info(iter)?;
@@ -269,8 +269,8 @@ impl Processor {
         let rent = Rent::from_account_info(rent_info)?;
         let clock = Clock::from_account_info(clock_info)?;
 
-        if !community_info.data_is_empty() {
-            return Err(StakingError::CommunityAccountAlreadyExists.into());
+        if !endpoint_info.data_is_empty() {
+            return Err(StakingError::EndpointAccountAlreadyExists.into());
         }
 
         if primary_beneficiary_info.data_is_empty() {
@@ -295,31 +295,31 @@ impl Processor {
             msg!("Secondary Beneficiary created");
         }
 
-        let community = Community {
+        let endpoint = Endpoint {
             creation_date: clock.unix_timestamp,
             authority: *creator_info.key,
             primary: *primary_info.key,
             secondary: *secondary_info.key,
         };
 
-        let data = community.try_to_vec()?;
+        let data = endpoint.try_to_vec()?;
 
         let lamports = rent.minimum_balance(data.len());
         let space = data.len() as u64;
 
-        msg!("Registering Community: {:?}", community);
+        msg!("Registering Endpoint: {:?}", endpoint);
         invoke(
             &create_account(
                 funder_info.key,
-                community_info.key,
+                endpoint_info.key,
                 lamports,
                 space,
                 program_id,
             ),
-            &[funder_info.clone(), community_info.clone()],
+            &[funder_info.clone(), endpoint_info.clone()],
         )?;
 
-        community_info.data.borrow_mut().copy_from_slice(&data);
+        endpoint_info.data.borrow_mut().copy_from_slice(&data);
 
         Ok(())
     }
@@ -333,7 +333,7 @@ impl Processor {
         let staker_info = next_account_info(iter)?;
         let staker_fund_info = next_account_info(iter)?;
         let staker_beneficiary_info = next_account_info(iter)?;
-        let community_info = next_account_info(iter)?;
+        let endpoint_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
 
         let token_info = next_account_info(iter)?;
@@ -355,11 +355,11 @@ impl Processor {
             return Err(StakingError::InvalidToken.into());
         }
 
-        Community::from_account_info(community_info, program_id)?;
+        Endpoint::from_account_info(endpoint_info, program_id)?;
 
         let seed = Stake::verify_program_address(
             stake_info.key,
-            community_info.key,
+            endpoint_info.key,
             staker_info.key,
             program_id,
         )?;
@@ -388,7 +388,7 @@ impl Processor {
             &[funder_info.clone(), stake_info.clone()],
             &[&[
                 b"stake",
-                &community_info.key.to_bytes(),
+                &endpoint_info.key.to_bytes(),
                 &staker_info.key.to_bytes(),
                 &[seed],
             ]],
@@ -415,7 +415,7 @@ impl Processor {
         let lamports = rent.minimum_balance(Account::LEN);
         let staker_fund_seed = Stake::verify_fund_address(
             staker_fund_info.key,
-            community_info.key,
+            endpoint_info.key,
             staker_info.key,
             program_id,
         )?;
@@ -431,7 +431,7 @@ impl Processor {
             &[funder_info.clone(), staker_fund_info.clone()],
             &[&[
                 b"stake fund",
-                community_info.key.as_ref(),
+                endpoint_info.key.as_ref(),
                 staker_info.key.as_ref(),
                 &[staker_fund_seed],
             ]],
@@ -466,7 +466,7 @@ impl Processor {
         let staker_beneficiary_info = next_account_info(iter)?;
         let staker_fund_info = next_account_info(iter)?;
         let staker_associated_info = next_account_info(iter)?;
-        let community_info = next_account_info(iter)?;
+        let endpoint_info = next_account_info(iter)?;
         let primary_beneficiary_info = next_account_info(iter)?;
         let secondary_beneficiary_info = next_account_info(iter)?;
         let pool_authority_info = next_account_info(iter)?;
@@ -489,15 +489,15 @@ impl Processor {
             program_id,
         )?;
 
-        let community = Community::from_account_info(community_info, program_id)?;
+        let endpoint = Endpoint::from_account_info(endpoint_info, program_id)?;
         let mut primary_beneficiary = Beneficiary::from_account_info(
             primary_beneficiary_info,
-            &community.primary,
+            &endpoint.primary,
             program_id,
         )?;
         let mut secondary_beneficiary = Beneficiary::from_account_info(
             secondary_beneficiary_info,
-            &community.secondary,
+            &endpoint.secondary,
             program_id,
         )?;
 
@@ -505,7 +505,7 @@ impl Processor {
             verify_associated!(staker_associated_info, settings.token, *staker_info.key)?;
 
         let mut stake =
-            Stake::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
+            Stake::from_account_info(stake_info, endpoint_info.key, staker_info.key, program_id)?;
         let mut staker_beneficiary =
             Beneficiary::from_account_info(staker_beneficiary_info, staker_info.key, program_id)?;
 
@@ -641,14 +641,14 @@ impl Processor {
         let staker_info = next_account_info(iter)?;
         let staker_fund_info = next_account_info(iter)?;
         let staker_associated_info = next_account_info(iter)?;
-        let community_info = next_account_info(iter)?;
+        let endpoint_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
         let clock = Clock::from_account_info(clock_info)?;
         let settings = Settings::from_account_info(settings_info, program_id)?;
-        // not verifying community, we just need an existing pubkey to check stake program address
+        // not verifying endpoint, we just need an existing pubkey to check stake program address
 
         if !staker_info.is_signer {
             return Err(StakingError::MissingStakeSignature.into());
@@ -658,12 +658,12 @@ impl Processor {
 
         let stake_seed = Stake::verify_program_address(
             stake_info.key,
-            community_info.key,
+            endpoint_info.key,
             staker_info.key,
             program_id,
         )?;
         let mut stake =
-            Stake::from_account_info(stake_info, community_info.key, staker_info.key, program_id)?;
+            Stake::from_account_info(stake_info, endpoint_info.key, staker_info.key, program_id)?;
 
         if stake.unbonding_amount == 0 {
             return Err(StakingError::WithdrawNothingtowithdraw.into());
@@ -675,7 +675,7 @@ impl Processor {
 
         Stake::verify_fund_address(
             staker_fund_info.key,
-            community_info.key,
+            endpoint_info.key,
             staker_info.key,
             program_id,
         )?;
@@ -696,7 +696,7 @@ impl Processor {
             ],
             &[&[
                 b"stake",
-                &community_info.key.to_bytes(),
+                &endpoint_info.key.to_bytes(),
                 &staker_info.key.to_bytes(),
                 &[stake_seed],
             ]],

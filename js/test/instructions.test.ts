@@ -162,7 +162,7 @@ describe('Serialization', () => {
 
     it('decode unknown simple instruction data', async () => {
         const init = new SimpleSchema({
-            instructionId: Instructions.RegisterCommunity // uses simple schema
+            instructionId: Instructions.RegisterEndpoint // uses simple schema
         });
 
         const data = Buffer.from(borsh.serialize(INSTRUCTION_SCHEMA, init));

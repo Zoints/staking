@@ -177,19 +177,19 @@ impl RewardPool {
     }
 }
 
-/// A Community is a the entity that someone can stake against to share yield.
-/// Each community has an authority, which is the solana address in charge of making
-/// decisions about the Community itself, once that functionality is implemented.
+/// An Endpoint is a the entity that someone can stake against to share yield.
+/// Each endpoint has an authority, which is the solana address in charge of making
+/// decisions about the Endpoint itself, once that functionality is implemented.
 /// The Primary beneficiary receives 45% of the staker's yield, the secondary beneficiary
 /// receives 5% of the staker's yield.
 ///
-/// It is possible for a Community to have no secondary Beneficiary, in which case the
+/// It is possible for an Endpoint to have no secondary Beneficiary, in which case the
 /// the 5% stay in the reward pool.
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
-pub struct Community {
-    /// The time the community was initialized
+pub struct Endpoint {
+    /// The time the endpoint was initialized
     pub creation_date: UnixTimestamp,
-    /// The Community's authority
+    /// The endpoint's authority
     pub authority: Pubkey,
     /// The primary beneficiary receiving 45% of yield
     pub primary: Pubkey,
@@ -197,17 +197,17 @@ pub struct Community {
     pub secondary: Pubkey,
 }
 
-impl Community {
+impl Endpoint {
     pub fn from_account_info(
         info: &AccountInfo,
         program_id: &Pubkey,
-    ) -> Result<Community, ProgramError> {
+    ) -> Result<Endpoint, ProgramError> {
         if info.owner != program_id {
-            return Err(StakingError::InvalidCommunityAccount.into());
+            return Err(StakingError::InvalidEndpointAccount.into());
         }
 
         Self::try_from_slice(&info.data.borrow())
-            .map_err(|_| StakingError::InvalidCommunityAccount.into())
+            .map_err(|_| StakingError::InvalidEndpointAccount.into())
     }
 }
 
@@ -295,42 +295,42 @@ pub struct Stake {
 }
 
 impl Stake {
-    pub fn fund_address(community: &Pubkey, staker: &Pubkey, program_id: &Pubkey) -> (Pubkey, u8) {
+    pub fn fund_address(endpoint: &Pubkey, staker: &Pubkey, program_id: &Pubkey) -> (Pubkey, u8) {
         Pubkey::find_program_address(
-            &[b"stake fund", &community.to_bytes(), &staker.to_bytes()],
+            &[b"stake fund", &endpoint.to_bytes(), &staker.to_bytes()],
             program_id,
         )
     }
     pub fn verify_fund_address(
         address: &Pubkey,
-        community: &Pubkey,
+        endpoint: &Pubkey,
         staker: &Pubkey,
         program_id: &Pubkey,
     ) -> Result<u8, ProgramError> {
-        match Self::fund_address(community, staker, program_id) {
+        match Self::fund_address(endpoint, staker, program_id) {
             (real, seed) if real == *address => Ok(seed),
             _ => Err(StakingError::InvalidStakeFundAccount.into()),
         }
     }
 
     pub fn program_address(
-        community: &Pubkey,
+        endpoint: &Pubkey,
         staker: &Pubkey,
         program_id: &Pubkey,
     ) -> (Pubkey, u8) {
         Pubkey::find_program_address(
-            &[b"stake", &community.to_bytes(), &staker.to_bytes()],
+            &[b"stake", &endpoint.to_bytes(), &staker.to_bytes()],
             program_id,
         )
     }
 
     pub fn verify_program_address(
         address: &Pubkey,
-        community: &Pubkey,
+        endpoint: &Pubkey,
         staker: &Pubkey,
         program_id: &Pubkey,
     ) -> Result<u8, ProgramError> {
-        match Self::program_address(community, staker, program_id) {
+        match Self::program_address(endpoint, staker, program_id) {
             (real, seed) if real == *address => Ok(seed),
             _ => Err(StakingError::InvalidStakeAccount.into()),
         }
@@ -338,11 +338,11 @@ impl Stake {
 
     pub fn from_account_info(
         info: &AccountInfo,
-        community: &Pubkey,
+        endpoint: &Pubkey,
         staker: &Pubkey,
         program_id: &Pubkey,
     ) -> Result<Stake, ProgramError> {
-        Self::verify_program_address(info.key, community, staker, program_id)?;
+        Self::verify_program_address(info.key, endpoint, staker, program_id)?;
         Self::try_from_slice(&info.data.borrow())
             .map_err(|_| StakingError::StakerInvalidStakeAccount.into())
     }

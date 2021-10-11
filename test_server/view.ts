@@ -19,7 +19,7 @@ export async function viewCommunity(staking: App, id: number): Promise<string> {
     }
 
     const appComm = staking.communities[id];
-    const community = await staking.staking.getCommunity(appComm.key.publicKey);
+    const community = await staking.staking.getEndpoint(appComm.key.publicKey);
     const settings = await staking.staking.getSettings();
 
     const rps = settings.calculateRewardPerShare(new Date());

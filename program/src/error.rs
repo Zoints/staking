@@ -34,9 +34,9 @@ pub enum StakingError {
     #[error("Token is not a valid SPL token")]
     TokenNotSPLToken,
 
-    /// Community Account Already Exists
-    #[error("Community Account Already Exists")]
-    CommunityAccountAlreadyExists,
+    /// Endpoint Account Already Exists
+    #[error("Endpoint Account Already Exists")]
+    EndpointAccountAlreadyExists,
 
     /// Invalid Stake Account
     #[error("Invalid Stake Account")]
@@ -46,9 +46,9 @@ pub enum StakingError {
     #[error("Invalid Stake Fund Account")]
     InvalidStakeFundAccount,
 
-    /// Invalid Community Account
-    #[error("Invalid Community Account")]
-    InvalidCommunityAccount,
+    /// Invalid Endpoint Account
+    #[error("Invalid Endpoint Account")]
+    InvalidEndpointAccount,
 
     /// Missing Stake Signature
     #[error("Missing Stake Signature")]

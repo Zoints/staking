@@ -5,7 +5,7 @@ import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import {
     BASE_REWARD,
-    Community,
+    Endpoint,
     Stake,
     Settings,
     Beneficiary,
@@ -49,7 +49,7 @@ describe('Settings', () => {
     });
 });
 
-describe('Community', () => {
+describe('Endpoint', () => {
     const raw = Buffer.from([
         0xc7, 0xd6, 0x10, 0x61, 0x00, 0x00, 0x00, 0x00, 0x10, 0x54, 0xb0, 0x9b,
         0x55, 0x6f, 0xee, 0x63, 0xe1, 0x47, 0x67, 0xc9, 0x8c, 0x2b, 0x50, 0x2b,
@@ -62,32 +62,28 @@ describe('Community', () => {
         0xc3, 0x94, 0x5a, 0xdc, 0x2d, 0x76, 0x8d, 0x6c
     ]);
 
-    const community: Community = borsh.deserialize(
-        ACCOUNT_SCHEMA,
-        Community,
-        raw
-    );
+    const endpoint: Endpoint = borsh.deserialize(ACCOUNT_SCHEMA, Endpoint, raw);
 
     it('should be equal', () => {
-        expect(community.creationDate).to.be.eql(
+        expect(endpoint.creationDate).to.be.eql(
             new Date('2021-08-09 07:18:31.000+00')
         );
 
-        expect(community.authority).to.be.eql(
+        expect(endpoint.authority).to.be.eql(
             new PublicKey('26kRZ2nGeghPoxKPF6fsp1Ucfno4eQwdprhNNaNfbcY1')
         );
 
-        expect(community.primary).to.be.eql(
+        expect(endpoint.primary).to.be.eql(
             new PublicKey('2bvn5d4krBDdCXEMH9KKHPx8xGauv6wEsaPZWAyYnUJh')
         );
 
-        expect(community.secondary).to.be.eql(
+        expect(endpoint.secondary).to.be.eql(
             new PublicKey('73aD1aXy4Z1arEYHCVxefmZHm4PgHTY7fxXTD34bSirf')
         );
     });
 });
 
-describe('Community without secondary', () => {
+describe('Endpoint without secondary', () => {
     const raw = Buffer.from([
         0xca, 0xd8, 0x10, 0x61, 0x00, 0x00, 0x00, 0x00, 0x9b, 0xa0, 0x0e, 0x11,
         0x67, 0x2c, 0xe7, 0xcd, 0x07, 0x48, 0x73, 0xb8, 0xea, 0x43, 0xf2, 0x26,
@@ -100,26 +96,22 @@ describe('Community without secondary', () => {
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
     ]);
 
-    const community: Community = borsh.deserialize(
-        ACCOUNT_SCHEMA,
-        Community,
-        raw
-    );
+    const endpoint: Endpoint = borsh.deserialize(ACCOUNT_SCHEMA, Endpoint, raw);
 
     it('should be equal', () => {
-        expect(community.creationDate).to.be.eql(
+        expect(endpoint.creationDate).to.be.eql(
             new Date('2021-08-09 07:27:06.000+00')
         );
 
-        expect(community.authority).to.be.eql(
+        expect(endpoint.authority).to.be.eql(
             new PublicKey('BUVkJSm8io8saymCGLENJrWaFSqakJ1jeU9obiAgDVMs')
         );
 
-        expect(community.primary).to.be.eql(
+        expect(endpoint.primary).to.be.eql(
             new PublicKey('FzPSsnfSC7bWgn3Xys4CT2dXk42FU4MUR4fyKmzhrDt2')
         );
 
-        expect(community.secondary).to.be.eql(PublicKey.default);
+        expect(endpoint.secondary).to.be.eql(PublicKey.default);
     });
 });
 

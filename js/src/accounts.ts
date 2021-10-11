@@ -118,7 +118,7 @@ export class Beneficiary {
     }
 }
 
-export class Community {
+export class Endpoint {
     public creationDate: Date;
     public authority: PublicKey;
 
@@ -191,7 +191,7 @@ export const ACCOUNT_SCHEMA: borsh.Schema = new Map<any, any>([
         }
     ],
     [
-        Community,
+        Endpoint,
         {
             kind: 'struct',
             fields: [

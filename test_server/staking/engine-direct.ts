@@ -16,7 +16,7 @@ export class EngineDirect implements StakeEngine {
         noSecondary: boolean
     ): Promise<void> {
         const transaction = new Transaction().add(
-            await Instruction.RegisterCommunity(
+            await Instruction.RegisterEndpoint(
                 app.program_id,
                 app.funder.publicKey,
                 community.authority.publicKey,
@@ -94,7 +94,7 @@ export class EngineDirect implements StakeEngine {
             );
         }
 
-        const comm = await app.staking.getCommunity(community.key.publicKey);
+        const comm = await app.staking.getEndpoint(community.key.publicKey);
 
         trans.add(
             await Instruction.Stake(

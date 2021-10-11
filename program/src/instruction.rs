@@ -22,12 +22,12 @@ pub enum StakingInstruction {
         /// The amount of time (in seconds) to lock unbonded funds
         unbonding_duration: u64,
     },
-    /// Register a new community.
+    /// Register a new endpoint.
     ///
     /// Expected Accounts:
     ///     1. `[writable,signer]` Transaction payer
-    ///     2. `[]` Community Owner
-    ///     3. `[writable,signer]` Community Account
+    ///     2. `[]` Endpoint Owner
+    ///     3. `[writable,signer]` Endpoint Account
     ///     4. `[]` Primary Beneficiary Authority
     ///     5. `[]` Primary Beneficiary
     ///     6. `[]` Secondary Beneficiary Authority
@@ -35,17 +35,17 @@ pub enum StakingInstruction {
     ///     8. `[]` Rent Sysvar
     ///     9. `[]` Clock Sysvar
     ///     10. `[]` System Program
-    RegisterCommunity,
+    RegisterEndpoint,
     /// Initialize a new stake
     ///
-    /// Must be done before being able to stake ZEE to a community
+    /// Must be done before being able to stake ZEE to an Endpoint
     ///
     /// Expected Accounts:
     ///     1. `[writable,signer]` Transaction payer
     ///     2. `[signer]` Staker
     ///     3. `[writable]` Staker Fund
     ///     4. `[writable]` Staker Beneficiary
-    ///     5. `[writable]` Community Account
+    ///     5. `[writable]` Endpoint Account
     ///     6. `[writable]` Stake Account
     ///     7. `[]` ZEE Token Mint
     ///     8. `[]` Settings Account
@@ -66,9 +66,9 @@ pub enum StakingInstruction {
     ///     3. `[writable]` Staker Beneficiary
     ///     4. `[writable]` Staker Fund
     ///     5. `[writable]` Staker ZEE Token Account
-    ///     6. `[writable]` Community
-    ///     7. `[writable]` Community Primary Beneficiary
-    ///     8. `[writable]` Community Secondary Beneficiary
+    ///     6. `[writable]` Endpoint
+    ///     7. `[writable]` Endpoint Primary Beneficiary
+    ///     8. `[writable]` Endpoint Secondary Beneficiary
     ///     9. `[]` Pool Authority
     ///     10. `[writable]` Reward Pool
     ///     11. `[writable]` Settings
@@ -86,7 +86,7 @@ pub enum StakingInstruction {
     ///     2. `[signer]` Staker
     ///     3. `[signer]` Staker Fund
     ///     4. `[writable]` Staker's ZEE Token Account
-    ///     5. `[]` Community
+    ///     5. `[]` Endpoint
     ///     6. `[]` Settings
     ///     7. `[]` Pool Authority
     ///     8. `[writable]` Stake Account
