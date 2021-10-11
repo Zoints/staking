@@ -28,7 +28,7 @@ describe('Serialization', () => {
         );
 
         expect(instruction.programId).to.eql(programId);
-        expect(instruction.keys).to.be.length(10);
+        expect(instruction.keys).to.be.length(8);
 
         const data = Buffer.from(
             borsh.serialize(
