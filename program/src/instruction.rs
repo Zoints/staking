@@ -11,11 +11,9 @@ pub enum StakingInstruction {
     ///     3. `[]` Pool Authority
     ///     4. `[writable]` Reward Pool
     ///     5. `[]` ZEE Token Mint
-    ///     6. `[signer]` Fee Beneficiary Authority
-    ///     7. `[writable]` Fee Beneficiary
-    ///     8. `[]` Rent Sysvar
-    ///     9. `[]` SPL Token Program
-    ///     10. `[]` System Program
+    ///     6. `[]` Rent Sysvar
+    ///     7. `[]` SPL Token Program
+    ///     8. `[]` System Program
     Initialize {
         /// The time after which yields start to pay out
         start_time: i64,
@@ -72,10 +70,9 @@ pub enum StakingInstruction {
     ///     9. `[]` Pool Authority
     ///     10. `[writable]` Reward Pool
     ///     11. `[writable]` Settings
-    ///     12. `[writable]` Fee Beneficiary
-    ///     13. `[writable]` Stake Account
-    ///     14. `[]` Clock Sysvar
-    ///     15. `[]` SPL Token Program
+    ///     12. `[writable]` Stake Account
+    ///     13. `[]` Clock Sysvar
+    ///     14. `[]` SPL Token Program
     Stake { amount: i64 },
     /// Withdraw Unbounded Tokens
     ///
