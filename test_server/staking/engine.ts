@@ -10,7 +10,7 @@ export interface StakeEngine {
     ): Promise<void>;
     claim(
         app: App,
-        authority?: Keypair,
+        authority: Keypair,
         communities?: AppCommunity[]
     ): Promise<void>;
     stake(

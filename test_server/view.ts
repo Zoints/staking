@@ -409,10 +409,6 @@ export async function wrap(staking: App, content: string): Promise<string> {
     }
     const rps = settings.calculateRewardPerShare(new Date());
 
-    const feeBeneficiary = await staking.staking.getBeneficiary(
-        settings.feeRecipient
-    );
-
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -468,32 +464,6 @@ export async function wrap(staking: App, content: string): Promise<string> {
         <td></td>
     </tr>
 
-    <tr>
-        <td>Authority</td>
-        <td><a href="https://explorer.solana.com/address/${feeBeneficiary.authority.toBase58()}?customUrl=${
-        staking.connectionURL
-    }&cluster=custom">${feeBeneficiary.authority
-        .toBase58()
-        .substr(0, 8)}...</td>
-    </tr>
-    <tr>
-        <td>Staked</td>
-        <td>${feeBeneficiary.staked.toString()}</td>
-    </tr>
-    <tr>
-        <td>Reward Debt</td>
-        <td>${feeBeneficiary.rewardDebt.toString()}</td>
-    </tr>
-    <tr>
-        <td>Holding</td>
-        <td>${feeBeneficiary.holding.toString()}</td>
-    </tr>
-    <tr>
-        <td>Harvestable</td>
-        <td>${feeBeneficiary
-            .calculateReward(rps)
-            .toString()} (<a href="/claim/fee">Claim</a>)</td>
-    </tr>
 </table>
 <h2>Communities</h2>
 ${communities}
