@@ -16,7 +16,6 @@ Date.prototype.getUnixTime = function (): number {
 export class Settings {
     public token: PublicKey;
     public unbondingTime: BN;
-    public feeRecipient: PublicKey;
 
     public nextEmissionChange: Date;
     public emission: BN;
@@ -28,7 +27,6 @@ export class Settings {
     constructor(params: {
         token: PublicKey;
         unbondingTime: BN;
-        feeRecipient: PublicKey;
         nextEmissionChange: Date;
         emission: BN;
         totalStake: BN;
@@ -37,7 +35,6 @@ export class Settings {
     }) {
         this.token = params.token;
         this.unbondingTime = params.unbondingTime;
-        this.feeRecipient = params.feeRecipient;
         this.nextEmissionChange = params.nextEmissionChange;
         this.emission = params.emission;
         this.totalStake = params.totalStake;
@@ -168,7 +165,6 @@ export const ACCOUNT_SCHEMA: borsh.Schema = new Map<any, any>([
             fields: [
                 ['token', 'PublicKey'],
                 ['unbondingTime', 'u64'],
-                ['feeRecipient', 'PublicKey'],
                 ['nextEmissionChange', 'Date'],
                 ['emission', 'u64'],
 

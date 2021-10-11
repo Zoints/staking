@@ -69,7 +69,6 @@ export class Instruction {
     public static async Initialize(
         programId: PublicKey,
         funder: PublicKey,
-        feeRecipient: PublicKey,
         mint: PublicKey,
         startTime: Date,
         unbondingDuration: number
@@ -77,10 +76,6 @@ export class Instruction {
         const settingsId = await Staking.settingsId(programId);
         const poolAuthorityId = await Staking.poolAuthorityId(programId);
         const rewardPoolId = await Staking.rewardPoolId(programId);
-        const feeBeneficiary = await Staking.beneficiary(
-            feeRecipient,
-            programId
-        );
 
         const keys: AccountMeta[] = [
             am(funder, true, true),
@@ -88,8 +83,6 @@ export class Instruction {
             am(poolAuthorityId, false, false),
             am(rewardPoolId, false, true),
             am(mint, false, false),
-            am(feeRecipient, true, false),
-            am(feeBeneficiary, false, true),
             am(SYSVAR_RENT_PUBKEY, false, false),
             am(TOKEN_PROGRAM_ID, false, false),
             am(SystemProgram.programId, false, false)
@@ -217,7 +210,6 @@ export class Instruction {
         staker: PublicKey,
         stakerAssociated: PublicKey,
         endpoint: PublicKey,
-        feeRecipient: PublicKey,
         primary: PublicKey,
         secondary: PublicKey,
         amount: bigint
@@ -234,10 +226,6 @@ export class Instruction {
             programId
         );
 
-        const feeBeneficiary = await Staking.beneficiary(
-            feeRecipient,
-            programId
-        );
         const primaryBeneficiary = await Staking.beneficiary(
             primary,
             programId
@@ -259,7 +247,6 @@ export class Instruction {
             am(poolAuthorityId, false, false),
             am(rewardPoolId, false, true),
             am(settingsId, false, true),
-            am(feeBeneficiary, false, true),
             am(stakeId, false, true),
             am(SYSVAR_CLOCK_PUBKEY, false, false),
             am(TOKEN_PROGRAM_ID, false, false)
