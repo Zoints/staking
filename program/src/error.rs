@@ -34,6 +34,10 @@ pub enum StakingError {
     #[error("Token is not a valid SPL token")]
     TokenNotSPLToken,
 
+    /// NFT owner is not a valid NFT
+    #[error("NFT owner is not a valid NFT")]
+    NFTOwnerNotNFT,
+
     /// Endpoint Account Already Exists
     #[error("Endpoint Account Already Exists")]
     EndpointAccountAlreadyExists,

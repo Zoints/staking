@@ -6,6 +6,7 @@ use solana_program::{
     msg,
     program::{invoke, invoke_signed},
     program_error::ProgramError,
+    program_option::COption,
     program_pack::Pack,
     pubkey::Pubkey,
     system_instruction::create_account,
@@ -256,6 +257,34 @@ impl Processor {
 
         let rent = Rent::from_account_info(rent_info)?;
         let clock = Clock::from_account_info(clock_info)?;
+
+        match owner_type {
+            OwnerType::Basic => {}
+            OwnerType::NFT => {
+                let mint = Mint::unpack(&owner_info.data.borrow())
+                    .map_err(|_| StakingError::NFTOwnerNotNFT)?;
+
+                if !mint.is_initialized {
+                    msg!("not initialized");
+                    return Err(StakingError::NFTOwnerNotNFT.into());
+                }
+
+                if mint.decimals != 0 {
+                    msg!("invalid decimals");
+                    return Err(StakingError::NFTOwnerNotNFT.into());
+                }
+
+                if mint.supply != 1 {
+                    msg!("invalid supply");
+                    return Err(StakingError::NFTOwnerNotNFT.into());
+                }
+
+                if mint.mint_authority != COption::None {
+                    msg!("mint authority is not locked");
+                    return Err(StakingError::NFTOwnerNotNFT.into());
+                }
+            }
+        };
 
         if !endpoint_info.data_is_empty() {
             return Err(StakingError::EndpointAccountAlreadyExists.into());
