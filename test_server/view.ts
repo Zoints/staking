@@ -141,6 +141,10 @@ export async function viewCommunity(staking: App, id: number): Promise<string> {
             <td>${pretty(community.creationDate)}</td>
         </tr>
         <tr>
+            <td>Total Stake</td>
+            <td>${community.totalStake.toString()}</td>
+        </tr>
+        <tr>
             <td colspan="2"><br><b>Primary</b></td>
         </tr>
         <tr>
