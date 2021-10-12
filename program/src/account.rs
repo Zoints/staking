@@ -175,8 +175,17 @@ impl RewardPool {
     }
 }
 
+/// The way that the "owner" address should be interpreted.
+#[derive(Debug, PartialEq, Eq, Clone, Copy, BorshDeserialize, BorshSerialize)]
+pub enum OwnerType {
+    /// A regular Solana address that can sign instructions
+    Basic,
+    /// An NFT mint address where the signer is the NFT's current owner
+    NFT,
+}
+
 /// An Endpoint is a the entity that someone can stake against to share yield.
-/// Each endpoint has an authority, which is the solana address in charge of making
+/// Each endpoint has an owner, which is the entity in charge of making
 /// decisions about the Endpoint itself, once that functionality is implemented.
 /// The Primary beneficiary receives 45% of the staker's yield, the secondary beneficiary
 /// receives 5% of the staker's yield.
@@ -189,8 +198,9 @@ pub struct Endpoint {
     pub creation_date: UnixTimestamp,
     /// Total amount of ZEE staked to this endpoint
     pub total_stake: u64,
-    /// The endpoint's authority
-    pub authority: Pubkey,
+    pub owner_type: OwnerType,
+    /// The endpoint's owner
+    pub owner: Pubkey,
     /// The primary beneficiary receiving 45% of yield
     pub primary: Pubkey,
     /// The secondary beneficiary receiving 5% of yield

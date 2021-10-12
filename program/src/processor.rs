@@ -15,7 +15,7 @@ use solana_program::{
 use spl_token::state::{Account, Mint};
 
 use crate::{
-    account::{Beneficiary, Endpoint, PoolAuthority, RewardPool, Settings, Stake},
+    account::{Beneficiary, Endpoint, OwnerType, PoolAuthority, RewardPool, Settings, Stake},
     error::StakingError,
     instruction::StakingInstruction,
     pool_transfer, split_stake, verify_associated, BASE_REWARD, MINIMUM_STAKE, SECONDS_PER_YEAR,
@@ -127,8 +127,8 @@ impl Processor {
                 start_time,
                 unbonding_duration,
             } => Self::process_initialize(program_id, accounts, start_time, unbonding_duration),
-            StakingInstruction::RegisterEndpoint => {
-                Self::process_register_endpoint(program_id, accounts)
+            StakingInstruction::RegisterEndpoint { owner_type } => {
+                Self::process_register_endpoint(program_id, accounts, owner_type)
             }
             StakingInstruction::InitializeStake => {
                 Self::process_initialize_stake(program_id, accounts)
@@ -241,10 +241,11 @@ impl Processor {
     pub fn process_register_endpoint(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
+        owner_type: OwnerType,
     ) -> ProgramResult {
         let iter = &mut accounts.iter();
         let funder_info = next_account_info(iter)?;
-        let creator_info = next_account_info(iter)?;
+        let owner_info = next_account_info(iter)?;
         let endpoint_info = next_account_info(iter)?;
         let primary_info = next_account_info(iter)?;
         let primary_beneficiary_info = next_account_info(iter)?;
@@ -285,7 +286,8 @@ impl Processor {
         let endpoint = Endpoint {
             creation_date: clock.unix_timestamp,
             total_stake: 0,
-            authority: *creator_info.key,
+            owner: *owner_info.key,
+            owner_type,
             primary: *primary_info.key,
             secondary: *secondary_info.key,
         };

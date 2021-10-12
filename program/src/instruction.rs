@@ -1,5 +1,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
+use crate::account::OwnerType;
+
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
 pub enum StakingInstruction {
@@ -24,7 +26,7 @@ pub enum StakingInstruction {
     ///
     /// Expected Accounts:
     ///     1. `[writable,signer]` Transaction payer
-    ///     2. `[]` Endpoint Owner
+    ///     2. `[]` Endpoint Owner Pubkey
     ///     3. `[writable,signer]` Endpoint Account
     ///     4. `[]` Primary Beneficiary Authority
     ///     5. `[]` Primary Beneficiary
@@ -33,7 +35,7 @@ pub enum StakingInstruction {
     ///     8. `[]` Rent Sysvar
     ///     9. `[]` Clock Sysvar
     ///     10. `[]` System Program
-    RegisterEndpoint,
+    RegisterEndpoint { owner_type: OwnerType },
     /// Initialize a new stake
     ///
     /// Must be done before being able to stake ZEE to an Endpoint
