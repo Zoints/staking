@@ -16,21 +16,19 @@ import BN from 'bn.js';
 const programId = new PublicKey('A7PR2hfpVDsBqd83mD6WSEr9Z9CvDNJ9FehcvvLdvuC2');
 const funder = new PublicKey('F5AeZLFDdEnAPtfxHMKLTzNYNa9kLvGPM9b8dJzWpHGZ');
 const mint = new PublicKey('Q2P36HbwEBwxTSj8QhiMscbA21vBi7edJKbsb9KjBRM');
-const fee = new PublicKey('6L6r9E8V6nJ4RMKAFps42zK5STjURD7hTU4KboC5sXwE');
 
 describe('Serialization', () => {
     it('Initialize', async () => {
         const instruction = await Instruction.Initialize(
             programId,
             funder,
-            fee,
             mint,
             new Date('2021-07-02 08:45:51.000+00'),
             60
         );
 
         expect(instruction.programId).to.eql(programId);
-        expect(instruction.keys).to.be.length(10);
+        expect(instruction.keys).to.be.length(8);
 
         const data = Buffer.from(
             borsh.serialize(
@@ -63,9 +61,6 @@ describe('Serialization', () => {
         const secondary = new PublicKey(
             '73aD1aXy4Z1arEYHCVxefmZHm4PgHTY7fxXTD34bSirf'
         );
-        const feeRecipient = new PublicKey(
-            '274Mk1JY6sKNtbeWtZsW5DSC3SWmCknmx7qsPR1EWxpQ'
-        );
 
         const tx = new Transaction()
             .add(
@@ -84,7 +79,6 @@ describe('Serialization', () => {
                     staker,
                     assoc,
                     community,
-                    feeRecipient,
                     primary,
                     secondary,
                     666n

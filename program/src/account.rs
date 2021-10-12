@@ -17,8 +17,6 @@ pub struct Settings {
     pub token: Pubkey,
     /// Time (in seconds) that funds are locked after unstaking
     pub unbonding_duration: u64,
-    /// The Beneficiary that receives 5% of all yield
-    pub fee_recipient: Pubkey,
 
     /// The time at which emissions is reduced by 25%
     pub next_emission_change: UnixTimestamp,
@@ -359,7 +357,6 @@ mod tests {
         let v = Settings {
             token: Pubkey::new_unique(),
             unbonding_duration: 10 * 3600 * 24,
-            fee_recipient: Pubkey::new_unique(),
             next_emission_change: 98123798352345,
             emission: 23458972935823,
 
@@ -379,7 +376,6 @@ mod tests {
         let base = Settings {
             token: Pubkey::new_unique(),
             unbonding_duration: 0,
-            fee_recipient: Pubkey::new_unique(),
 
             next_emission_change: SECONDS_PER_YEAR as i64,
             emission: BASE_REWARD as u64,

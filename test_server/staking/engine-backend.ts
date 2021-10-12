@@ -76,51 +76,38 @@ export class EngineBackend implements StakeEngine {
 
     async claim(
         app: App,
-        authority?: Keypair,
+        authority: Keypair,
         communities?: AppCommunity[]
     ): Promise<void> {
-        if (authority === undefined) {
-            await app.token.getOrCreateAssociatedAccountInfo(
-                app.fee_authority.publicKey
-            );
-            const result = await this.post(`staking/v1/claim-fee`);
-            const confirm = await this.get(
-                `general/v1/confirm/${result.txSignature}?stakingExtract=true`
-            );
-            console.log(
-                `Claimed global fee: ${result.txSignature}\n\t${confirm.status}, ${confirm.claimed} ZEE`
-            );
-        } else {
-            const commKeys: string[] = [];
-            if (communities) {
-                for (const comm of communities) {
-                    commKeys.push(comm.key.publicKey.toBase58());
-                }
+        const commKeys: string[] = [];
+        if (communities) {
+            for (const comm of communities) {
+                commKeys.push(comm.key.publicKey.toBase58());
             }
-
-            const prep = await this.post(`staking/v1/claim/prepare`, {
-                fund: true,
-                authority: authority.publicKey.toBase58(),
-                withdraw: commKeys
-            });
-
-            const data = Buffer.from(prep.message, 'base64');
-            const userSig = nacl.sign.detached(data, authority.secretKey);
-
-            const result = await this.post(`staking/v1/claim`, {
-                message: prep.message,
-                userSignature: Buffer.from(userSig).toString('base64')
-            });
-
-            const confirm = await this.get(
-                `general/v1/confirm/${result.txSignature}?stakingExtract=true`
-            );
-            console.log(
-                `Claimed harvest for authority ${authority.publicKey.toBase58()}: ${
-                    result.txSignature
-                }\n\t${confirm.status}, ${confirm.claimed} ZEE`
-            );
         }
+
+        const prep = await this.post(`staking/v1/claim/prepare`, {
+            fund: true,
+            authority: authority.publicKey.toBase58(),
+            withdraw: commKeys
+        });
+
+        const data = Buffer.from(prep.message, 'base64');
+        const userSig = nacl.sign.detached(data, authority.secretKey);
+
+        const result = await this.post(`staking/v1/claim`, {
+            message: prep.message,
+            userSignature: Buffer.from(userSig).toString('base64')
+        });
+
+        const confirm = await this.get(
+            `general/v1/confirm/${result.txSignature}?stakingExtract=true`
+        );
+        console.log(
+            `Claimed harvest for authority ${authority.publicKey.toBase58()}: ${
+                result.txSignature
+            }\n\t${confirm.status}, ${confirm.claimed} ZEE`
+        );
     }
     async stake(
         app: App,

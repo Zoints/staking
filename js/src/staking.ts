@@ -6,7 +6,6 @@ import { Stake } from './accounts';
 export class Staking {
     programId: PublicKey;
     connection: Connection;
-    feeRecipient: PublicKey | undefined;
 
     constructor(programId: PublicKey, connection: Connection) {
         this.programId = programId;
@@ -20,14 +19,6 @@ export class Staking {
             throw new Error('Unable to find settings account');
 
         return borsh.deserialize(ACCOUNT_SCHEMA, Settings, account.data);
-    }
-
-    public async getFeeRecipient(): Promise<PublicKey> {
-        if (this.feeRecipient === undefined) {
-            const settings = await this.getSettings();
-            this.feeRecipient = settings.feeRecipient;
-        }
-        return this.feeRecipient;
     }
 
     public async getEndpoint(endpointId: PublicKey): Promise<Endpoint> {

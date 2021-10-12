@@ -155,8 +155,6 @@ impl Processor {
         let pool_authority_info = next_account_info(iter)?;
         let reward_pool_info = next_account_info(iter)?;
         let token_info = next_account_info(iter)?;
-        let fee_recipient_info = next_account_info(iter)?;
-        let fee_beneficiary_info = next_account_info(iter)?;
         let rent_info = next_account_info(iter)?;
         let token_program_info = next_account_info(iter)?;
 
@@ -169,14 +167,9 @@ impl Processor {
         let settings_seed = Settings::verify_program_address(settings_info.key, program_id)?;
         Mint::unpack(&token_info.data.borrow()).map_err(|_| StakingError::TokenNotSPLToken)?;
 
-        if !fee_recipient_info.is_signer {
-            return Err(StakingError::MissingAuthoritySignature.into());
-        }
-
         let settings = Settings {
             token: *token_info.key,
             unbonding_duration,
-            fee_recipient: *fee_recipient_info.key,
             next_emission_change: start_time + SECONDS_PER_YEAR as i64,
             emission: BASE_REWARD as u64,
             reward_per_share: 0u128,
@@ -206,15 +199,6 @@ impl Processor {
 
         msg!("Settings account created");
 
-        create_beneficiary!(
-            fee_beneficiary_info,
-            fee_recipient_info.key,
-            funder_info,
-            &rent,
-            program_id
-        );
-        msg!("Fee Beneficiary created");
-
         // create reward pool
         let space = Account::LEN as u64;
         let lamports = rent.minimum_balance(Account::LEN);
@@ -232,7 +216,10 @@ impl Processor {
             &[funder_info.clone(), reward_pool_info.clone()],
             &[&[b"rewardpool", &[reward_pool_seed]]],
         )?;
-        msg!("reward pool account created");
+        msg!(
+            "reward pool account created: {}",
+            reward_pool_info.key.to_string()
+        );
 
         invoke(
             &spl_token::instruction::initialize_account(
@@ -472,7 +459,6 @@ impl Processor {
         let pool_authority_info = next_account_info(iter)?;
         let reward_pool_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
-        let fee_beneficiary_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
@@ -483,11 +469,6 @@ impl Processor {
         }
 
         let mut settings = Settings::from_account_info(settings_info, program_id)?;
-        let mut fee_beneficiary = Beneficiary::from_account_info(
-            fee_beneficiary_info,
-            &settings.fee_recipient,
-            program_id,
-        )?;
 
         let endpoint = Endpoint::from_account_info(endpoint_info, program_id)?;
         let mut primary_beneficiary = Beneficiary::from_account_info(
@@ -533,13 +514,13 @@ impl Processor {
 
         settings.update_rewards(clock.unix_timestamp);
 
-        let (old_staker, old_primary, old_secondary, old_fee) = split_stake(stake.total_stake);
+        let (old_staker, old_primary, old_secondary) = split_stake(stake.total_stake);
         if staking {
             stake.total_stake += amount;
         } else {
             stake.total_stake -= amount;
         }
-        let (new_staker, new_primary, new_secondary, new_fee) = split_stake(stake.total_stake);
+        let (new_staker, new_primary, new_secondary) = split_stake(stake.total_stake);
 
         // PROCESS STAKER'S REWARD
 
@@ -552,12 +533,6 @@ impl Processor {
         if staking && staker_assoc.amount + staker_beneficiary.holding < amount {
             return Err(StakingError::StakerBalanceTooLow.into());
         }
-
-        // pay fee
-        fee_beneficiary.pay_out(
-            fee_beneficiary.staked + new_fee - old_fee,
-            settings.reward_per_share,
-        );
 
         // primary + secondary
         primary_beneficiary.pay_out(
@@ -614,11 +589,6 @@ impl Processor {
             .borrow_mut()
             .copy_from_slice(&stake.try_to_vec()?);
 
-        // beneficiaries
-        fee_beneficiary_info
-            .data
-            .borrow_mut()
-            .copy_from_slice(&fee_beneficiary.try_to_vec()?);
         staker_beneficiary_info
             .data
             .borrow_mut()
@@ -729,7 +699,7 @@ impl Processor {
         let clock = Clock::from_account_info(clock_info)?;
         let mut settings = Settings::from_account_info(settings_info, program_id)?;
 
-        if settings.fee_recipient != *authority_info.key && !authority_info.is_signer {
+        if !authority_info.is_signer {
             return Err(StakingError::MissingAuthoritySignature.into());
         }
 

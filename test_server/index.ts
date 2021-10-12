@@ -105,11 +105,6 @@ app.get(
     }
 );
 
-app.get('/claim/fee', async (req: express.Request, res: express.Response) => {
-    await staking.claimFee();
-    res.redirect('/');
-});
-
 app.get(
     '/claim/:community/:primary',
     async (req: express.Request, res: express.Response) => {

@@ -39,7 +39,6 @@ export class App {
     deploy_key: Keypair;
     program_id: PublicKey;
 
-    fee_authority: Keypair;
     mint_id: Keypair;
     mint_authority: Keypair;
 
@@ -67,7 +66,6 @@ export class App {
         this.deploy_key = this.getKeyPair('deployKey');
         this.program_id = this.deploy_key.publicKey;
 
-        this.fee_authority = this.getKeyPair('feeAuthority');
         this.mint_id = this.getKeyPair('mint');
         this.mint_authority = this.getKeyPair('mintAuthority');
 
@@ -138,7 +136,6 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
         this.deploy_key = this.getKeyPair('deployKey');
         this.program_id = this.deploy_key.publicKey;
 
-        this.fee_authority = this.getKeyPair('feeAuthority');
         this.mint_id = this.getKeyPair('mint');
         this.mint_authority = this.getKeyPair('mintAuthority');
 
@@ -201,11 +198,6 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
     public async claimPrimary(commId: number): Promise<string> {
         const community = this.communities[commId];
         await this.engine.claim(this, community.primaryAuthority);
-        return 'removed with engine';
-    }
-
-    public async claimFee(): Promise<string> {
-        await this.engine.claim(this);
         return 'removed with engine';
     }
 
@@ -417,7 +409,6 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
                 await Instruction.Initialize(
                     this.program_id,
                     this.funder.publicKey,
-                    this.fee_authority.publicKey,
                     this.mint_id.publicKey,
                     date,
                     60
@@ -426,7 +417,7 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
         const sig = await sendAndConfirmTransaction(
             this.connection,
             transaction,
-            [this.funder, this.mint_id, this.fee_authority]
+            [this.funder, this.mint_id]
         );
         console.log(`Initialized: ${sig}`);
 
