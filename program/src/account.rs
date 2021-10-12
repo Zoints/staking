@@ -198,6 +198,7 @@ pub struct Endpoint {
     pub creation_date: UnixTimestamp,
     /// Total amount of ZEE staked to this endpoint
     pub total_stake: u64,
+    /// The type of owner
     pub owner_type: OwnerType,
     /// The endpoint's owner
     pub owner: Pubkey,
