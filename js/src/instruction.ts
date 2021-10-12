@@ -7,7 +7,7 @@ import {
     SYSVAR_RENT_PUBKEY,
     TransactionInstruction
 } from '@solana/web3.js';
-import { Staking } from '.';
+import { OwnerType, Staking } from '.';
 import * as borsh from 'borsh';
 import './extendBorsh';
 import BN from 'bn.js';
@@ -65,6 +65,19 @@ export class InitSchema {
     }
 }
 
+export class RegisterEndpointSchema {
+    instructionId: Instructions.RegisterEndpoint;
+    ownerType: OwnerType;
+
+    constructor(params: {
+        instructionId: Instructions.RegisterEndpoint;
+        ownerType: OwnerType;
+    }) {
+        this.instructionId = params.instructionId;
+        this.ownerType = params.ownerType;
+    }
+}
+
 export class Instruction {
     public static async Initialize(
         programId: PublicKey,
@@ -108,6 +121,7 @@ export class Instruction {
     public static async RegisterEndpoint(
         programId: PublicKey,
         funder: PublicKey,
+        ownerType: OwnerType,
         owner: PublicKey,
         endpoint: PublicKey,
         primary: PublicKey,
@@ -394,6 +408,16 @@ export const INSTRUCTION_SCHEMA: borsh.Schema = new Map<any, any>([
                 ['instructionId', 'u8'],
                 ['startTime', 'Date'],
                 ['unbondingDuration', 'u64']
+            ]
+        }
+    ],
+    [
+        RegisterEndpointSchema,
+        {
+            kind: 'struct',
+            fields: [
+                ['instructionId', 'u8'],
+                ['ownerType', 'OwnerType']
             ]
         }
     ]

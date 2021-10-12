@@ -115,11 +115,17 @@ export class Beneficiary {
     }
 }
 
+export enum OwnerType {
+    Basic,
+    NFT
+}
+
 export class Endpoint {
     public creationDate: Date;
     public totalStake: BN;
 
-    public authority: PublicKey;
+    public ownerType: OwnerType;
+    public owner: PublicKey;
 
     public primary: PublicKey;
     public secondary: PublicKey;
@@ -127,13 +133,15 @@ export class Endpoint {
     constructor(params: {
         creationDate: Date;
         totalStake: BN;
-        authority: PublicKey;
+        ownerType: number;
+        owner: PublicKey;
         primary: PublicKey;
         secondary: PublicKey;
     }) {
         this.creationDate = params.creationDate;
         this.totalStake = params.totalStake;
-        this.authority = params.authority;
+        this.ownerType = params.ownerType;
+        this.owner = params.owner;
         this.primary = params.primary;
         this.secondary = params.secondary;
     }
@@ -171,7 +179,6 @@ export const ACCOUNT_SCHEMA: borsh.Schema = new Map<any, any>([
                 ['unbondingTime', 'u64'],
                 ['nextEmissionChange', 'Date'],
                 ['emission', 'u64'],
-
                 ['totalStake', 'u64'],
                 ['rewardPerShare', 'u128'],
                 ['lastReward', 'Date']
@@ -197,7 +204,8 @@ export const ACCOUNT_SCHEMA: borsh.Schema = new Map<any, any>([
             fields: [
                 ['creationDate', 'Date'],
                 ['totalStake', 'u64'],
-                ['authority', 'PublicKey'],
+                ['ownerType', 'OwnerType'],
+                ['owner', 'PublicKey'],
                 ['primary', 'PublicKey'],
                 ['secondary', 'PublicKey']
             ]
