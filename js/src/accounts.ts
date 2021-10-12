@@ -117,6 +117,8 @@ export class Beneficiary {
 
 export class Endpoint {
     public creationDate: Date;
+    public totalStake: BN;
+
     public authority: PublicKey;
 
     public primary: PublicKey;
@@ -124,11 +126,13 @@ export class Endpoint {
 
     constructor(params: {
         creationDate: Date;
+        totalStake: BN;
         authority: PublicKey;
         primary: PublicKey;
         secondary: PublicKey;
     }) {
         this.creationDate = params.creationDate;
+        this.totalStake = params.totalStake;
         this.authority = params.authority;
         this.primary = params.primary;
         this.secondary = params.secondary;
@@ -192,6 +196,7 @@ export const ACCOUNT_SCHEMA: borsh.Schema = new Map<any, any>([
             kind: 'struct',
             fields: [
                 ['creationDate', 'Date'],
+                ['totalStake', 'u64'],
                 ['authority', 'PublicKey'],
                 ['primary', 'PublicKey'],
                 ['secondary', 'PublicKey']
