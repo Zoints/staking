@@ -187,6 +187,8 @@ impl RewardPool {
 pub struct Endpoint {
     /// The time the endpoint was initialized
     pub creation_date: UnixTimestamp,
+    /// Total amount of ZEE staked to this endpoint
+    pub total_stake: u64,
     /// The endpoint's authority
     pub authority: Pubkey,
     /// The primary beneficiary receiving 45% of yield

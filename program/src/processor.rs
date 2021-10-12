@@ -284,6 +284,7 @@ impl Processor {
 
         let endpoint = Endpoint {
             creation_date: clock.unix_timestamp,
+            total_stake: 0,
             authority: *creator_info.key,
             primary: *primary_info.key,
             secondary: *secondary_info.key,
@@ -470,7 +471,7 @@ impl Processor {
 
         let mut settings = Settings::from_account_info(settings_info, program_id)?;
 
-        let endpoint = Endpoint::from_account_info(endpoint_info, program_id)?;
+        let mut endpoint = Endpoint::from_account_info(endpoint_info, program_id)?;
         let mut primary_beneficiary = Beneficiary::from_account_info(
             primary_beneficiary_info,
             &endpoint.primary,
@@ -517,8 +518,12 @@ impl Processor {
         let (old_staker, old_primary, old_secondary) = split_stake(stake.total_stake);
         if staking {
             stake.total_stake += amount;
+            endpoint.total_stake += amount;
+            settings.total_stake += amount;
         } else {
             stake.total_stake -= amount;
+            endpoint.total_stake -= amount;
+            settings.total_stake -= amount;
         }
         let (new_staker, new_primary, new_secondary) = split_stake(stake.total_stake);
 
@@ -573,11 +578,9 @@ impl Processor {
                     staker_info.clone(),
                 ],
             )?;
-            settings.total_stake += amount;
         } else {
             stake.unbonding_amount += amount;
             stake.unbonding_end = settings.unbonding_duration as i64 + clock.unix_timestamp;
-            settings.total_stake -= amount;
         }
 
         settings_info
@@ -588,6 +591,11 @@ impl Processor {
             .data
             .borrow_mut()
             .copy_from_slice(&stake.try_to_vec()?);
+
+        endpoint_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&endpoint.try_to_vec()?);
 
         staker_beneficiary_info
             .data
