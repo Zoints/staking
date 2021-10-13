@@ -105,6 +105,15 @@ pub enum StakingInstruction {
     ///     8. `[]` Clock Sysvar
     ///     9. `[]` SPL Token Program
     Claim,
+    /// Transfer an Endpoint from one owner to the next. If the recipient is an NFT
+    /// then the NFT has to already exist.
+    ///
+    ///     1. `[writable,signer]` Transaction payer
+    ///     2. `[writable]` The Endpoint
+    ///     3. `[]` The endpoint's owner account
+    ///     4. `[signer]` The current owner (or holder of the NFT)
+    ///     5. `[]` The recipient address or nft mint
+    TransferEndpoint { owner_type: OwnerType },
 }
 
 #[cfg(test)]

@@ -18,21 +18,32 @@ export enum Instructions {
     InitializeStake,
     Stake,
     WithdrawUnbond,
-    Claim
+    Claim,
+    TransferEndpoint
 }
 
-export type InstructionSchema = SimpleSchema | AmountSchema | InitSchema;
+export type InstructionSchema =
+    | SimpleSchema
+    | AmountSchema
+    | InitSchema
+    | OwnerTypeSchema;
 
 export class SimpleSchema {
     instructionId: Exclude<
         Instructions,
-        Instructions.Initialize | Instructions.Stake
+        | Instructions.Initialize
+        | Instructions.Stake
+        | Instructions.RegisterEndpoint
+        | Instructions.TransferEndpoint
     >;
 
     constructor(params: {
         instructionId: Exclude<
             Instructions,
-            Instructions.Initialize | Instructions.Stake
+            | Instructions.Initialize
+            | Instructions.Stake
+            | Instructions.RegisterEndpoint
+            | Instructions.TransferEndpoint
         >;
     }) {
         this.instructionId = params.instructionId;
@@ -65,12 +76,18 @@ export class InitSchema {
     }
 }
 
-export class RegisterEndpointSchema {
-    instructionId: Instructions.RegisterEndpoint;
+export class OwnerTypeSchema {
+    instructionId: Extract<
+        Instructions,
+        Instructions.RegisterEndpoint | Instructions.TransferEndpoint
+    >;
     ownerType: OwnerType;
 
     constructor(params: {
-        instructionId: Instructions.RegisterEndpoint;
+        instructionId: Extract<
+            Instructions,
+            Instructions.RegisterEndpoint | Instructions.TransferEndpoint
+        >;
         ownerType: OwnerType;
     }) {
         this.instructionId = params.instructionId;
@@ -153,7 +170,7 @@ export class Instruction {
             am(SystemProgram.programId, false, false)
         ];
 
-        const instruction = new RegisterEndpointSchema({
+        const instruction = new OwnerTypeSchema({
             instructionId: Instructions.RegisterEndpoint,
             ownerType
         });
@@ -362,6 +379,45 @@ export class Instruction {
             data: Buffer.from(instructionData)
         });
     }
+
+    public static async TransferEndpoint(
+        programId: PublicKey,
+        funder: PublicKey,
+        endpoint: PublicKey,
+        owner: PublicKey,
+        ownerSigner: PublicKey,
+        recipientType: OwnerType,
+        recipient: PublicKey
+    ): Promise<TransactionInstruction> {
+        ///     1. `[writable,signer]` Transaction payer
+        ///     2. `[writable]` The Endpoint
+        ///     3. `[]` The endpoint's owner account
+        ///     4. `[signer]` The current owner (or holder of the NFT)
+        ///     5. `[]` The recipient address or nft mint
+
+        const keys: AccountMeta[] = [
+            am(funder, true, true),
+            am(endpoint, false, true),
+            am(owner, false, false),
+            am(ownerSigner, true, false),
+            am(recipient, false, false)
+        ];
+
+        const instruction = new OwnerTypeSchema({
+            instructionId: Instructions.TransferEndpoint,
+            ownerType: recipientType
+        });
+        const instructionData = borsh.serialize(
+            INSTRUCTION_SCHEMA,
+            instruction
+        );
+
+        return new TransactionInstruction({
+            keys: keys,
+            programId,
+            data: Buffer.from(instructionData)
+        });
+    }
 }
 
 function am(
@@ -413,7 +469,7 @@ export const INSTRUCTION_SCHEMA: borsh.Schema = new Map<any, any>([
         }
     ],
     [
-        RegisterEndpointSchema,
+        OwnerTypeSchema,
         {
             kind: 'struct',
             fields: [

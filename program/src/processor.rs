@@ -168,6 +168,9 @@ impl Processor {
                 Self::process_withdraw_unbond(program_id, accounts)
             }
             StakingInstruction::Claim => Self::process_claim(program_id, accounts),
+            StakingInstruction::TransferEndpoint { owner_type } => {
+                Self::process_transfer_endpoint(program_id, accounts, owner_type)
+            }
         }
     }
 
@@ -781,6 +784,68 @@ impl Processor {
             .data
             .borrow_mut()
             .copy_from_slice(&beneficiary.try_to_vec()?);
+
+        Ok(())
+    }
+
+    pub fn process_transfer_endpoint(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        new_owner_type: OwnerType,
+    ) -> ProgramResult {
+        let iter = &mut accounts.iter();
+        let _funder_info = next_account_info(iter)?;
+        let endpoint_info = next_account_info(iter)?;
+        let owner_info = next_account_info(iter)?;
+        let owner_signer_info = next_account_info(iter)?;
+        let recipient_info = next_account_info(iter)?;
+
+        let mut endpoint = Endpoint::from_account_info(&endpoint_info, program_id)?;
+
+        if !owner_signer_info.is_signer {
+            return Err(StakingError::MissingAuthoritySignature.into());
+        }
+
+        // verify current owner
+        match endpoint.owner_type {
+            OwnerType::Basic => {
+                if *owner_signer_info.key == endpoint.owner {
+                    Ok(())
+                } else {
+                    Err(StakingError::MissingAuthoritySignature)
+                }
+            }
+            OwnerType::NFT => {
+                let account = Account::unpack(&owner_info.data.borrow())
+                    .map_err(|_| StakingError::NFTOwnerNotNFT)?;
+
+                if account.mint == endpoint.owner && account.amount == 1 {
+                    Ok(())
+                } else {
+                    msg!("signer doesn't own the NFT");
+                    Err(StakingError::NFTOwnerNotNFT)
+                }
+            }
+        }?;
+
+        match new_owner_type {
+            OwnerType::Basic => {}
+            OwnerType::NFT => {
+                is_nft_mint!(recipient_info.data.borrow())?;
+            }
+        };
+
+        msg!("old owner ({:?}, {})", endpoint.owner_type, endpoint.owner,);
+
+        endpoint.owner_type = new_owner_type;
+        endpoint.owner = *recipient_info.key;
+
+        msg!("new owner ({:?}, {})", endpoint.owner_type, endpoint.owner,);
+
+        endpoint_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&endpoint.try_to_vec()?);
 
         Ok(())
     }
