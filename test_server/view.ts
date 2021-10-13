@@ -131,9 +131,9 @@ export async function viewCommunity(staking: App, id: number): Promise<string> {
         <tr>
             <td>Authority</td>
             <td><a href="https://explorer.solana.com/address/${
-                community.authority
+                community.owner
             }?customUrl=${staking.connectionURL}&cluster=custom">${
-        community.authority
+        community.owner
     }</a></td>
         </tr>
         <tr>

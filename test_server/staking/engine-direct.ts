@@ -4,7 +4,7 @@ import {
     sendAndConfirmTransaction,
     Transaction
 } from '@solana/web3.js';
-import { Instruction } from '@zoints/staking';
+import { Instruction, OwnerType } from '@zoints/staking';
 import { App } from './app';
 import { AppCommunity, AppStaker } from './community';
 import { StakeEngine } from './engine';
@@ -19,6 +19,7 @@ export class EngineDirect implements StakeEngine {
             await Instruction.RegisterEndpoint(
                 app.program_id,
                 app.funder.publicKey,
+                OwnerType.Basic,
                 community.authority.publicKey,
                 community.key.publicKey,
                 community.primaryAuthority.publicKey,

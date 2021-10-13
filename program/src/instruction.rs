@@ -121,4 +121,18 @@ mod tests {
 
         assert_eq!(data, should);
     }
+
+    #[test]
+    pub fn test_serialize_register_owner_type() {
+        let owner_type = OwnerType::NFT;
+        let init = StakingInstruction::RegisterEndpoint { owner_type };
+        let data = init.try_to_vec().unwrap();
+
+        let should = vec![1, 1];
+
+        assert_eq!(data, should);
+
+        let recon = StakingInstruction::try_from_slice(&data).unwrap();
+        assert_eq!(init, recon);
+    }
 }

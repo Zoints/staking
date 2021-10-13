@@ -153,8 +153,9 @@ export class Instruction {
             am(SystemProgram.programId, false, false)
         ];
 
-        const instruction = new SimpleSchema({
-            instructionId: Instructions.RegisterEndpoint
+        const instruction = new RegisterEndpointSchema({
+            instructionId: Instructions.RegisterEndpoint,
+            ownerType
         });
         const instructionData = borsh.serialize(
             INSTRUCTION_SCHEMA,
