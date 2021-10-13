@@ -1,4 +1,4 @@
-import { PRECISION, Staking } from '@zoints/staking';
+import { OwnerType, PRECISION, Staking } from '@zoints/staking';
 import { App } from './staking/app';
 
 function pretty(d: Date): string {
@@ -134,7 +134,7 @@ export async function viewCommunity(staking: App, id: number): Promise<string> {
                 community.owner
             }?customUrl=${staking.connectionURL}&cluster=custom">${
         community.owner
-    }</a></td>
+    }</a> (${OwnerType[community.ownerType]})</td>
         </tr>
         <tr>
             <td>Creation Date</td>
