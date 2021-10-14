@@ -1,6 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::account::OwnerType;
+use crate::account::Authority;
 
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
@@ -35,7 +35,10 @@ pub enum StakingInstruction {
     ///     8. `[]` Rent Sysvar
     ///     9. `[]` Clock Sysvar
     ///     10. `[]` System Program
-    RegisterEndpoint { owner_type: OwnerType },
+    RegisterEndpoint {
+        primary_authority: Authority,
+        secondary_authority: Authority,
+    },
     /// Initialize a new stake
     ///
     /// Must be done before being able to stake ZEE to an Endpoint
@@ -53,7 +56,7 @@ pub enum StakingInstruction {
     ///     10. `[]` Clock Sysvar
     ///     11. `[]` SPL Token Program
     ///     12. `[]` System Program
-    InitializeStake,
+    InitializeStake { authority: Authority },
     /// Stake ZEE
     ///
     /// To withdraw, you can stake negative amount. To just harvest yield, you
@@ -113,7 +116,7 @@ pub enum StakingInstruction {
     ///     3. `[]` The endpoint's owner account
     ///     4. `[signer]` The current owner (or holder of the NFT)
     ///     5. `[]` The recipient address or nft mint
-    TransferEndpoint { owner_type: OwnerType },
+    TransferEndpoint { new_authority: Authority },
 }
 
 #[cfg(test)]
@@ -129,19 +132,5 @@ mod tests {
         should.extend(amount.to_le_bytes().iter());
 
         assert_eq!(data, should);
-    }
-
-    #[test]
-    pub fn test_serialize_register_owner_type() {
-        let owner_type = OwnerType::NFT;
-        let init = StakingInstruction::RegisterEndpoint { owner_type };
-        let data = init.try_to_vec().unwrap();
-
-        let should = vec![1, 1];
-
-        assert_eq!(data, should);
-
-        let recon = StakingInstruction::try_from_slice(&data).unwrap();
-        assert_eq!(init, recon);
     }
 }

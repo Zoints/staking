@@ -16,7 +16,7 @@ use solana_program::{
 use spl_token::state::{Account, Mint};
 
 use crate::{
-    account::{Beneficiary, Endpoint, OwnerType, PoolAuthority, RewardPool, Settings, Stake},
+    account::{Authority, Beneficiary, Endpoint, PoolAuthority, RewardPool, Settings, Stake},
     error::StakingError,
     instruction::StakingInstruction,
     pool_transfer, split_stake, verify_associated, BASE_REWARD, MINIMUM_STAKE, SECONDS_PER_YEAR,
@@ -114,10 +114,16 @@ macro_rules! verify_associated {
 #[macro_export]
 macro_rules! create_beneficiary {
     ($beneficiary_info:expr, $authority:expr, $funder_info:expr, $rent:expr, $program_id:expr) => {
+        let pubkey = match $authority {
+            Authority::None => Pubkey::default(),
+            Authority::Basic(key) => key,
+            Authority::NFT(key) => key,
+        };
+
         let seed =
-            Beneficiary::verify_program_address($beneficiary_info.key, $authority, $program_id)?;
+            Beneficiary::verify_program_address($beneficiary_info.key, &pubkey, $program_id)?;
         let beneficiary = Beneficiary {
-            authority: *$authority,
+            authority: $authority,
             staked: 0,
             reward_debt: 0,
             holding: 0,
@@ -136,7 +142,7 @@ macro_rules! create_beneficiary {
                 $program_id,
             ),
             &[$funder_info.clone(), $beneficiary_info.clone()],
-            &[&[b"beneficiary", &$authority.to_bytes(), &[seed]]],
+            &[&[b"beneficiary", &pubkey.to_bytes(), &[seed]]],
         )?;
         $beneficiary_info.data.borrow_mut().copy_from_slice(&data);
     };
@@ -155,11 +161,17 @@ impl Processor {
                 start_time,
                 unbonding_duration,
             } => Self::process_initialize(program_id, accounts, start_time, unbonding_duration),
-            StakingInstruction::RegisterEndpoint { owner_type } => {
-                Self::process_register_endpoint(program_id, accounts, owner_type)
-            }
-            StakingInstruction::InitializeStake => {
-                Self::process_initialize_stake(program_id, accounts)
+            StakingInstruction::RegisterEndpoint {
+                primary_authority,
+                secondary_authority,
+            } => Self::process_register_endpoint(
+                program_id,
+                accounts,
+                primary_authority,
+                secondary_authority,
+            ),
+            StakingInstruction::InitializeStake { authority } => {
+                Self::process_initialize_stake(program_id, accounts, authority)
             }
             StakingInstruction::Stake { amount } => {
                 Self::process_stake(program_id, accounts, amount)
@@ -168,8 +180,8 @@ impl Processor {
                 Self::process_withdraw_unbond(program_id, accounts)
             }
             StakingInstruction::Claim => Self::process_claim(program_id, accounts),
-            StakingInstruction::TransferEndpoint { owner_type } => {
-                Self::process_transfer_endpoint(program_id, accounts, owner_type)
+            StakingInstruction::TransferEndpoint { new_authority } => {
+                Self::process_transfer_endpoint(program_id, accounts, new_authority)
             }
         }
     }
@@ -272,11 +284,11 @@ impl Processor {
     pub fn process_register_endpoint(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
-        owner_type: OwnerType,
+        primary_authority: Authority,
+        secondary_authority: Authority,
     ) -> ProgramResult {
         let iter = &mut accounts.iter();
         let funder_info = next_account_info(iter)?;
-        let owner_info = next_account_info(iter)?;
         let endpoint_info = next_account_info(iter)?;
         let primary_info = next_account_info(iter)?;
         let primary_beneficiary_info = next_account_info(iter)?;
@@ -288,12 +300,55 @@ impl Processor {
         let rent = Rent::from_account_info(rent_info)?;
         let clock = Clock::from_account_info(clock_info)?;
 
-        match owner_type {
-            OwnerType::Basic => {}
-            OwnerType::NFT => {
-                is_nft_mint!(owner_info.data.borrow())?;
+        match primary_authority {
+            Authority::None => {
+                return Err(StakingError::PrimaryAuthorityCannotBeEmpty.into());
             }
-        };
+            Authority::Basic(pubkey) => {
+                if pubkey == Pubkey::default() {
+                    return Err(StakingError::InvalidAuthorityType.into());
+                }
+
+                if pubkey != *primary_info.key {
+                    return Err(StakingError::AuthorityKeysDoNotMatch.into());
+                }
+            }
+            Authority::NFT(pubkey) => {
+                if pubkey == Pubkey::default() {
+                    return Err(StakingError::InvalidAuthorityType.into());
+                }
+
+                if pubkey != *primary_info.key {
+                    return Err(StakingError::AuthorityKeysDoNotMatch.into());
+                }
+
+                is_nft_mint!(primary_info.data.borrow())?;
+            }
+        }
+
+        match secondary_authority {
+            Authority::None => {}
+            Authority::Basic(pubkey) => {
+                if pubkey == Pubkey::default() {
+                    return Err(StakingError::InvalidAuthorityType.into());
+                }
+
+                if pubkey != *secondary_info.key {
+                    return Err(StakingError::SecondaryAuthorityKeysDoNotMatch.into());
+                }
+            }
+            Authority::NFT(pubkey) => {
+                if pubkey == Pubkey::default() {
+                    return Err(StakingError::InvalidAuthorityType.into());
+                }
+
+                if pubkey != *secondary_info.key {
+                    return Err(StakingError::SecondaryAuthorityKeysDoNotMatch.into());
+                }
+
+                is_nft_mint!(secondary_info.data.borrow())?;
+            }
+        }
 
         if !endpoint_info.data_is_empty() {
             return Err(StakingError::EndpointAccountAlreadyExists.into());
@@ -302,30 +357,28 @@ impl Processor {
         if primary_beneficiary_info.data_is_empty() {
             create_beneficiary!(
                 primary_beneficiary_info,
-                primary_info.key,
+                primary_authority,
                 funder_info,
                 &rent,
                 program_id
             );
-            msg!("Primary Beneficiary created");
+            msg!("Primary Beneficiary created: {:?}", primary_authority);
         }
 
-        if secondary_beneficiary_info.data_is_empty() {
+        if secondary_authority != Authority::None && secondary_beneficiary_info.data_is_empty() {
             create_beneficiary!(
                 secondary_beneficiary_info,
-                secondary_info.key,
+                secondary_authority,
                 funder_info,
                 &rent,
                 program_id
             );
-            msg!("Secondary Beneficiary created");
+            msg!("Secondary Beneficiary created: {:?}", secondary_authority);
         }
 
         let endpoint = Endpoint {
             creation_date: clock.unix_timestamp,
             total_stake: 0,
-            owner: *owner_info.key,
-            owner_type,
             primary: *primary_info.key,
             secondary: *secondary_info.key,
         };
@@ -355,12 +408,17 @@ impl Processor {
     pub fn process_initialize_stake(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
+        authority: Authority,
     ) -> ProgramResult {
         let iter = &mut accounts.iter();
         let funder_info = next_account_info(iter)?;
+
         let staker_info = next_account_info(iter)?;
+        let staker_owner_info = next_account_info(iter)?;
+        let staker_signer_info = next_account_info(iter)?;
         let staker_fund_info = next_account_info(iter)?;
         let staker_beneficiary_info = next_account_info(iter)?;
+
         let endpoint_info = next_account_info(iter)?;
         let stake_info = next_account_info(iter)?;
 
@@ -373,6 +431,33 @@ impl Processor {
 
         let rent = Rent::from_account_info(rent_info)?;
         let clock = Clock::from_account_info(clock_info)?;
+
+        // @todo change primary in errors
+        match authority {
+            Authority::None => {
+                return Err(StakingError::PrimaryAuthorityCannotBeEmpty.into());
+            }
+            Authority::Basic(pubkey) => {
+                if pubkey == Pubkey::default() {
+                    return Err(StakingError::InvalidAuthorityType.into());
+                }
+
+                if pubkey != *staker_info.key {
+                    return Err(StakingError::AuthorityKeysDoNotMatch.into());
+                }
+            }
+            Authority::NFT(pubkey) => {
+                if pubkey == Pubkey::default() {
+                    return Err(StakingError::InvalidAuthorityType.into());
+                }
+
+                if pubkey != *staker_info.key {
+                    return Err(StakingError::AuthorityKeysDoNotMatch.into());
+                }
+
+                is_nft_mint!(staker_info.data.borrow())?;
+            }
+        }
 
         if !staker_info.is_signer {
             return Err(StakingError::MissingStakeSignature.into());
@@ -430,7 +515,7 @@ impl Processor {
         if staker_beneficiary_info.data_is_empty() {
             create_beneficiary!(
                 staker_beneficiary_info,
-                staker_info.key,
+                authority,
                 funder_info,
                 &rent,
                 program_id
@@ -791,7 +876,7 @@ impl Processor {
     pub fn process_transfer_endpoint(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
-        new_owner_type: OwnerType,
+        new_authority_type: AuthorityType,
     ) -> ProgramResult {
         let iter = &mut accounts.iter();
         let _funder_info = next_account_info(iter)?;
@@ -805,48 +890,56 @@ impl Processor {
         if !owner_signer_info.is_signer {
             return Err(StakingError::MissingAuthoritySignature.into());
         }
+        /*
+                // verify current owner
+                match endpoint.authority_type {
+                    AuthorityType::Basic => {
+                        if *owner_signer_info.key == endpoint.owner {
+                            Ok(())
+                        } else {
+                            Err(StakingError::MissingAuthoritySignature)
+                        }
+                    }
+                    AuthorityType::NFT => {
+                        let account = Account::unpack(&owner_info.data.borrow())
+                            .map_err(|_| StakingError::NFTOwnerNotNFT)?;
 
-        // verify current owner
-        match endpoint.owner_type {
-            OwnerType::Basic => {
-                if *owner_signer_info.key == endpoint.owner {
-                    Ok(())
-                } else {
-                    Err(StakingError::MissingAuthoritySignature)
-                }
-            }
-            OwnerType::NFT => {
-                let account = Account::unpack(&owner_info.data.borrow())
-                    .map_err(|_| StakingError::NFTOwnerNotNFT)?;
+                        if account.mint == endpoint.owner && account.amount == 1 {
+                            Ok(())
+                        } else {
+                            msg!("signer doesn't own the NFT");
+                            Err(StakingError::NFTOwnerNotNFT)
+                        }
+                    }
+                }?;
 
-                if account.mint == endpoint.owner && account.amount == 1 {
-                    Ok(())
-                } else {
-                    msg!("signer doesn't own the NFT");
-                    Err(StakingError::NFTOwnerNotNFT)
-                }
-            }
-        }?;
+                match new_authority_type {
+                    AuthorityType::Basic => {}
+                    AuthorityType::NFT => {
+                        is_nft_mint!(recipient_info.data.borrow())?;
+                    }
+                };
 
-        match new_owner_type {
-            OwnerType::Basic => {}
-            OwnerType::NFT => {
-                is_nft_mint!(recipient_info.data.borrow())?;
-            }
-        };
+                msg!(
+                    "old owner ({:?}, {})",
+                    endpoint.authority_type,
+                    endpoint.owner,
+                );
 
-        msg!("old owner ({:?}, {})", endpoint.owner_type, endpoint.owner,);
+                endpoint.authority_type = new_authority_type;
+                endpoint.owner = *recipient_info.key;
 
-        endpoint.owner_type = new_owner_type;
-        endpoint.owner = *recipient_info.key;
+                msg!(
+                    "new owner ({:?}, {})",
+                    endpoint.authority_type,
+                    endpoint.owner,
+                );
 
-        msg!("new owner ({:?}, {})", endpoint.owner_type, endpoint.owner,);
-
-        endpoint_info
-            .data
-            .borrow_mut()
-            .copy_from_slice(&endpoint.try_to_vec()?);
-
+                endpoint_info
+                    .data
+                    .borrow_mut()
+                    .copy_from_slice(&endpoint.try_to_vec()?);
+        */
         Ok(())
     }
 }

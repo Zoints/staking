@@ -3,10 +3,13 @@ use solana_program::account_info::AccountInfo;
 use solana_program::clock::UnixTimestamp;
 
 use solana_program::msg;
-use solana_program::{program_error::ProgramError, pubkey::Pubkey};
+use solana_program::{
+    program_error::ProgramError, program_option::COption, program_pack::Pack, pubkey::Pubkey,
+};
+use spl_token::state::{Account, Mint};
 
 use crate::error::StakingError;
-use crate::ZERO_KEY;
+use crate::is_nft_mint;
 use crate::{PRECISION, SECONDS_PER_YEAR};
 
 /// Account to hold global variables commonly used by instructions
@@ -175,13 +178,69 @@ impl RewardPool {
     }
 }
 
-/// The way that the "owner" address should be interpreted.
+/// The way that the "authority" address should be interpreted.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, BorshDeserialize, BorshSerialize)]
-pub enum OwnerType {
+pub enum Authority {
+    /// The beneficiary has no authority and its yield can't be claimed
+    None,
     /// A regular Solana address that can sign instructions
-    Basic,
-    /// An NFT mint address where the signer is the NFT's current owner
-    NFT,
+    Basic(Pubkey),
+    /// An NFT mint address where the signer is the NFT's current holder
+    NFT(Pubkey),
+}
+
+impl Authority {
+    pub fn is_valid_authority(&self, account: &AccountInfo) -> Result<(), ProgramError> {
+        match self {
+            Authority::None => {
+                if *account.key == Pubkey::default() {
+                    Ok(())
+                } else {
+                    msg!("None authority has non-null account");
+                    Err(StakingError::InvalidAuthorityType.into())
+                }
+            }
+            Authority::Basic(pubkey) => {
+                if *pubkey == Pubkey::default() {
+                    msg!("Basic authority has null pubkey");
+                    Err(StakingError::InvalidAuthorityType.into())
+                } else if *pubkey != *account.key {
+                    Err(StakingError::AuthorityKeysDoNotMatch.into())
+                } else {
+                    Ok(())
+                }
+            }
+            Authority::NFT(mint) => {
+                if *mint == Pubkey::default() {
+                    msg!("NFT authority has null account");
+                    Err(StakingError::InvalidAuthorityType.into())
+                } else if *mint != *account.key {
+                    Err(StakingError::AuthorityKeysDoNotMatch.into())
+                } else {
+                    match is_nft_mint!(account.data.borrow()) {
+                        Ok(_) => Ok(()),
+                        Err(err) => Err(err.into()),
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn has_signed(&self, owner: &AccountInfo, signer: &AccountInfo) -> bool {
+        match self {
+            Authority::None => false,
+            Authority::Basic(key) => {
+                *key == *owner.key && *owner.key == *signer.key && signer.is_signer
+            }
+            Authority::NFT(mint) => {
+                let account = Account::unpack(&owner.data.borrow()).unwrap(); // @todo better than unwrap?
+                account.mint == *mint
+                    && account.amount == 1
+                    && account.owner == *signer.key
+                    && signer.is_signer
+            }
+        }
+    }
 }
 
 /// An Endpoint is a the entity that someone can stake against to share yield.
@@ -198,10 +257,6 @@ pub struct Endpoint {
     pub creation_date: UnixTimestamp,
     /// Total amount of ZEE staked to this endpoint
     pub total_stake: u64,
-    /// The type of owner
-    pub owner_type: OwnerType,
-    /// The endpoint's owner
-    pub owner: Pubkey,
     /// The primary beneficiary receiving 45% of yield
     pub primary: Pubkey,
     /// The secondary beneficiary receiving 5% of yield
@@ -225,8 +280,8 @@ impl Endpoint {
 /// A Beneficiary receives yield based on the amount of ZEE staked.
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
 pub struct Beneficiary {
-    /// The address who is allowed to harvest the yield
-    pub authority: Pubkey,
+    /// The authority that owns the Beneficiary
+    pub authority: Authority,
 
     /// The amount of ZEE staked for the beneficiary
     pub staked: u64,
@@ -264,7 +319,7 @@ impl Beneficiary {
 
     /// True if there is no authority
     pub fn is_empty(&self) -> bool {
-        self.authority == ZERO_KEY
+        self.authority == Authority::None
     }
 
     /// The total amount of theoretical ZEE owed if the amount staked had been staked
@@ -468,7 +523,7 @@ mod tests {
     pub fn test_deserialize_empty() {
         let data = [0; 56];
         let beneficiary: Beneficiary = Beneficiary::try_from_slice(&data).unwrap();
-        assert_eq!(beneficiary.authority, Pubkey::default());
+        assert_eq!(beneficiary.authority, Authority::None);
         assert_eq!(beneficiary.staked, 0);
         assert_eq!(beneficiary.reward_debt, 0);
         assert_eq!(beneficiary.holding, 0);
