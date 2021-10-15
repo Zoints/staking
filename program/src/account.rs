@@ -9,8 +9,34 @@ use solana_program::{
 use spl_token::state::{Account, Mint};
 
 use crate::error::StakingError;
-use crate::is_nft_mint;
 use crate::{PRECISION, SECONDS_PER_YEAR};
+
+/// Verifies that an account is a valid mint for an NFT
+#[macro_export]
+macro_rules! is_nft_mint {
+    ($data:expr) => {
+        match Mint::unpack(&$data) {
+            Ok(mint) => {
+                if !mint.is_initialized {
+                    msg!("not initialized");
+                    Err(StakingError::NFTOwnerNotNFT)
+                } else if mint.decimals != 0 {
+                    msg!("invalid decimals");
+                    Err(StakingError::NFTOwnerNotNFT)
+                } else if mint.supply != 1 {
+                    msg!("invalid supply");
+                    Err(StakingError::NFTOwnerNotNFT)
+                } else if mint.mint_authority != COption::None {
+                    msg!("mint authority is not locked");
+                    Err(StakingError::NFTOwnerNotNFT)
+                } else {
+                    Ok(mint)
+                }
+            }
+            _ => Err(StakingError::NFTOwnerNotNFT),
+        }
+    };
+}
 
 /// Account to hold global variables commonly used by instructions
 #[repr(C)]
@@ -532,5 +558,60 @@ mod tests {
         assert_eq!(beneficiary.staked, 0);
         assert_eq!(beneficiary.reward_debt, 0);
         assert_eq!(beneficiary.holding, 0);
+    }
+
+    #[test]
+    pub fn test_verify_nft_macro() {
+        let mut data = [0; Mint::LEN];
+
+        let ok_mint = Mint {
+            mint_authority: COption::None,
+            supply: 1,
+            decimals: 0,
+            is_initialized: true,
+            freeze_authority: COption::None,
+        };
+        Mint::pack(ok_mint, &mut data).unwrap();
+        assert_eq!(Ok(ok_mint), is_nft_mint!(data));
+
+        let bad_mint_authority = Mint {
+            mint_authority: COption::Some(Pubkey::new_unique()),
+            supply: 1,
+            decimals: 0,
+            is_initialized: true,
+            freeze_authority: COption::None,
+        };
+        Mint::pack(bad_mint_authority, &mut data).unwrap();
+        assert_eq!(Err(StakingError::NFTOwnerNotNFT), is_nft_mint!(data));
+
+        let bad_mint_supply = Mint {
+            mint_authority: COption::None,
+            supply: 2,
+            decimals: 0,
+            is_initialized: true,
+            freeze_authority: COption::None,
+        };
+        Mint::pack(bad_mint_supply, &mut data).unwrap();
+        assert_eq!(Err(StakingError::NFTOwnerNotNFT), is_nft_mint!(data));
+
+        let bad_mint_decimals = Mint {
+            mint_authority: COption::None,
+            supply: 1,
+            decimals: 10,
+            is_initialized: true,
+            freeze_authority: COption::None,
+        };
+        Mint::pack(bad_mint_decimals, &mut data).unwrap();
+        assert_eq!(Err(StakingError::NFTOwnerNotNFT), is_nft_mint!(data));
+
+        let bad_mint_initialized = Mint {
+            mint_authority: COption::None,
+            supply: 1,
+            decimals: 0,
+            is_initialized: false,
+            freeze_authority: COption::None,
+        };
+        Mint::pack(bad_mint_initialized, &mut data).unwrap();
+        assert_eq!(Err(StakingError::NFTOwnerNotNFT), is_nft_mint!(data));
     }
 }
