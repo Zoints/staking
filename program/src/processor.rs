@@ -316,9 +316,15 @@ impl Processor {
                 program_id
             );
             msg!("Primary Beneficiary created: {:?}", primary_authority);
+        } else {
+            Beneficiary::verify_program_address(
+                primary_beneficiary_info.key,
+                primary_info.key,
+                program_id,
+            )?;
         }
 
-        if secondary_authority != Authority::None && secondary_beneficiary_info.data_is_empty() {
+        if secondary_beneficiary_info.data_is_empty() {
             create_beneficiary!(
                 secondary_beneficiary_info,
                 secondary_authority,
@@ -327,6 +333,12 @@ impl Processor {
                 program_id
             );
             msg!("Secondary Beneficiary created: {:?}", secondary_authority);
+        } else {
+            Beneficiary::verify_program_address(
+                secondary_beneficiary_info.key,
+                secondary_info.key,
+                program_id,
+            )?;
         }
 
         let endpoint = Endpoint {
@@ -807,13 +819,16 @@ impl Processor {
         new_authority: Authority,
     ) -> ProgramResult {
         let iter = &mut accounts.iter();
-        let _funder_info = next_account_info(iter)?;
+        let funder_info = next_account_info(iter)?;
         let endpoint_info = next_account_info(iter)?;
         let primary_beneficiary_info = next_account_info(iter)?;
         let owner_info = next_account_info(iter)?;
         let owner_signer_info = next_account_info(iter)?;
         let recipient_info = next_account_info(iter)?;
         let recipient_beneficiary_info = next_account_info(iter)?;
+        let rent_info = next_account_info(iter)?;
+
+        let rent = Rent::from_account_info(rent_info)?;
 
         let mut endpoint = Endpoint::from_account_info(&endpoint_info, program_id)?;
         let primary = Beneficiary::from_account_info(
@@ -830,6 +845,36 @@ impl Processor {
         }
 
         new_authority.verify(&recipient_info, false)?;
+
+        if recipient_beneficiary_info.data_is_empty() {
+            create_beneficiary!(
+                recipient_beneficiary_info,
+                new_authority,
+                funder_info,
+                &rent,
+                program_id
+            );
+            msg!("Primary Beneficiary created: {:?}", new_authority);
+        } else {
+            Beneficiary::verify_program_address(
+                recipient_beneficiary_info.key,
+                recipient_info.key,
+                program_id,
+            )?;
+        }
+
+        endpoint.primary = *recipient_info.key;
+
+        msg!(
+            "transfer endpoint from {:?} to {:?}",
+            primary.authority,
+            new_authority
+        );
+
+        endpoint_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&endpoint.try_to_vec()?);
 
         Ok(())
     }
