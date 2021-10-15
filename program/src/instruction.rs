@@ -56,7 +56,7 @@ pub enum StakingInstruction {
     ///     10. `[]` Clock Sysvar
     ///     11. `[]` SPL Token Program
     ///     12. `[]` System Program
-    InitializeStake { authority: Authority },
+    InitializeStake,
     /// Stake ZEE
     ///
     /// To withdraw, you can stake negative amount. To just harvest yield, you

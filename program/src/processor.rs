@@ -170,8 +170,8 @@ impl Processor {
                 primary_authority,
                 secondary_authority,
             ),
-            StakingInstruction::InitializeStake { authority } => {
-                Self::process_initialize_stake(program_id, accounts, authority)
+            StakingInstruction::InitializeStake => {
+                Self::process_initialize_stake(program_id, accounts)
             }
             StakingInstruction::Stake { amount } => {
                 Self::process_stake(program_id, accounts, amount)
@@ -408,14 +408,11 @@ impl Processor {
     pub fn process_initialize_stake(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
-        authority: Authority,
     ) -> ProgramResult {
         let iter = &mut accounts.iter();
         let funder_info = next_account_info(iter)?;
 
         let staker_info = next_account_info(iter)?;
-        let staker_owner_info = next_account_info(iter)?;
-        let staker_signer_info = next_account_info(iter)?;
         let staker_fund_info = next_account_info(iter)?;
         let staker_beneficiary_info = next_account_info(iter)?;
 
@@ -431,33 +428,6 @@ impl Processor {
 
         let rent = Rent::from_account_info(rent_info)?;
         let clock = Clock::from_account_info(clock_info)?;
-
-        // @todo change primary in errors
-        match authority {
-            Authority::None => {
-                return Err(StakingError::PrimaryAuthorityCannotBeEmpty.into());
-            }
-            Authority::Basic(pubkey) => {
-                if pubkey == Pubkey::default() {
-                    return Err(StakingError::InvalidAuthorityType.into());
-                }
-
-                if pubkey != *staker_info.key {
-                    return Err(StakingError::AuthorityKeysDoNotMatch.into());
-                }
-            }
-            Authority::NFT(pubkey) => {
-                if pubkey == Pubkey::default() {
-                    return Err(StakingError::InvalidAuthorityType.into());
-                }
-
-                if pubkey != *staker_info.key {
-                    return Err(StakingError::AuthorityKeysDoNotMatch.into());
-                }
-
-                is_nft_mint!(staker_info.data.borrow())?;
-            }
-        }
 
         if !staker_info.is_signer {
             return Err(StakingError::MissingStakeSignature.into());
@@ -515,7 +485,7 @@ impl Processor {
         if staker_beneficiary_info.data_is_empty() {
             create_beneficiary!(
                 staker_beneficiary_info,
-                authority,
+                Authority::Basic(*staker_info.key),
                 funder_info,
                 &rent,
                 program_id
@@ -821,9 +791,11 @@ impl Processor {
         let iter = &mut accounts.iter();
         let _funder_info = next_account_info(iter)?;
 
-        let authority_info = next_account_info(iter)?;
         let beneficiary_info = next_account_info(iter)?;
+        let authority_owner_info = next_account_info(iter)?;
+        let authority_signer_info = next_account_info(iter)?;
         let authority_associated_info = next_account_info(iter)?;
+
         let settings_info = next_account_info(iter)?;
         let pool_authority_info = next_account_info(iter)?;
         let reward_pool_info = next_account_info(iter)?;
@@ -832,20 +804,23 @@ impl Processor {
         let clock = Clock::from_account_info(clock_info)?;
         let mut settings = Settings::from_account_info(settings_info, program_id)?;
 
-        if !authority_info.is_signer {
+        let mut beneficiary =
+            Beneficiary::from_account_info(beneficiary_info, authority_owner_info.key, program_id)?;
+
+        if !beneficiary
+            .authority
+            .has_signed(&authority_owner_info, &authority_signer_info)
+        {
             return Err(StakingError::MissingAuthoritySignature.into());
         }
-
-        settings.update_rewards(clock.unix_timestamp);
-
-        let mut beneficiary =
-            Beneficiary::from_account_info(beneficiary_info, authority_info.key, program_id)?;
 
         verify_associated!(
             authority_associated_info,
             settings.token,
-            *authority_info.key
+            *authority_signer_info.key
         )?;
+
+        settings.update_rewards(clock.unix_timestamp);
 
         // the stake amount doesn't change, so there's no need to update staker
         beneficiary.pay_out(beneficiary.staked, settings.reward_per_share);
@@ -876,70 +851,23 @@ impl Processor {
     pub fn process_transfer_endpoint(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
-        new_authority_type: AuthorityType,
+        new_authority: Authority,
     ) -> ProgramResult {
         let iter = &mut accounts.iter();
         let _funder_info = next_account_info(iter)?;
         let endpoint_info = next_account_info(iter)?;
+        let primary_beneficiary_info = next_account_info(iter)?;
         let owner_info = next_account_info(iter)?;
         let owner_signer_info = next_account_info(iter)?;
         let recipient_info = next_account_info(iter)?;
 
         let mut endpoint = Endpoint::from_account_info(&endpoint_info, program_id)?;
+        let primary = Beneficiary::from_account_info(
+            &primary_beneficiary_info,
+            &endpoint.primary,
+            program_id,
+        )?;
 
-        if !owner_signer_info.is_signer {
-            return Err(StakingError::MissingAuthoritySignature.into());
-        }
-        /*
-                // verify current owner
-                match endpoint.authority_type {
-                    AuthorityType::Basic => {
-                        if *owner_signer_info.key == endpoint.owner {
-                            Ok(())
-                        } else {
-                            Err(StakingError::MissingAuthoritySignature)
-                        }
-                    }
-                    AuthorityType::NFT => {
-                        let account = Account::unpack(&owner_info.data.borrow())
-                            .map_err(|_| StakingError::NFTOwnerNotNFT)?;
-
-                        if account.mint == endpoint.owner && account.amount == 1 {
-                            Ok(())
-                        } else {
-                            msg!("signer doesn't own the NFT");
-                            Err(StakingError::NFTOwnerNotNFT)
-                        }
-                    }
-                }?;
-
-                match new_authority_type {
-                    AuthorityType::Basic => {}
-                    AuthorityType::NFT => {
-                        is_nft_mint!(recipient_info.data.borrow())?;
-                    }
-                };
-
-                msg!(
-                    "old owner ({:?}, {})",
-                    endpoint.authority_type,
-                    endpoint.owner,
-                );
-
-                endpoint.authority_type = new_authority_type;
-                endpoint.owner = *recipient_info.key;
-
-                msg!(
-                    "new owner ({:?}, {})",
-                    endpoint.authority_type,
-                    endpoint.owner,
-                );
-
-                endpoint_info
-                    .data
-                    .borrow_mut()
-                    .copy_from_slice(&endpoint.try_to_vec()?);
-        */
         Ok(())
     }
 }
