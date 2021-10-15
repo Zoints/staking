@@ -190,11 +190,16 @@ pub enum Authority {
 }
 
 impl Authority {
-    pub fn is_valid_authority(&self, account: &AccountInfo) -> Result<(), ProgramError> {
+    pub fn verify(&self, account: &AccountInfo, can_be_none: bool) -> Result<(), ProgramError> {
         match self {
             Authority::None => {
                 if *account.key == Pubkey::default() {
-                    Ok(())
+                    if can_be_none {
+                        Ok(())
+                    } else {
+                        msg!("Authority is not allowed to be None");
+                        Err(StakingError::InvalidAuthorityType.into())
+                    }
                 } else {
                     msg!("None authority has non-null account");
                     Err(StakingError::InvalidAuthorityType.into())

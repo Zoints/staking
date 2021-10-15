@@ -300,55 +300,8 @@ impl Processor {
         let rent = Rent::from_account_info(rent_info)?;
         let clock = Clock::from_account_info(clock_info)?;
 
-        match primary_authority {
-            Authority::None => {
-                return Err(StakingError::PrimaryAuthorityCannotBeEmpty.into());
-            }
-            Authority::Basic(pubkey) => {
-                if pubkey == Pubkey::default() {
-                    return Err(StakingError::InvalidAuthorityType.into());
-                }
-
-                if pubkey != *primary_info.key {
-                    return Err(StakingError::AuthorityKeysDoNotMatch.into());
-                }
-            }
-            Authority::NFT(pubkey) => {
-                if pubkey == Pubkey::default() {
-                    return Err(StakingError::InvalidAuthorityType.into());
-                }
-
-                if pubkey != *primary_info.key {
-                    return Err(StakingError::AuthorityKeysDoNotMatch.into());
-                }
-
-                is_nft_mint!(primary_info.data.borrow())?;
-            }
-        }
-
-        match secondary_authority {
-            Authority::None => {}
-            Authority::Basic(pubkey) => {
-                if pubkey == Pubkey::default() {
-                    return Err(StakingError::InvalidAuthorityType.into());
-                }
-
-                if pubkey != *secondary_info.key {
-                    return Err(StakingError::SecondaryAuthorityKeysDoNotMatch.into());
-                }
-            }
-            Authority::NFT(pubkey) => {
-                if pubkey == Pubkey::default() {
-                    return Err(StakingError::InvalidAuthorityType.into());
-                }
-
-                if pubkey != *secondary_info.key {
-                    return Err(StakingError::SecondaryAuthorityKeysDoNotMatch.into());
-                }
-
-                is_nft_mint!(secondary_info.data.borrow())?;
-            }
-        }
+        primary_authority.verify(&primary_info, false)?;
+        secondary_authority.verify(&secondary_info, true)?;
 
         if !endpoint_info.data_is_empty() {
             return Err(StakingError::EndpointAccountAlreadyExists.into());
@@ -860,6 +813,7 @@ impl Processor {
         let owner_info = next_account_info(iter)?;
         let owner_signer_info = next_account_info(iter)?;
         let recipient_info = next_account_info(iter)?;
+        let recipient_beneficiary_info = next_account_info(iter)?;
 
         let mut endpoint = Endpoint::from_account_info(&endpoint_info, program_id)?;
         let primary = Beneficiary::from_account_info(
@@ -867,6 +821,15 @@ impl Processor {
             &endpoint.primary,
             program_id,
         )?;
+
+        if !primary
+            .authority
+            .has_signed(&owner_info, &owner_signer_info)
+        {
+            return Err(StakingError::MissingAuthoritySignature.into());
+        }
+
+        new_authority.verify(&recipient_info, false)?;
 
         Ok(())
     }
