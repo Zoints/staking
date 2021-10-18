@@ -3,7 +3,10 @@ import 'mocha';
 import * as borsh from 'borsh';
 import {
     AmountSchema,
+    Authority,
+    AuthorityType,
     decodeInstructionData,
+    DoubleAuthoritySchema,
     InitSchema,
     Instruction,
     Instructions,
@@ -155,8 +158,22 @@ describe('Serialization', () => {
     });
 
     it('decode unknown simple instruction data', async () => {
-        const init = new SimpleSchema({
-            instructionId: Instructions.RegisterEndpoint // uses simple schema
+        const primary = new Authority({
+            authorityType: AuthorityType.Basic,
+            address: new PublicKey(
+                '2bvn5d4krBDdCXEMH9KKHPx8xGauv6wEsaPZWAyYnUJh'
+            )
+        });
+        const secondary = new Authority({
+            authorityType: AuthorityType.Basic,
+            address: new PublicKey(
+                '73aD1aXy4Z1arEYHCVxefmZHm4PgHTY7fxXTD34bSirf'
+            )
+        });
+        const init = new DoubleAuthoritySchema({
+            instructionId: Instructions.RegisterEndpoint, // uses simple schema
+            primary,
+            secondary
         });
 
         const data = Buffer.from(borsh.serialize(INSTRUCTION_SCHEMA, init));
