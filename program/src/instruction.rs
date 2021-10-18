@@ -85,13 +85,13 @@ pub enum StakingInstruction {
     ///
     /// Expected Accounts:
     ///     1. `[writable,signer]` Transaction payer
-    ///     2. `[signer]` Staker
-    ///     3. `[signer]` Staker Fund
-    ///     4. `[writable]` Staker's ZEE Token Account
-    ///     5. `[]` Endpoint
-    ///     6. `[]` Settings
-    ///     7. `[]` Pool Authority
-    ///     8. `[writable]` Stake Account
+    ///     2. `[writable]` Stake Account
+    ///     3. `[signer]` Staker
+    ///     4. `[signer]` Staker Fund
+    ///     5. `[writable]` Staker's ZEE Token Account
+    ///     6. `[]` Endpoint
+    ///     7. `[]` Settings
+    ///     8. `[]` Pool Authority
     ///     9. `[]` Clock Sysvar
     ///     10. `[]` SPL Token Program
     WithdrawUnbond,

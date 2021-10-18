@@ -648,18 +648,22 @@ impl Processor {
     pub fn process_withdraw_unbond(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let iter = &mut accounts.iter();
         let _funder_info = next_account_info(iter)?;
+
+        let stake_info = next_account_info(iter)?;
+
         let staker_info = next_account_info(iter)?;
         let staker_fund_info = next_account_info(iter)?;
         let staker_associated_info = next_account_info(iter)?;
+
         let endpoint_info = next_account_info(iter)?;
         let settings_info = next_account_info(iter)?;
-        let stake_info = next_account_info(iter)?;
         let clock_info = next_account_info(iter)?;
 
         let clock = Clock::from_account_info(clock_info)?;
         let settings = Settings::from_account_info(settings_info, program_id)?;
-        // not verifying endpoint, we just need an existing pubkey to check stake program address
+        Endpoint::from_account_info(endpoint_info, program_id)?;
 
+        // stakes can only be owned by an address, not an nft
         if !staker_info.is_signer {
             return Err(StakingError::MissingStakeSignature.into());
         }
