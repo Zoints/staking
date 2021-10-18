@@ -7,7 +7,7 @@ import {
     SYSVAR_RENT_PUBKEY,
     TransactionInstruction
 } from '@solana/web3.js';
-import { OwnerType, Staking } from '.';
+import { Authority, AuthorityType, Staking } from '.';
 import * as borsh from 'borsh';
 import './extendBorsh';
 import BN from 'bn.js';
@@ -26,7 +26,8 @@ export type InstructionSchema =
     | SimpleSchema
     | AmountSchema
     | InitSchema
-    | OwnerTypeSchema;
+    | SingleAuthoritySchema
+    | DoubleAuthoritySchema;
 
 export class SimpleSchema {
     instructionId: Exclude<
@@ -76,22 +77,32 @@ export class InitSchema {
     }
 }
 
-export class OwnerTypeSchema {
-    instructionId: Extract<
-        Instructions,
-        Instructions.RegisterEndpoint | Instructions.TransferEndpoint
-    >;
-    ownerType: OwnerType;
+export class SingleAuthoritySchema {
+    instructionId: Extract<Instructions, Instructions.TransferEndpoint>;
+    authority: Authority;
 
     constructor(params: {
-        instructionId: Extract<
-            Instructions,
-            Instructions.RegisterEndpoint | Instructions.TransferEndpoint
-        >;
-        ownerType: OwnerType;
+        instructionId: Extract<Instructions, Instructions.TransferEndpoint>;
+        authority: Authority;
     }) {
         this.instructionId = params.instructionId;
-        this.ownerType = params.ownerType;
+        this.authority = params.authority;
+    }
+}
+
+export class DoubleAuthoritySchema {
+    instructionId: Extract<Instructions, Instructions.RegisterEndpoint>;
+    primary: Authority;
+    secondary: Authority;
+
+    constructor(params: {
+        instructionId: Extract<Instructions, Instructions.RegisterEndpoint>;
+        primary: Authority;
+        secondary: Authority;
+    }) {
+        this.instructionId = params.instructionId;
+        this.primary = params.primary;
+        this.secondary = params.secondary;
     }
 }
 
@@ -138,41 +149,42 @@ export class Instruction {
     public static async RegisterEndpoint(
         programId: PublicKey,
         funder: PublicKey,
-        ownerType: OwnerType,
-        owner: PublicKey,
         endpoint: PublicKey,
-        primary: PublicKey,
-        secondary?: PublicKey
+        primary: Authority,
+        secondary?: Authority
     ): Promise<TransactionInstruction> {
         if (secondary === undefined) {
-            secondary = PublicKey.default;
+            secondary = new Authority({
+                authorityType: AuthorityType.None,
+                address: PublicKey.default
+            });
         }
 
         const primaryBeneficiary = await Staking.beneficiary(
-            primary,
+            primary.address,
             programId
         );
         const secondaryBeneficiary = await Staking.beneficiary(
-            secondary,
+            secondary.address,
             programId
         );
 
         const keys: AccountMeta[] = [
             am(funder, true, true),
-            am(owner, false, false),
             am(endpoint, true, true),
-            am(primary, false, false),
+            am(primary.address, false, false),
             am(primaryBeneficiary, false, true),
-            am(secondary, false, false),
+            am(secondary.address, false, false),
             am(secondaryBeneficiary, false, true),
             am(SYSVAR_RENT_PUBKEY, false, false),
             am(SYSVAR_CLOCK_PUBKEY, false, false),
             am(SystemProgram.programId, false, false)
         ];
 
-        const instruction = new OwnerTypeSchema({
+        const instruction = new DoubleAuthoritySchema({
             instructionId: Instructions.RegisterEndpoint,
-            ownerType
+            primary,
+            secondary
         });
         const instructionData = borsh.serialize(
             INSTRUCTION_SCHEMA,
@@ -386,26 +398,37 @@ export class Instruction {
         endpoint: PublicKey,
         owner: PublicKey,
         ownerSigner: PublicKey,
-        recipientType: OwnerType,
-        recipient: PublicKey
+        recipient: Authority
     ): Promise<TransactionInstruction> {
         ///     1. `[writable,signer]` Transaction payer
         ///     2. `[writable]` The Endpoint
-        ///     3. `[]` The endpoint's owner account
-        ///     4. `[signer]` The current owner (or holder of the NFT)
-        ///     5. `[]` The recipient address or nft mint
+        ///     3. `[]` The endpoint's primary beneficiary
+        ///     4. `[]` The primary owner's account
+        ///     5. `[signer]` The current owner (or holder of the NFT)
+        ///     6. `[]` The recipient address or nft mint
+        ///     7. `[writable]` The recipient beneficiary
+        ///     8. `[]` Rent
+        ///     9. `[]` System Program
+
+        const ownerBeneficiary = await Staking.beneficiary(owner, programId);
+        const recipientBeneficiary = await Staking.beneficiary(
+            recipient.address,
+            programId
+        );
 
         const keys: AccountMeta[] = [
             am(funder, true, true),
             am(endpoint, false, true),
+            am(ownerBeneficiary, false, false),
             am(owner, false, false),
             am(ownerSigner, true, false),
-            am(recipient, false, false)
+            am(recipient.address, false, false),
+            am(recipientBeneficiary, false, true)
         ];
 
-        const instruction = new OwnerTypeSchema({
+        const instruction = new SingleAuthoritySchema({
             instructionId: Instructions.TransferEndpoint,
-            ownerType: recipientType
+            authority: recipient
         });
         const instructionData = borsh.serialize(
             INSTRUCTION_SCHEMA,
@@ -469,12 +492,23 @@ export const INSTRUCTION_SCHEMA: borsh.Schema = new Map<any, any>([
         }
     ],
     [
-        OwnerTypeSchema,
+        SingleAuthoritySchema,
         {
             kind: 'struct',
             fields: [
                 ['instructionId', 'u8'],
-                ['ownerType', 'OwnerType']
+                ['authority', 'Authority']
+            ]
+        }
+    ],
+    [
+        DoubleAuthoritySchema,
+        {
+            kind: 'struct',
+            fields: [
+                ['instructionId', 'u8'],
+                ['primary', 'Authority'],
+                ['secondary', 'Authority']
             ]
         }
     ]

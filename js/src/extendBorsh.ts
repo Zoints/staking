@@ -1,18 +1,18 @@
 import { PublicKey } from '@solana/web3.js';
 import { BinaryReader, BinaryWriter } from 'borsh';
-import { OwnerType } from '.';
+import { Authority, AuthorityType } from '.';
 declare module 'borsh' {
     interface BinaryWriter {
         writeBigInt(value: bigint): void;
         writePublicKey(value: PublicKey): void;
         writeDate(value: Date): void;
-        writeOwnerType(value: OwnerType): void;
+        writeAuthority(value: Authority): void;
     }
     interface BinaryReader {
         readBigInt(): bigint;
         readPublicKey(): PublicKey;
         readDate(): Date;
-        readOwnerType(): OwnerType;
+        readAuthority(): Authority;
     }
 }
 
@@ -43,14 +43,32 @@ BinaryReader.prototype.readDate = function () {
     return new Date(this.readU64().toNumber() * 1000);
 };
 
-BinaryWriter.prototype.writeOwnerType = function (value: OwnerType) {
-    this.writeU8(value);
+BinaryWriter.prototype.writeAuthority = function (value: Authority) {
+    this.writeU8(value.authorityType);
+    switch (value.authorityType) {
+        case AuthorityType.None:
+            break;
+        case AuthorityType.Basic: // fallthrough on purpose
+        case AuthorityType.NFT:
+            this.writePublicKey(value.address);
+            break;
+        default:
+            throw new Error('unknown AuthorityType');
+    }
 };
 
-BinaryReader.prototype.readOwnerType = function () {
-    const value = this.readU8();
-    if (!OwnerType[value]) {
-        throw new Error('OwnerType out of range');
+BinaryReader.prototype.readAuthority = function () {
+    const authorityType = this.readU8();
+    switch (authorityType) {
+        case AuthorityType.None:
+            return new Authority({ authorityType, address: PublicKey.default });
+        case AuthorityType.Basic: // fallthrough on purpose
+        case AuthorityType.NFT:
+            return new Authority({
+                authorityType,
+                address: this.readPublicKey()
+            });
+        default:
+            throw new Error('unknown AuthorityType');
     }
-    return value;
 };

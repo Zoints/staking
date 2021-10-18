@@ -113,9 +113,13 @@ pub enum StakingInstruction {
     ///
     ///     1. `[writable,signer]` Transaction payer
     ///     2. `[writable]` The Endpoint
-    ///     3. `[]` The endpoint's owner account
-    ///     4. `[signer]` The current owner (or holder of the NFT)
-    ///     5. `[]` The recipient address or nft mint
+    ///     3. `[]` The endpoint's primary beneficiary
+    ///     4. `[]` The primary owner's account
+    ///     5. `[signer]` The current owner (or holder of the NFT)
+    ///     6. `[]` The recipient address or nft mint
+    ///     7. `[writable]` The recipient beneficiary
+    ///     8. `[]` Rent
+    ///     9. `[]` System Program
     TransferEndpoint { new_authority: Authority },
 }
 

@@ -85,14 +85,30 @@ export class Settings {
     }
 }
 
+export enum AuthorityType {
+    None,
+    Basic,
+    NFT
+}
+
+export class Authority {
+    authorityType: AuthorityType;
+    address: PublicKey;
+
+    constructor(params: { authorityType: AuthorityType; address: PublicKey }) {
+        this.authorityType = params.authorityType;
+        this.address = params.address;
+    }
+}
+
 export class Beneficiary {
-    public authority: PublicKey;
+    public authority: Authority;
     public staked: BN;
     public rewardDebt: BN;
     public holding: BN;
 
     constructor(params: {
-        authority: PublicKey;
+        authority: Authority;
         staked: BN;
         rewardDebt: BN;
         holding: BN;
@@ -111,21 +127,13 @@ export class Beneficiary {
     }
 
     public isEmpty(): boolean {
-        return this.authority.equals(PublicKey.default);
+        return this.authority.authorityType == AuthorityType.None;
     }
-}
-
-export enum OwnerType {
-    Basic,
-    NFT
 }
 
 export class Endpoint {
     public creationDate: Date;
     public totalStake: BN;
-
-    public ownerType: OwnerType;
-    public owner: PublicKey;
 
     public primary: PublicKey;
     public secondary: PublicKey;
@@ -133,15 +141,11 @@ export class Endpoint {
     constructor(params: {
         creationDate: Date;
         totalStake: BN;
-        ownerType: number;
-        owner: PublicKey;
         primary: PublicKey;
         secondary: PublicKey;
     }) {
         this.creationDate = params.creationDate;
         this.totalStake = params.totalStake;
-        this.ownerType = params.ownerType;
-        this.owner = params.owner;
         this.primary = params.primary;
         this.secondary = params.secondary;
     }
@@ -190,7 +194,7 @@ export const ACCOUNT_SCHEMA: borsh.Schema = new Map<any, any>([
         {
             kind: 'struct',
             fields: [
-                ['authority', 'PublicKey'],
+                ['authority', 'Authority'],
                 ['staked', 'u64'],
                 ['rewardDebt', 'u64'],
                 ['holding', 'u64']
@@ -204,8 +208,6 @@ export const ACCOUNT_SCHEMA: borsh.Schema = new Map<any, any>([
             fields: [
                 ['creationDate', 'Date'],
                 ['totalStake', 'u64'],
-                ['ownerType', 'OwnerType'],
-                ['owner', 'PublicKey'],
                 ['primary', 'PublicKey'],
                 ['secondary', 'PublicKey']
             ]
