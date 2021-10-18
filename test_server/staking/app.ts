@@ -16,10 +16,9 @@ import {
     Transaction
 } from '@solana/web3.js';
 import * as fs from 'fs';
-import { Instruction, Staking } from '@zoints/staking';
+import { Authority, Instruction, Staking } from '@zoints/staking';
 import { seededKey, sleep } from './util';
 import * as crypto from 'crypto';
-import { AppCommunity, AppStaker } from './community';
 import { StakeEngine } from './engine';
 
 export class App {
@@ -42,8 +41,9 @@ export class App {
     mint_id: Keypair;
     mint_authority: Keypair;
 
-    communities: AppCommunity[];
-    stakers: AppStaker[];
+    endpoints: Keypair[];
+    wallets: Keypair[];
+    nfts: Keypair[];
 
     engine: StakeEngine;
 
@@ -77,8 +77,9 @@ export class App {
             this.funder
         );
 
-        this.communities = [];
-        this.stakers = [];
+        this.endpoints = [];
+        this.wallets = [];
+        this.nfts = [];
 
         this.engine = engine;
 
@@ -124,44 +125,13 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
 `);
     }
 
-    async regenerate() {
-        this.loaded = false;
-
-        this.seed = crypto.randomBytes(16);
-        console.log(`Reloading BPF with new seed ${this.seed.toString('hex')}`);
-        fs.writeFileSync(this.seedPath, this.seed.toString('hex'), {});
-        this.newSeed = true;
-
-        this.funder = this.getKeyPair('funder');
-        this.deploy_key = this.getKeyPair('deployKey');
-        this.program_id = this.deploy_key.publicKey;
-
-        this.mint_id = this.getKeyPair('mint');
-        this.mint_authority = this.getKeyPair('mintAuthority');
-
-        this.staking = new Staking(this.program_id, this.connection);
-        this.token = new Token(
-            this.connection,
-            this.mint_id.publicKey,
-            TOKEN_PROGRAM_ID,
-            this.funder
-        );
-
-        this.communities = [];
-        this.stakers = [];
-
-        this.print_config();
-
-        await this.setup();
-    }
-
     private getKeyPair(name: string): Keypair {
         return seededKey(name, this.seed);
     }
 
     public async airdrop(id: number, amount: number): Promise<void> {
         const assoc = await this.token.getOrCreateAssociatedAccountInfo(
-            this.stakers[id].key.publicKey
+            this.wallets[id].publicKey
         );
         return this.token.mintTo(
             assoc.address,
@@ -178,8 +148,8 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
         for (const comm of this.communities) {
             try {
                 const stake = await this.staking.getStakeWithoutId(
-                    comm.key.publicKey,
-                    staker.key.publicKey
+                    comm.publicKey,
+                    staker.publicKey
                 );
                 if (
                     stake.unbondingAmount.gtn(0) &&
@@ -191,19 +161,7 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
             if (communities.length >= 6) break;
         }
 
-        await this.engine.claim(this, staker.key, communities);
-        return 'removed with engine';
-    }
-
-    public async claimPrimary(commId: number): Promise<string> {
-        const community = this.communities[commId];
-        await this.engine.claim(this, community.primaryAuthority);
-        return 'removed with engine';
-    }
-
-    public async claimSecondary(commId: number): Promise<string> {
-        const community = this.communities[commId];
-        await this.engine.claim(this, community.secondaryAuthority);
+        await this.engine.claim(this, staker, communities);
         return 'removed with engine';
     }
 
@@ -287,9 +245,10 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
         this.loaded = true;
     }
 
-    async addCommunity(noSecondary: boolean) {
-        const community = new AppCommunity(this.communities.length, this.seed);
-        this.communities.push(community);
+    async addEndpoint(primary: Authority, secondary: Authority) {
+        const id = this.endpoints.length;
+        const key = this.getKeyPair(`endpoint-${id}`);
+        this.endpoints.push(key);
 
         const promises: Promise<void>[] = [
             new Promise((resolve, reject) => {
@@ -330,14 +289,12 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
         await Promise.all(promises);
     }
 
-    async addStaker() {
-        const staker = new AppStaker(this.stakers.length, this.seed);
-        this.stakers.push(staker);
-        console.log(
-            `Adding staker ${staker.id}: ${staker.key.publicKey.toBase58()}`
-        );
-
-        await this.token.getOrCreateAssociatedAccountInfo(staker.key.publicKey);
+    async addWallet() {
+        const id = this.wallets.length;
+        const key = this.getKeyPair(`wallet-${id}`);
+        this.wallets.push(key);
+        console.log(`Added wallet ${id}: ${key.publicKey.toBase58()}`);
+        await this.token.getOrCreateAssociatedAccountInfo(key.publicKey);
     }
 
     private async fund() {

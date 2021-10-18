@@ -18,17 +18,12 @@ console.log(
 const staking = new App(
     'http://localhost:8899',
     '../program/target/deploy/staking.so',
-    './seed.json',
+    './seed.txt',
     engine
 );
 
 // Parse URL-encoded bodies (as sent by HTML forms)
 app.use(express.urlencoded({ extended: false }));
-
-app.get('/reload', async (req: express.Request, res: express.Response) => {
-    await staking.regenerate();
-    res.redirect('/');
-});
 
 app.get('/reloadBPF', async (req: express.Request, res: express.Response) => {
     await staking.loadBPF();
@@ -102,19 +97,6 @@ app.get(
         const staker = Number(req.params.staker);
         await staking.claimStaker(staker);
         res.redirect('/staker/' + staker);
-    }
-);
-
-app.get(
-    '/claim/:community/:primary',
-    async (req: express.Request, res: express.Response) => {
-        const community = Number(req.params.community);
-        if (req.params.primary === 'primary') {
-            await staking.claimPrimary(community);
-        } else {
-            await staking.claimSecondary(community);
-        }
-        res.redirect('/community/' + community);
     }
 );
 
