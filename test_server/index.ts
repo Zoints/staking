@@ -1,6 +1,6 @@
 import { App } from './staking/app';
 import * as express from 'express';
-import { viewSettings, viewEndpoint, wrap, viewStaker } from './view';
+import { viewEndpoint, wrap, viewWallet } from './view';
 import { EngineDirect } from './staking/engine-direct';
 import { Authority, AuthorityType } from '@zoints/staking';
 import { PublicKey } from '@solana/web3.js';
@@ -96,14 +96,14 @@ app.get('/addEndpoint', async (req: express.Request, res: express.Response) => {
     res.redirect('/');
 });
 
-app.get('/staker/:id', async (req: express.Request, res: express.Response) => {
+app.get('/wallet/:id', async (req: express.Request, res: express.Response) => {
     const id = Number(req.params.id);
     if (id >= staking.wallets.length) {
-        console.log(`tried to access nonexistent staker`);
+        console.log(`tried to access nonexistent wallet`);
         res.redirect('/');
         return;
     }
-    res.send(await wrap(staking, await viewStaker(staking, id)));
+    res.send(await wrap(staking, await viewWallet(staking, id)));
 });
 
 app.get('/addWallet', async (req: express.Request, res: express.Response) => {
@@ -114,6 +114,11 @@ app.get('/addWallet', async (req: express.Request, res: express.Response) => {
 app.get('/addNFT/:id', async (req: express.Request, res: express.Response) => {
     await staking.addNFT(Number(req.params.id));
     res.redirect('/');
+});
+
+app.get('/claim/:id', async (req: express.Request, res: express.Response) => {
+    await staking.claimWallet(Number(req.params.id));
+    res.redirect('/wallet/' + req.params.id);
 });
 
 app.post(

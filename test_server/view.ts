@@ -1,118 +1,75 @@
-import { OwnerType, PRECISION, Staking } from '@zoints/staking';
+import { Authority, AuthorityType, PRECISION, Staking } from '@zoints/staking';
 import { App } from './staking/app';
 
 function pretty(d: Date): string {
     return d.toISOString().replace(/T/, ' ').replace(/\..+/, '');
 }
 
-export async function viewSettings(staking: App): Promise<string> {
+export async function viewEndpoint(staking: App, id: number): Promise<string> {
     if (!staking.loaded) {
         return 'loading BPF and initializing contract in progress';
     }
 
-    return `<a href="/reloadBPF"> RELOAD BPF </a><br><a href="/reload"> RESET SYSTEM & RELOAD BPF </a>`;
-}
-
-export async function viewCommunity(staking: App, id: number): Promise<string> {
-    if (!staking.loaded) {
-        return 'loading BPF and initializing contract in progress';
-    }
-
-    const appComm = staking.communities[id];
-    const community = await staking.staking.getEndpoint(appComm.key.publicKey);
+    const pubkey = staking.endpoints[id].publicKey;
+    const endpoint = await staking.staking.getEndpoint(pubkey);
     const settings = await staking.staking.getSettings();
 
     const rps = settings.calculateRewardPerShare(new Date());
 
-    const assocPrimary = await staking.token.getOrCreateAssociatedAccountInfo(
-        community.primary
-    );
-    const primaryBeneficiary = await staking.staking.getBeneficiary(
-        community.primary
-    );
+    const primary = await staking.staking.getBeneficiary(endpoint.primary);
+    const secondary = await staking.staking.getBeneficiary(endpoint.secondary);
 
-    const secondaryBeneficiary = await staking.staking.getBeneficiary(
-        community.secondary
-    );
-
-    let secondary = '';
-    if (secondaryBeneficiary.isEmpty()) {
-        secondary = `        <tr>
+    let secondaryText = '';
+    if (secondary.isEmpty()) {
+        secondaryText = `        <tr>
             <td>Authority</td>
             <td>None</td>
         </tr>
         <tr>
-            <td>ZEE Address</td>
-            <td>N/A</td>
-        </tr>
-        <tr>
-            <td>ZEE Balance</td>
-            <td>N/A</td>
-
-        </tr>
-        <tr>
             <td>Staked</td>
-            <td>${secondaryBeneficiary.staked.toString()}</td>
+            <td>${secondary.staked.toString()}</td>
         </tr>
         <tr>
             <td>Reward Debt</td>
-            <td>${secondaryBeneficiary.rewardDebt.toString()}</td>
+            <td>${secondary.rewardDebt.toString()}</td>
         </tr>
         <tr>
             <td>Holding</td>
-            <td>${secondaryBeneficiary.holding.toString()}</td>
+            <td>${secondary.holding.toString()}</td>
         </tr>
         <tr>
             <td>Harvestable</td>
-            <td>${secondaryBeneficiary.calculateReward(rps).toString()}</td>
+            <td>${secondary.calculateReward(rps).toString()}</td>
         </tr>`;
     } else {
-        const assocSecondary =
-            await staking.token.getOrCreateAssociatedAccountInfo(
-                secondaryBeneficiary.authority
-            );
-
-        secondary = `        <tr>
+        secondaryText = `        <tr>
             <td>Authority</td>
-            <td><a href="https://explorer.solana.com/address/${secondaryBeneficiary.authority.toBase58()}?customUrl=${
+            <td><a href="https://explorer.solana.com/address/${secondary.authority.address.toBase58()}?customUrl=${
             staking.connectionURL
-        }&cluster=custom">${secondaryBeneficiary.authority.toBase58()}</td>
-        </tr>
-        <tr>
-            <td>ZEE Address</td>
-            <td><a href="https://explorer.solana.com/address/${assocSecondary.address.toBase58()}?customUrl=${
-            staking.connectionURL
-        }&cluster=custom">${assocSecondary.address.toBase58()}</a></td>
-        </tr>
-        <tr>
-            <td>ZEE Balance</td>
-            <td>${assocSecondary.amount.toString()}</td>
-
+        }&cluster=custom">${secondary.authority.address.toBase58()}</a> (${
+            AuthorityType[secondary.authority.authorityType]
+        })</td>
         </tr>
         <tr>
             <td>Staked</td>
-            <td>${secondaryBeneficiary.staked.toString()}</td>
+            <td>${secondary.staked.toString()}</td>
         </tr>
         <tr>
             <td>Reward Debt</td>
-            <td>${secondaryBeneficiary.rewardDebt.toString()}</td>
+            <td>${secondary.rewardDebt.toString()}</td>
         </tr>
         <tr>
             <td>Holding</td>
-            <td>${secondaryBeneficiary.holding.toString()}</td>
+            <td>${secondary.holding.toString()}</td>
         </tr>
         <tr>
             <td>Harvestable</td>
-            <td>${secondaryBeneficiary
-                .calculateReward(rps)
-                .toString()} (<a href="/claim/${
-            appComm.id
-        }/secondary">Claim</a>)</td>
+            <td>${secondary.calculateReward(rps).toString()}</td>
         </tr>        <tr>
             <td>Combined</td>
-            <td>${secondaryBeneficiary
+            <td>${secondary
                 .calculateReward(rps)
-                .add(secondaryBeneficiary.holding)
+                .add(secondary.holding)
                 .toString()}</td>
         </tr>`;
     }
@@ -124,71 +81,50 @@ export async function viewCommunity(staking: App, id: number): Promise<string> {
         </td>
         <tr>
             <td>Public Key</td>
-            <td><a href="https://explorer.solana.com/address/${appComm.key.publicKey.toBase58()}?customUrl=${
+            <td><a href="https://explorer.solana.com/address/${pubkey.toBase58()}?customUrl=${
         staking.connectionURL
-    }&cluster=custom">${appComm.key.publicKey.toBase58()}</a></td>
-        </tr>
-        <tr>
-            <td>Authority</td>
-            <td><a href="https://explorer.solana.com/address/${
-                community.owner
-            }?customUrl=${staking.connectionURL}&cluster=custom">${
-        community.owner
-    }</a> (${OwnerType[community.ownerType]})</td>
+    }&cluster=custom">${pubkey.toBase58()}</a></td>
         </tr>
         <tr>
             <td>Creation Date</td>
-            <td>${pretty(community.creationDate)}</td>
+            <td>${pretty(endpoint.creationDate)}</td>
         </tr>
         <tr>
             <td>Total Stake</td>
-            <td>${community.totalStake.toString()}</td>
+            <td>${endpoint.totalStake.toString()}</td>
         </tr>
         <tr>
             <td colspan="2"><br><b>Primary</b></td>
         </tr>
         <tr>
             <td>Authority</td>
-            <td><a href="https://explorer.solana.com/address/${primaryBeneficiary.authority.toBase58()}?customUrl=${
+            <td><a href="https://explorer.solana.com/address/${primary.authority.address.toBase58()}?customUrl=${
         staking.connectionURL
-    }&cluster=custom">${primaryBeneficiary.authority.toBase58()}</td>
-        </tr>
-        <tr>
-            <td>ZEE Address</td>
-            <td><a href="https://explorer.solana.com/address/${assocPrimary.address.toBase58()}?customUrl=${
-        staking.connectionURL
-    }&cluster=custom">${assocPrimary.address.toBase58()}</a></td>
-        </tr>
-        <tr>
-            <td>ZEE Balance</td>
-            <td>${assocPrimary.amount}</td>
-
+    }&cluster=custom">${primary.authority.address.toBase58()}</a> (${
+        AuthorityType[primary.authority.authorityType]
+    })</td>
         </tr>
         <tr>
             <td>Staked</td>
-            <td>${primaryBeneficiary.staked.toString()}</td>
+            <td>${primary.staked.toString()}</td>
         </tr>
         <tr>
             <td>Reward Debt</td>
-            <td>${primaryBeneficiary.rewardDebt.toString()}</td>
+            <td>${primary.rewardDebt.toString()}</td>
         </tr>
         <tr>
             <td>Holding</td>
-            <td>${primaryBeneficiary.holding.toString()}</td>
+            <td>${primary.holding.toString()}</td>
         </tr>
         <tr>
             <td>Harvestable</td>
-            <td>${primaryBeneficiary
-                .calculateReward(rps)
-                .toString()} (<a href="/claim/${
-        appComm.id
-    }/primary">Claim</a>)</td>
+            <td>${primary.calculateReward(rps).toString()}</td>
         </tr>
         <tr>
             <td>Combined</td>
-            <td>${primaryBeneficiary
+            <td>${primary
                 .calculateReward(rps)
-                .add(primaryBeneficiary.holding)
+                .add(primary.holding)
                 .toString()}</td>
         </tr>
         <tr>
@@ -198,41 +134,39 @@ export async function viewCommunity(staking: App, id: number): Promise<string> {
     </table>`;
 }
 
-export async function viewStaker(staking: App, id: number): Promise<string> {
+export async function viewWallet(staking: App, id: number): Promise<string> {
     if (!staking.loaded) {
         return 'loading BPF and initializing contract in progress';
     }
 
-    const appStaker = staking.stakers[id];
+    const wallet = staking.wallets[id].publicKey;
     const settings = await staking.staking.getSettings();
-    const assoc = await staking.token.getOrCreateAssociatedAccountInfo(
-        appStaker.key.publicKey
-    );
+    const assoc = await staking.token.getOrCreateAssociatedAccountInfo(wallet);
+    const beneficiary = await staking.staking.getBeneficiary(wallet);
 
     const rps = settings.calculateRewardPerShare(new Date());
 
-    let community_list = '';
-    for (let community of staking.communities) {
-        community_list += `<h3>${community.id} - ${community.key.publicKey
+    let endpoint_list = '';
+    for (
+        let endpointId = 0;
+        endpointId < staking.endpoints.length;
+        endpointId++
+    ) {
+        const endpoint = staking.endpoints[endpointId].publicKey;
+        endpoint_list += `<h3>${endpointId} - ${endpoint
             .toBase58()
             .substr(0, 8)}</h3><table>`;
         try {
-            const stakerId = await Staking.stakeAddress(
+            const stakeId = await Staking.stakeAddress(
                 staking.program_id,
-                community.key.publicKey,
-                appStaker.key.publicKey
+                endpoint,
+                wallet
             );
-            const stakeAccount = await staking.staking.getStakeWithoutId(
-                community.key.publicKey,
-                appStaker.key.publicKey
-            );
-            const beneficiary = await staking.staking.getBeneficiary(
-                appStaker.key.publicKey
-            );
+            const stakeAccount = await staking.staking.getStake(stakeId);
 
             const stakingFundId = await Staking.stakeFundAddress(
-                community.key.publicKey,
-                appStaker.key.publicKey,
+                endpoint,
+                wallet,
                 staking.program_id
             );
             const stakingFund = await staking.token.getAccountInfo(
@@ -267,13 +201,13 @@ export async function viewStaker(staking: App, id: number): Promise<string> {
             } else if (stakeAccount.unbondingAmount.isZero()) {
                 unbonding = `Nothing to withdraw.`;
             } else {
-                unbonding = `<a href="/withdraw/${community.id}/${appStaker.id}">Ready to Withdraw</a>`;
+                unbonding = `<a href="/withdraw/${endpointId}/${id}">Ready to Withdraw</a>`;
             }
 
-            community_list += `
+            endpoint_list += `
                 <tr>
                     <td>Stake ID</td>
-                    <td>${stakerId.toBase58()}</td>
+                    <td>${wallet.toBase58()}</td>
                 </tr>
                 <tr>
                     <td>Created</td>
@@ -305,10 +239,51 @@ export async function viewStaker(staking: App, id: number): Promise<string> {
                     <td>Withdraw Unbond</td>
                     <td>${unbonding}</td>
                 </tr>                <tr>
-                <td>Authority</td>
-                    <td><a href="https://explorer.solana.com/address/${beneficiary.authority.toBase58()}?customUrl=${
-                staking.connectionURL
-            }&cluster=custom">${beneficiary.authority.toBase58()}</td>
+            `;
+        } catch (e: any) {
+            endpoint_list += `<tr><td colspan="2">No stake found</td></tr></table>`;
+            //console.log(e);
+        }
+        endpoint_list += `<tr><td>
+            <form action="/stake/${endpointId}/${id}" method="POST"><input type="text" name="amount" placeholder="0"><input type="submit" value="Stake"></form>
+            </td></tr></table>`;
+    }
+
+    let communities = `<h2>Communities</h2><a href="/claim/${id}">Claim All</a><br>${endpoint_list}`;
+
+    return `<table>
+        <tr>
+            <td>ID</td>
+            <td>${id}</td>
+        </td>
+        <tr>
+            <td>Public Key</td>
+            <td><a href="https://explorer.solana.com/address/${wallet.toBase58()}?customUrl=${
+        staking.connectionURL
+    }&cluster=custom">${wallet.toBase58()}</a></td>
+        </tr>
+
+        <tr>
+            <td>ZEE Address</td>
+            <td><a href="https://explorer.solana.com/address/${assoc.address.toBase58()}?customUrl=${
+        staking.connectionURL
+    }&cluster=custom">${assoc.address.toBase58()}</a></td>
+        </tr>
+        <tr>
+            <td>ZEE Balance</td>
+            <td>${assoc.amount}</td>
+
+        </tr>
+        <tr><td></td><td><form action="/airdrop/${id}" method="GET"><input type="text" name="amount" placeholder="0"><input type="submit" value="Airdrop Zee"></form></td></tr>
+    </table>
+    <h3>Beneficiary</h3>
+        <table>
+                   <td></td>
+                    <td><a href="https://explorer.solana.com/address/${beneficiary.authority.address.toBase58()}?customUrl=${
+        staking.connectionURL
+    }&cluster=custom">${beneficiary.authority.address.toBase58()} (${
+        AuthorityType[beneficiary.authority.authorityType]
+    })</td>
                 </tr>
                 <tr>
                     <td>Staked</td>
@@ -326,45 +301,8 @@ export async function viewStaker(staking: App, id: number): Promise<string> {
                     <td>Harvestable</td>
                     <td>${beneficiary.calculateReward(rps).toString()}</td>
                 </tr>
-            `;
-        } catch (e: any) {
-            community_list += `<tr><td colspan="2">No stake found</td></tr>`;
-            //console.log(e);
-        }
-        community_list += `<tr><td>
-            <form action="/stake/${community.id}/${appStaker.id}" method="POST"><input type="text" name="amount" placeholder="0"><input type="submit" value="Stake"></form>
-            </td></tr></table>`;
-    }
-
-    let communities = `<h2>Communities</h2><a href="/multiclaim/${appStaker.id}">Withdraw All</a><br>${community_list}`;
-
-    return `<table>
-        <tr>
-            <td>ID</td>
-            <td>${id}</td>
-        </td>
-        <tr>
-            <td>Public Key</td>
-            <td><a href="https://explorer.solana.com/address/${appStaker.key.publicKey.toBase58()}?customUrl=${
-        staking.connectionURL
-    }&cluster=custom">${appStaker.key.publicKey.toBase58()}</a></td>
-        </tr>
-
-        <tr>
-            <td>ZEE Address</td>
-            <td><a href="https://explorer.solana.com/address/${assoc.address.toBase58()}?customUrl=${
-        staking.connectionURL
-    }&cluster=custom">${assoc.address.toBase58()}</a></td>
-        </tr>
-        <tr>
-            <td>ZEE Balance</td>
-            <td>${assoc.amount}</td>
-
-        </tr>
-        <tr><td></td><td><form action="/airdrop/${
-            appStaker.id
-        }" method="GET"><input type="text" name="amount" placeholder="0"><input type="submit" value="Airdrop Zee"></form></td></tr>
-    </table> ${communities}`;
+        </table>
+    ${communities}`;
 }
 
 export async function wrap(staking: App, content: string): Promise<string> {
@@ -375,21 +313,32 @@ export async function wrap(staking: App, content: string): Promise<string> {
     const settings = await staking.staking.getSettings();
     const recent = await staking.connection.getRecentBlockhashAndContext();
 
-    let community_list = '';
-    for (let community of staking.communities) {
-        community_list += `<li><a href="/community/${
-            community.id
-        }"> ${community.key.publicKey.toBase58().substr(0, 8)}</a></li>`;
+    let endpoint_list = '';
+    for (let id = 0; id < staking.endpoints.length; id++) {
+        const endpoint = staking.endpoints[id].publicKey;
+        endpoint_list += `<li><a href="/endpoint/${id}"> ${endpoint
+            .toBase58()
+            .substr(0, 8)}</a></li>`;
     }
-    const communities = `<ol>${community_list}</ol> <a href="/addCommunity">Add Community</a><br><a href="/addCommunity?nosec=true">Add Community (No Secondary)</a>`;
+    const endpoints = `<ol>${endpoint_list}</ol>`;
 
-    let stakers_list = '';
-    for (let staker of staking.stakers) {
-        stakers_list += `<li><a href="/staker/${
-            staker.id
-        }"> ${staker.key.publicKey.toBase58().substr(0, 8)}</a></li>`;
+    let wallets_list = '';
+    for (let id = 0; id < staking.wallets.length; id++) {
+        const wallet = staking.wallets[id].publicKey;
+        wallets_list += `<li><a href="/wallet/${id}"> ${wallet
+            .toBase58()
+            .substr(0, 8)}</a></li>`;
     }
-    const stakers = `<ol>${stakers_list}</ol> <a href="/addStaker">Add Staker</a>`;
+    const wallets = `<ol>${wallets_list}</ol> <a href="/addWallet">Add Wallet</a>`;
+
+    let nft_list = '';
+    for (let id = 0; id < staking.nfts.length; id++) {
+        const nft = staking.nfts[id].publicKey;
+        nft_list += `<li><a href="/nft/${id}"> ${nft
+            .toBase58()
+            .substr(0, 8)}</a></li>`;
+    }
+    const nfts = `<ol>${nft_list}</ol>`;
 
     const rewardPoolId = await Staking.rewardPoolId(staking.program_id);
     const rewardPool = await staking.token.getAccountInfo(rewardPoolId);
@@ -469,11 +418,14 @@ export async function wrap(staking: App, content: string): Promise<string> {
     </tr>
 
 </table>
-<h2>Communities</h2>
-${communities}
+<h2>Endpoints</h2>
+${endpoints}
 
-<h2>Stakers</h2>
-${stakers}
+<h2>Wallets</h2>
+${wallets}
+
+<h2>NFTs</h2>
+${nfts}
 </div>
 <div>${content}</div>
 </div>
