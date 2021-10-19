@@ -4,42 +4,34 @@ import {
     sendAndConfirmTransaction,
     Transaction
 } from '@solana/web3.js';
-import { Instruction, OwnerType } from '@zoints/staking';
+import { Instruction, Authority, AuthorityType } from '@zoints/staking';
 import { App } from './app';
-import { AppCommunity, AppStaker } from './community';
 import { StakeEngine } from './engine';
 
 export class EngineDirect implements StakeEngine {
-    async registerCommunity(
+    async registerEndpoint(
         app: App,
-        community: AppCommunity,
-        noSecondary: boolean
+        key: Keypair,
+        primary: Authority,
+        secondary: Authority
     ): Promise<void> {
         const transaction = new Transaction().add(
             await Instruction.RegisterEndpoint(
                 app.program_id,
                 app.funder.publicKey,
-                OwnerType.Basic,
-                community.authority.publicKey,
-                community.key.publicKey,
-                community.primaryAuthority.publicKey,
-                noSecondary
-                    ? PublicKey.default
-                    : community.secondaryAuthority.publicKey
+                key.publicKey,
+                primary,
+                secondary
             )
         );
 
         const sig = await sendAndConfirmTransaction(
             app.connection,
             transaction,
-            [app.funder, community.key]
+            [app.funder, key]
         );
 
-        console.log(
-            `Added community ${
-                community.id
-            }: ${community.key.publicKey.toBase58()}: ${sig}`
-        );
+        console.log(`Added community ${key.publicKey.toBase58()}: ${sig}`);
     }
 
     async claim(app: App, authority: Keypair): Promise<void> {
@@ -66,49 +58,46 @@ export class EngineDirect implements StakeEngine {
 
     async stake(
         app: App,
-        community: AppCommunity,
-        staker: AppStaker,
+        endpoint: PublicKey,
+        staker: Keypair,
         amount: bigint
     ): Promise<void> {
         const assoc = await app.token.getOrCreateAssociatedAccountInfo(
-            staker.key.publicKey
+            staker.publicKey
         );
         const trans = new Transaction();
 
         try {
-            await app.staking.getStakeWithoutId(
-                community.key.publicKey,
-                staker.key.publicKey
-            );
+            await app.staking.getStakeWithoutId(endpoint, staker.publicKey);
         } catch (e) {
             trans.add(
                 await Instruction.InitializeStake(
                     app.program_id,
                     app.funder.publicKey,
-                    staker.key.publicKey,
-                    community.key.publicKey,
+                    staker.publicKey,
+                    endpoint,
                     app.mint_id.publicKey
                 )
             );
         }
 
-        const comm = await app.staking.getEndpoint(community.key.publicKey);
+        const ep = await app.staking.getEndpoint(endpoint);
 
         trans.add(
             await Instruction.Stake(
                 app.program_id,
                 app.funder.publicKey,
-                staker.key.publicKey,
+                staker.publicKey,
                 assoc.address,
-                community.key.publicKey,
-                comm.primary,
-                comm.secondary,
+                endpoint,
+                ep.primary,
+                ep.secondary,
                 amount
             )
         );
         const sig = await sendAndConfirmTransaction(app.connection, trans, [
             app.funder,
-            staker.key
+            staker
         ]);
 
         console.log(`Staked: ${sig}`);
@@ -116,31 +105,29 @@ export class EngineDirect implements StakeEngine {
 
     async withdraw(
         app: App,
-        staker: AppStaker,
-        communities: AppCommunity[]
+        staker: Keypair,
+        endpoints: PublicKey[]
     ): Promise<void> {
-        for (const community of communities) {
+        for (const endpoint of endpoints) {
             const assoc = await app.token.getOrCreateAssociatedAccountInfo(
-                staker.key.publicKey
+                staker.publicKey
             );
             const trans = new Transaction();
             trans.add(
                 await Instruction.WithdrawUnbond(
                     app.program_id,
                     app.funder.publicKey,
-                    staker.key.publicKey,
+                    staker.publicKey,
                     assoc.address,
-                    community.key.publicKey
+                    endpoint
                 )
             );
             const sig = await sendAndConfirmTransaction(app.connection, trans, [
                 app.funder,
-                staker.key
+                staker
             ]);
 
-            console.log(
-                `Withdraw Unbond ${community.key.publicKey.toBase58()}: ${sig}`
-            );
+            console.log(`Withdraw Unbond ${endpoint.toBase58()}: ${sig}`);
         }
     }
 }

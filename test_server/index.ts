@@ -1,16 +1,18 @@
 import { App } from './staking/app';
 import * as express from 'express';
-import { viewSettings, viewCommunity, wrap, viewStaker } from './view';
+import { viewSettings, viewEndpoint, wrap, viewStaker } from './view';
 import { EngineDirect } from './staking/engine-direct';
-import { EngineBackend } from './staking/engine-backend';
+import { Authority, AuthorityType } from '@zoints/staking';
+import { PublicKey } from '@solana/web3.js';
+//import { EngineBackend } from './staking/engine-backend';
 
 const app = express.default();
 const port = 8081;
 
-const engine =
-    process.env.ENGINE?.toLowerCase() === 'direct'
+const engine = new EngineDirect();
+/*  process.env.ENGINE?.toLowerCase() === 'direct'
         ? new EngineDirect()
-        : new EngineBackend('http://localhost:8080/');
+        : new EngineBackend('http://localhost:8080/');*/
 console.log(
     `Engine: ${process.env.ENGINE === 'direct' ? 'direct' : 'backend'}`
 );
@@ -25,37 +27,78 @@ const staking = new App(
 // Parse URL-encoded bodies (as sent by HTML forms)
 app.use(express.urlencoded({ extended: false }));
 
-app.get('/reloadBPF', async (req: express.Request, res: express.Response) => {
-    await staking.loadBPF();
-    res.redirect('/');
-});
-
 app.get(
-    '/community/:id',
+    '/endpoint/:id',
     async (req: express.Request, res: express.Response) => {
         const id = Number(req.params.id);
-        if (id >= staking.communities.length) {
-            console.log(`tried to access nonexistent community`);
+        if (id >= staking.endpoints.length) {
+            console.log(`tried to access nonexistent endpoint`);
             res.redirect('/');
             return;
         }
 
-        res.send(await wrap(staking, await viewCommunity(staking, id)));
+        res.send(await wrap(staking, await viewEndpoint(staking, id)));
     }
 );
 
-app.get(
-    '/addCommunity',
-    async (req: express.Request, res: express.Response) => {
-        const noSecondary = req.query.nosec === 'true';
-        await staking.addCommunity(noSecondary);
-        res.redirect('/');
+app.get('/addEndpoint', async (req: express.Request, res: express.Response) => {
+    const [pType, pID] = req.params.primary.split('-');
+    const [sType, sID] = req.params.primary.split('-');
+
+    let primary: Authority;
+    let secondary: Authority;
+
+    switch (Number(pType)) {
+        case AuthorityType.Basic:
+            const wallet = staking.endpoints[Number(pID)];
+            primary = new Authority({
+                authorityType: AuthorityType.Basic,
+                address: wallet.publicKey
+            });
+            break;
+        case AuthorityType.NFT:
+            const nft = staking.nfts[Number(pID)];
+            primary = new Authority({
+                authorityType: AuthorityType.NFT,
+                address: nft.publicKey
+            });
+            break;
+        default:
+            primary = new Authority({
+                authorityType: AuthorityType.None,
+                address: PublicKey.default
+            });
     }
-);
+
+    switch (Number(sType)) {
+        case AuthorityType.Basic:
+            const wallet = staking.endpoints[Number(sID)];
+            secondary = new Authority({
+                authorityType: AuthorityType.Basic,
+                address: wallet.publicKey
+            });
+            break;
+        case AuthorityType.NFT:
+            const nft = staking.nfts[Number(sID)];
+            secondary = new Authority({
+                authorityType: AuthorityType.NFT,
+                address: nft.publicKey
+            });
+            break;
+        default:
+            secondary = new Authority({
+                authorityType: AuthorityType.None,
+                address: PublicKey.default
+            });
+    }
+
+    await staking.addEndpoint(primary, secondary);
+    res.redirect('/');
+});
 
 app.get('/staker/:id', async (req: express.Request, res: express.Response) => {
     const id = Number(req.params.id);
-    if (id >= staking.stakers.length) {
+    if (id >= staking.wallets.length) {
         console.log(`tried to access nonexistent staker`);
         res.redirect('/');
         return;
@@ -63,19 +106,24 @@ app.get('/staker/:id', async (req: express.Request, res: express.Response) => {
     res.send(await wrap(staking, await viewStaker(staking, id)));
 });
 
-app.get('/addStaker', async (req: express.Request, res: express.Response) => {
-    await staking.addStaker();
+app.get('/addWallet', async (req: express.Request, res: express.Response) => {
+    await staking.addWallet();
+    res.redirect('/');
+});
+
+app.get('/addNFT/:id', async (req: express.Request, res: express.Response) => {
+    await staking.addNFT(Number(req.params.id));
     res.redirect('/');
 });
 
 app.post(
-    '/stake/:community/:staker',
+    '/stake/:endpoint/:staker',
     async (req: express.Request, res: express.Response) => {
         const amount = Number(req.body.amount);
-        const community = Number(req.params.community);
+        const endpoint = Number(req.params.endpoint);
         const staker = Number(req.params.staker);
 
-        await staking.stake(community, staker, amount);
+        await staking.stake(endpoint, staker, amount);
         res.redirect('/staker/' + staker);
     }
 );
@@ -91,24 +139,11 @@ app.get(
     }
 );
 
-app.get(
-    '/multiclaim/:staker',
-    async (req: express.Request, res: express.Response) => {
-        const staker = Number(req.params.staker);
-        await staking.claimStaker(staker);
-        res.redirect('/staker/' + staker);
-    }
-);
-
 app.get('/airdrop/:id', async (req: express.Request, res: express.Response) => {
     const amount = Number(req.query.amount);
     const id = Number(req.params.id);
     await staking.airdrop(id, amount);
     res.redirect('/staker/' + id);
-});
-
-app.get('/settings', async (req: express.Request, res: express.Response) => {
-    res.send(await wrap(staking, await viewSettings(staking)));
 });
 
 app.get('/', async (req: express.Request, res: express.Response) => {
