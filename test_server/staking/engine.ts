@@ -3,7 +3,7 @@ import { Authority } from '@zoints/staking';
 import { App } from './app';
 
 export interface StakeEngine {
-    registerEndpointy(
+    registerEndpoint(
         app: App,
         key: Keypair,
         primary: Authority,
