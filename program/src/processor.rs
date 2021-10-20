@@ -168,6 +168,7 @@ impl Processor {
         let token_program_info = next_account_info(iter)?;
 
         let rent = Rent::from_account_info(rent_info)?;
+        spl_token::check_program_account(token_program_info.key)?;
 
         if settings_info.data_len() > 0 {
             return Err(StakingError::ProgramAlreadyInitialized.into());
