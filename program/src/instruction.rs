@@ -35,7 +35,9 @@ pub enum StakingInstruction {
     ///     8. `[]` Rent Sysvar
     ///     9. `[]` Clock Sysvar
     ///     10. `[]` System Program
-    RegisterEndpoint { owner: Authority },
+    RegisterEndpoint {
+        owner: Authority,
+    },
     /// Initialize a new stake
     ///
     /// Must be done before being able to stake ZEE to an Endpoint
@@ -75,7 +77,9 @@ pub enum StakingInstruction {
     ///     12. `[writable]` Stake Account
     ///     13. `[]` Clock Sysvar
     ///     14. `[]` SPL Token Program
-    Stake { amount: i64 },
+    Stake {
+        amount: i64,
+    },
     /// Withdraw Unbounded Tokens
     ///
     /// Transfer the unbounded tokens to a wallet once the duration has passed.
@@ -117,7 +121,10 @@ pub enum StakingInstruction {
     ///     7. `[writable]` The recipient beneficiary
     ///     8. `[]` Rent
     ///     9. `[]` System Program
-    TransferEndpoint { new_authority: Authority },
+    TransferEndpoint {
+        new_authority: Authority,
+    },
+    ChangeBeneficiaries,
 }
 
 #[cfg(test)]

@@ -146,6 +146,9 @@ impl Processor {
             StakingInstruction::TransferEndpoint { new_authority } => {
                 Self::process_transfer_endpoint(program_id, accounts, new_authority)
             }
+            StakingInstruction::ChangeBeneficiaries => {
+                Self::process_change_beneficiaries(program_id, accounts)
+            }
         }
     }
 
@@ -799,13 +802,88 @@ impl Processor {
 
         new_owner.verify(&recipient_info)?;
 
-        msg!(
-            "transfer endpoint from {:?} to {:?}",
-            endpoint.owner,
-            new_owner
-        );
+        msg!("transfer endpoint {:?} to {:?}", endpoint, new_owner);
 
         endpoint.owner = new_owner;
+
+        endpoint_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&endpoint.try_to_vec()?);
+
+        Ok(())
+    }
+
+    pub fn process_change_beneficiaries(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
+        let iter = &mut accounts.iter();
+        let funder_info = next_account_info(iter)?;
+        let endpoint_info = next_account_info(iter)?;
+        let owner_info = next_account_info(iter)?;
+        let owner_signer_info = next_account_info(iter)?;
+
+        let primary_info = next_account_info(iter)?;
+        let primary_beneficiary_info = next_account_info(iter)?;
+        let secondary_info = next_account_info(iter)?;
+        let secondary_beneficiary_info = next_account_info(iter)?;
+        let rent_info = next_account_info(iter)?;
+
+        let rent = Rent::from_account_info(rent_info)?;
+
+        let mut endpoint = Endpoint::from_account_info(&endpoint_info, program_id)?;
+        if endpoint.owner.has_signed(&owner_info, &owner_signer_info) {
+            return Err(StakingError::MissingAuthoritySignature.into());
+        }
+
+        if primary_beneficiary_info.data_is_empty() {
+            create_beneficiary!(
+                primary_beneficiary_info,
+                primary_info,
+                funder_info,
+                &rent,
+                program_id
+            );
+            msg!("Primary Beneficiary account created");
+        } else {
+            Beneficiary::verify_program_address(
+                primary_beneficiary_info.key,
+                primary_info.key,
+                program_id,
+            )?;
+        }
+
+        if secondary_beneficiary_info.data_is_empty() {
+            create_beneficiary!(
+                secondary_beneficiary_info,
+                secondary_info,
+                funder_info,
+                &rent,
+                program_id
+            );
+            msg!("Secondary Beneficiary account created");
+        } else {
+            Beneficiary::verify_program_address(
+                secondary_beneficiary_info.key,
+                secondary_info.key,
+                program_id,
+            )?;
+        }
+
+        msg!(
+            "changing endpoint primary from {} to {}",
+            endpoint.primary,
+            primary_info.key
+        );
+        msg!(
+            "changing endpoint secondary from {} to {}",
+            endpoint.secondary,
+            secondary_info.key
+        );
+
+        endpoint.primary = *primary_info.key;
+        endpoint.secondary = *secondary_info.key;
 
         endpoint_info
             .data
