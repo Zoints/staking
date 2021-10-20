@@ -48,7 +48,7 @@ pub enum StakingInstruction {
     ///     5. `[writable]` Endpoint Account
     ///     6. `[writable]` Stake Account
     ///     7. `[]` ZEE Token Mint
-    ///     8. `[]` Settings Account
+    ///     8. `[writable]` Settings Account
     ///     9. `[]` Rent Sysvar
     ///     10. `[]` Clock Sysvar
     ///     11. `[]` SPL Token Program

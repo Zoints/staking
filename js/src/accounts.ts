@@ -86,7 +86,6 @@ export class Settings {
 }
 
 export enum AuthorityType {
-    None,
     Basic,
     NFT
 }
@@ -102,13 +101,13 @@ export class Authority {
 }
 
 export class Beneficiary {
-    public authority: Authority;
+    public authority: PublicKey;
     public staked: BN;
     public rewardDebt: BN;
     public holding: BN;
 
     constructor(params: {
-        authority: Authority;
+        authority: PublicKey;
         staked: BN;
         rewardDebt: BN;
         holding: BN;
@@ -127,7 +126,7 @@ export class Beneficiary {
     }
 
     public isEmpty(): boolean {
-        return this.authority.authorityType == AuthorityType.None;
+        return this.authority == PublicKey.default;
     }
 }
 
@@ -135,17 +134,20 @@ export class Endpoint {
     public creationDate: Date;
     public totalStake: BN;
 
+    public owner: Authority;
     public primary: PublicKey;
     public secondary: PublicKey;
 
     constructor(params: {
         creationDate: Date;
         totalStake: BN;
+        owner: Authority;
         primary: PublicKey;
         secondary: PublicKey;
     }) {
         this.creationDate = params.creationDate;
         this.totalStake = params.totalStake;
+        this.owner = params.owner;
         this.primary = params.primary;
         this.secondary = params.secondary;
     }
@@ -194,7 +196,7 @@ export const ACCOUNT_SCHEMA: borsh.Schema = new Map<any, any>([
         {
             kind: 'struct',
             fields: [
-                ['authority', 'Authority'],
+                ['authority', 'PublicKey'],
                 ['staked', 'u64'],
                 ['rewardDebt', 'u64'],
                 ['holding', 'u64']
@@ -208,6 +210,7 @@ export const ACCOUNT_SCHEMA: borsh.Schema = new Map<any, any>([
             fields: [
                 ['creationDate', 'Date'],
                 ['totalStake', 'u64'],
+                ['owner', 'Authority'],
                 ['primary', 'PublicKey'],
                 ['secondary', 'PublicKey']
             ]

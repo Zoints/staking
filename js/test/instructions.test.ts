@@ -6,12 +6,11 @@ import {
     Authority,
     AuthorityType,
     decodeInstructionData,
-    DoubleAuthoritySchema,
+    AuthoritySchema,
     InitSchema,
     Instruction,
     Instructions,
-    INSTRUCTION_SCHEMA,
-    SimpleSchema
+    INSTRUCTION_SCHEMA
 } from '../src';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import BN from 'bn.js';
@@ -157,23 +156,16 @@ describe('Serialization', () => {
         expect(reverse).to.be.eql(init);
     });
 
-    it('decode unknown simple instruction data', async () => {
-        const primary = new Authority({
+    it('decode unknown authority instruction data', async () => {
+        const authority = new Authority({
             authorityType: AuthorityType.Basic,
             address: new PublicKey(
                 '2bvn5d4krBDdCXEMH9KKHPx8xGauv6wEsaPZWAyYnUJh'
             )
         });
-        const secondary = new Authority({
-            authorityType: AuthorityType.Basic,
-            address: new PublicKey(
-                '73aD1aXy4Z1arEYHCVxefmZHm4PgHTY7fxXTD34bSirf'
-            )
-        });
-        const init = new DoubleAuthoritySchema({
+        const init = new AuthoritySchema({
             instructionId: Instructions.RegisterEndpoint, // uses simple schema
-            primary,
-            secondary
+            authority
         });
 
         const data = Buffer.from(borsh.serialize(INSTRUCTION_SCHEMA, init));

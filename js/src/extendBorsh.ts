@@ -46,8 +46,6 @@ BinaryReader.prototype.readDate = function () {
 BinaryWriter.prototype.writeAuthority = function (value: Authority) {
     this.writeU8(value.authorityType);
     switch (value.authorityType) {
-        case AuthorityType.None:
-            break;
         case AuthorityType.Basic: // fallthrough on purpose
         case AuthorityType.NFT:
             this.writePublicKey(value.address);
@@ -60,8 +58,6 @@ BinaryWriter.prototype.writeAuthority = function (value: Authority) {
 BinaryReader.prototype.readAuthority = function () {
     const authorityType = this.readU8();
     switch (authorityType) {
-        case AuthorityType.None:
-            return new Authority({ authorityType, address: PublicKey.default });
         case AuthorityType.Basic: // fallthrough on purpose
         case AuthorityType.NFT:
             return new Authority({

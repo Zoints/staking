@@ -19,15 +19,15 @@ export enum Instructions {
     Stake,
     WithdrawUnbond,
     Claim,
-    TransferEndpoint
+    TransferEndpoint,
+    ChangeBeneficiaries
 }
 
 export type InstructionSchema =
     | SimpleSchema
     | AmountSchema
     | InitSchema
-    | SingleAuthoritySchema
-    | DoubleAuthoritySchema;
+    | AuthoritySchema;
 
 export class SimpleSchema {
     instructionId: Exclude<
@@ -77,32 +77,22 @@ export class InitSchema {
     }
 }
 
-export class SingleAuthoritySchema {
-    instructionId: Extract<Instructions, Instructions.TransferEndpoint>;
+export class AuthoritySchema {
+    instructionId: Extract<
+        Instructions,
+        Instructions.TransferEndpoint | Instructions.RegisterEndpoint
+    >;
     authority: Authority;
 
     constructor(params: {
-        instructionId: Extract<Instructions, Instructions.TransferEndpoint>;
+        instructionId: Extract<
+            Instructions,
+            Instructions.TransferEndpoint | Instructions.RegisterEndpoint
+        >;
         authority: Authority;
     }) {
         this.instructionId = params.instructionId;
         this.authority = params.authority;
-    }
-}
-
-export class DoubleAuthoritySchema {
-    instructionId: Extract<Instructions, Instructions.RegisterEndpoint>;
-    primary: Authority;
-    secondary: Authority;
-
-    constructor(params: {
-        instructionId: Extract<Instructions, Instructions.RegisterEndpoint>;
-        primary: Authority;
-        secondary: Authority;
-    }) {
-        this.instructionId = params.instructionId;
-        this.primary = params.primary;
-        this.secondary = params.secondary;
     }
 }
 
@@ -150,41 +140,39 @@ export class Instruction {
         programId: PublicKey,
         funder: PublicKey,
         endpoint: PublicKey,
-        primary: Authority,
-        secondary?: Authority
+        owner: Authority,
+        primary: PublicKey,
+        secondary?: PublicKey
     ): Promise<TransactionInstruction> {
         if (secondary === undefined) {
-            secondary = new Authority({
-                authorityType: AuthorityType.None,
-                address: PublicKey.default
-            });
+            secondary = PublicKey.default;
         }
 
         const primaryBeneficiary = await Staking.beneficiary(
-            primary.address,
+            primary,
             programId
         );
         const secondaryBeneficiary = await Staking.beneficiary(
-            secondary.address,
+            secondary,
             programId
         );
 
         const keys: AccountMeta[] = [
             am(funder, true, true),
             am(endpoint, true, true),
-            am(primary.address, false, false),
+            am(owner.address, false, false),
+            am(primary, false, false),
             am(primaryBeneficiary, false, true),
-            am(secondary.address, false, false),
+            am(secondary, false, false),
             am(secondaryBeneficiary, false, true),
             am(SYSVAR_RENT_PUBKEY, false, false),
             am(SYSVAR_CLOCK_PUBKEY, false, false),
             am(SystemProgram.programId, false, false)
         ];
 
-        const instruction = new DoubleAuthoritySchema({
+        const instruction = new AuthoritySchema({
             instructionId: Instructions.RegisterEndpoint,
-            primary,
-            secondary
+            authority: owner
         });
         const instructionData = borsh.serialize(
             INSTRUCTION_SCHEMA,
@@ -400,35 +388,69 @@ export class Instruction {
         ownerSigner: PublicKey,
         recipient: Authority
     ): Promise<TransactionInstruction> {
-        ///     1. `[writable,signer]` Transaction payer
-        ///     2. `[writable]` The Endpoint
-        ///     3. `[]` The endpoint's primary beneficiary
-        ///     4. `[]` The primary owner's account
-        ///     5. `[signer]` The current owner (or holder of the NFT)
-        ///     6. `[]` The recipient address or nft mint
-        ///     7. `[writable]` The recipient beneficiary
-        ///     8. `[]` Rent
-        ///     9. `[]` System Program
+        const keys: AccountMeta[] = [
+            am(funder, true, true),
+            am(endpoint, false, true),
+            am(owner, false, false),
+            am(ownerSigner, true, false),
+            am(recipient.address, false, false),
+            am(recipient.address, false, false)
+        ];
 
-        const ownerBeneficiary = await Staking.beneficiary(owner, programId);
-        const recipientBeneficiary = await Staking.beneficiary(
-            recipient.address,
+        const instruction = new AuthoritySchema({
+            instructionId: Instructions.TransferEndpoint,
+            authority: recipient
+        });
+        const instructionData = borsh.serialize(
+            INSTRUCTION_SCHEMA,
+            instruction
+        );
+
+        return new TransactionInstruction({
+            keys: keys,
+            programId,
+            data: Buffer.from(instructionData)
+        });
+    }
+
+    public static async ChangeBeneficiaries(
+        programId: PublicKey,
+        funder: PublicKey,
+        endpoint: PublicKey,
+        owner: PublicKey,
+        ownerSigner: PublicKey,
+        primary: PublicKey,
+        secondary?: PublicKey
+    ): Promise<TransactionInstruction> {
+        if (secondary === undefined) {
+            secondary = PublicKey.default;
+        }
+
+        const primaryBeneficiary = await Staking.beneficiary(
+            primary,
+            programId
+        );
+        const secondaryBeneficiary = await Staking.beneficiary(
+            secondary,
             programId
         );
 
         const keys: AccountMeta[] = [
             am(funder, true, true),
-            am(endpoint, false, true),
-            am(ownerBeneficiary, false, false),
+            am(endpoint, true, true),
             am(owner, false, false),
             am(ownerSigner, true, false),
-            am(recipient.address, false, false),
-            am(recipientBeneficiary, false, true)
+            am(primary, false, false),
+            am(primaryBeneficiary, false, true),
+            am(secondary, false, false),
+            am(secondaryBeneficiary, false, true),
+            am(SYSVAR_RENT_PUBKEY, false, false),
+            am(SYSVAR_CLOCK_PUBKEY, false, false),
+            am(SystemProgram.programId, false, false)
         ];
 
-        const instruction = new SingleAuthoritySchema({
-            instructionId: Instructions.TransferEndpoint,
-            authority: recipient
+        const instruction = new SimpleSchema({
+            instructionId: Instructions.ChangeBeneficiaries
         });
         const instructionData = borsh.serialize(
             INSTRUCTION_SCHEMA,
@@ -457,6 +479,9 @@ export function decodeInstructionData(data: Buffer): InstructionSchema {
             return borsh.deserialize(INSTRUCTION_SCHEMA, InitSchema, data);
         case Instructions.Stake:
             return borsh.deserialize(INSTRUCTION_SCHEMA, AmountSchema, data);
+        case Instructions.RegisterEndpoint: // fallthrough intentional
+        case Instructions.TransferEndpoint:
+            return borsh.deserialize(INSTRUCTION_SCHEMA, AuthoritySchema, data);
         default:
             return borsh.deserialize(INSTRUCTION_SCHEMA, SimpleSchema, data);
     }
@@ -492,23 +517,12 @@ export const INSTRUCTION_SCHEMA: borsh.Schema = new Map<any, any>([
         }
     ],
     [
-        SingleAuthoritySchema,
+        AuthoritySchema,
         {
             kind: 'struct',
             fields: [
                 ['instructionId', 'u8'],
                 ['authority', 'Authority']
-            ]
-        }
-    ],
-    [
-        DoubleAuthoritySchema,
-        {
-            kind: 'struct',
-            fields: [
-                ['instructionId', 'u8'],
-                ['primary', 'Authority'],
-                ['secondary', 'Authority']
             ]
         }
     ]

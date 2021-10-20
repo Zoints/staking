@@ -117,21 +117,4 @@ describe('borsh extensions', () => {
         expect(reverse.authority.authorityType).to.be.eql(AuthorityType.NFT);
         expect(reverse.authority.address).to.be.eql(key);
     });
-
-    it('check if none authority works', () => {
-        const authority = new Authority({
-            authorityType: AuthorityType.None,
-            address: PublicKey.default
-        });
-
-        const authorityTest = new AuthorityTest({ authority });
-        const data = Buffer.from(borsh.serialize(TEST_SCHEMA, authorityTest));
-
-        expect(data).to.be.eql(Buffer.from([0]));
-
-        const reverse = borsh.deserialize(TEST_SCHEMA, AuthorityTest, data);
-
-        expect(reverse.authority.authorityType).to.be.eql(AuthorityType.None);
-        expect(reverse.authority.address).to.be.eql(PublicKey.default);
-    });
 });
