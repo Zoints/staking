@@ -260,12 +260,33 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
         this.loaded = true;
     }
 
-    async addEndpoint(primary: Authority, secondary: Authority) {
+    async addEndpoint(
+        authorityType: AuthorityType,
+        owner: number,
+        primary: number,
+        secondary: number
+    ) {
         const id = this.endpoints.length;
         const key = this.getKeyPair(`endpoint-${id}`);
         this.endpoints.push(key);
 
-        await this.engine.registerEndpoint(this, key, primary, secondary);
+        const address =
+            authorityType == AuthorityType.NFT
+                ? this.nfts[owner].publicKey
+                : this.wallets[owner].publicKey;
+
+        const authority = new Authority({
+            authorityType,
+            address
+        });
+
+        await this.engine.registerEndpoint(
+            this,
+            key,
+            authority,
+            this.wallets[primary].publicKey,
+            this.wallets[secondary].publicKey
+        );
     }
 
     async addWallet() {

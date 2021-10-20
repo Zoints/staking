@@ -44,11 +44,9 @@ export async function viewEndpoint(staking: App, id: number): Promise<string> {
     } else {
         secondaryText = `        <tr>
             <td>Authority</td>
-            <td><a href="https://explorer.solana.com/address/${secondary.authority.address.toBase58()}?customUrl=${
+            <td><a href="https://explorer.solana.com/address/${secondary.authority.toBase58()}?customUrl=${
             staking.connectionURL
-        }&cluster=custom">${secondary.authority.address.toBase58()}</a> (${
-            AuthorityType[secondary.authority.authorityType]
-        })</td>
+        }&cluster=custom">${secondary.authority.toBase58()}</a></td>
         </tr>
         <tr>
             <td>Staked</td>
@@ -94,15 +92,26 @@ export async function viewEndpoint(staking: App, id: number): Promise<string> {
             <td>${endpoint.totalStake.toString()}</td>
         </tr>
         <tr>
+            <td colspan="2"><br><b>Owner</b></td>
+        </tr>
+        <tr>
+            <td>Type</td>
+            <td>${AuthorityType[endpoint.owner.authorityType]}</td>
+        </tr>
+        <tr>
+            <td>Authority</td>
+            <td><a href="https://explorer.solana.com/address/${endpoint.owner.address.toBase58()}?customUrl=${
+        staking.connectionURL
+    }&cluster=custom">${endpoint.owner.address.toBase58()}</a></td>
+        </tr>
+        <tr>
             <td colspan="2"><br><b>Primary</b></td>
         </tr>
         <tr>
             <td>Authority</td>
-            <td><a href="https://explorer.solana.com/address/${primary.authority.address.toBase58()}?customUrl=${
+            <td><a href="https://explorer.solana.com/address/${primary.authority.toBase58()}?customUrl=${
         staking.connectionURL
-    }&cluster=custom">${primary.authority.address.toBase58()}</a> (${
-        AuthorityType[primary.authority.authorityType]
-    })</td>
+    }&cluster=custom">${primary.authority.toBase58()}</a></td>
         </tr>
         <tr>
             <td>Staked</td>
@@ -153,11 +162,9 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
         <table>
         <tr>
             <td></td>
-            <td><a href="https://explorer.solana.com/address/${beneficiary.authority.address.toBase58()}?customUrl=${
+            <td><a href="https://explorer.solana.com/address/${beneficiary.authority.toBase58()}?customUrl=${
             staking.connectionURL
-        }&cluster=custom">${beneficiary.authority.address.toBase58()} (${
-            AuthorityType[beneficiary.authority.authorityType]
-        })</td>
+        }&cluster=custom">${beneficiary.authority.toBase58()}</td>
                 </tr>
                 <tr>
                     <td>Staked</td>
@@ -313,8 +320,8 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
     ${beneficiary_data}
     ${communities}
     
-    <h1>Make NFT</h1>
-    <form action="/addNFT/${id}"></form>
+    <h1>NFTs</h1>
+    <a href="/addNFT/${id}">Mint an NFT for this address</a>
     `;
 }
 

@@ -6,8 +6,9 @@ export interface StakeEngine {
     registerEndpoint(
         app: App,
         key: Keypair,
-        primary: Authority,
-        secondary: Authority
+        owner: Authority,
+        primary: PublicKey,
+        secondary: PublicKey
     ): Promise<void>;
     claim(
         app: App,

@@ -41,60 +41,18 @@ app.get(
     }
 );
 
-app.get('/addEndpoint', async (req: express.Request, res: express.Response) => {
-    const [pType, pID] = req.params.primary.split('-');
-    const [sType, sID] = req.params.primary.split('-');
+app.get(
+    '/addEndpoint/:type/:id/:primary/:secondary',
+    async (req: express.Request, res: express.Response) => {
+        const type = Number(req.params.type);
+        const id = Number(req.params.id);
+        const primary = Number(req.params.primary);
+        const secondary = Number(req.params.secondary);
 
-    let primary: Authority;
-    let secondary: Authority;
-
-    switch (Number(pType)) {
-        case AuthorityType.Basic:
-            const wallet = staking.endpoints[Number(pID)];
-            primary = new Authority({
-                authorityType: AuthorityType.Basic,
-                address: wallet.publicKey
-            });
-            break;
-        case AuthorityType.NFT:
-            const nft = staking.nfts[Number(pID)];
-            primary = new Authority({
-                authorityType: AuthorityType.NFT,
-                address: nft.publicKey
-            });
-            break;
-        default:
-            primary = new Authority({
-                authorityType: AuthorityType.None,
-                address: PublicKey.default
-            });
+        await staking.addEndpoint(type, id, primary, secondary);
+        res.redirect('/');
     }
-
-    switch (Number(sType)) {
-        case AuthorityType.Basic:
-            const wallet = staking.endpoints[Number(sID)];
-            secondary = new Authority({
-                authorityType: AuthorityType.Basic,
-                address: wallet.publicKey
-            });
-            break;
-        case AuthorityType.NFT:
-            const nft = staking.nfts[Number(sID)];
-            secondary = new Authority({
-                authorityType: AuthorityType.NFT,
-                address: nft.publicKey
-            });
-            break;
-        default:
-            secondary = new Authority({
-                authorityType: AuthorityType.None,
-                address: PublicKey.default
-            });
-    }
-
-    await staking.addEndpoint(primary, secondary);
-    res.redirect('/');
-});
+);
 
 app.get('/wallet/:id', async (req: express.Request, res: express.Response) => {
     const id = Number(req.params.id);
@@ -113,7 +71,7 @@ app.get('/addWallet', async (req: express.Request, res: express.Response) => {
 
 app.get('/addNFT/:id', async (req: express.Request, res: express.Response) => {
     await staking.addNFT(Number(req.params.id));
-    res.redirect('/');
+    res.redirect('/wallet/' + req.params.id);
 });
 
 app.get('/claim/:id', async (req: express.Request, res: express.Response) => {

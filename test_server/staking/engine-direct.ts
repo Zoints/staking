@@ -12,14 +12,16 @@ export class EngineDirect implements StakeEngine {
     async registerEndpoint(
         app: App,
         key: Keypair,
-        primary: Authority,
-        secondary: Authority
+        owner: Authority,
+        primary: PublicKey,
+        secondary: PublicKey
     ): Promise<void> {
         const transaction = new Transaction().add(
             await Instruction.RegisterEndpoint(
                 app.program_id,
                 app.funder.publicKey,
                 key.publicKey,
+                owner,
                 primary,
                 secondary
             )
