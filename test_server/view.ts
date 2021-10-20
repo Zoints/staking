@@ -1,4 +1,6 @@
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { Authority, AuthorityType, PRECISION, Staking } from '@zoints/staking';
+import { appendFile } from 'fs';
 import { App } from './staking/app';
 
 function pretty(d: Date): string {
@@ -289,8 +291,20 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
             <form action="/stake/${endpointId}/${id}" method="POST"><input type="text" name="amount" placeholder="0"><input type="submit" value="Stake"></form>
             </td></tr></table>`;
     }
+    const communities = `<h2>Communities</h2>${endpoint_list}`;
 
-    let communities = `<h2>Communities</h2>${endpoint_list}`;
+    let nft_list = ``;
+    const nfts = await staking.connection.getParsedTokenAccountsByOwner(
+        wallet,
+        { programId: TOKEN_PROGRAM_ID }
+    );
+    for (const nft of nfts.value) {
+        const parsed = nft.account.data.parsed.info;
+        if (parsed.mint == staking.mint_id.publicKey.toBase58()) continue;
+        if (parsed.tokenAmount.amount != '1') continue;
+
+        nft_list += `<li>${parsed.mint}</li>`;
+    }
 
     return `<table>
         <tr>
@@ -321,6 +335,7 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
     ${communities}
     
     <h1>NFTs</h1>
+    <ul>${nft_list}</ul>
     <a href="/addNFT/${id}">Mint an NFT for this address</a>
     `;
 }
