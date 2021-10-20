@@ -26,8 +26,8 @@ pub enum StakingInstruction {
     ///
     /// Expected Accounts:
     ///     1. `[writable,signer]` Transaction payer
-    ///     2. `[]` Endpoint Owner Pubkey
-    ///     3. `[writable,signer]` Endpoint Account
+    ///     2. `[writable,signer]` Endpoint Account
+    ///     3. `[]` Endpoint Owner Pubkey
     ///     4. `[]` Primary Beneficiary Authority
     ///     5. `[]` Primary Beneficiary Account
     ///     6. `[]` Secondary Beneficiary Authority
@@ -35,9 +35,7 @@ pub enum StakingInstruction {
     ///     8. `[]` Rent Sysvar
     ///     9. `[]` Clock Sysvar
     ///     10. `[]` System Program
-    RegisterEndpoint {
-        owner: Authority,
-    },
+    RegisterEndpoint { owner: Authority },
     /// Initialize a new stake
     ///
     /// Must be done before being able to stake ZEE to an Endpoint
@@ -77,9 +75,7 @@ pub enum StakingInstruction {
     ///     12. `[writable]` Stake Account
     ///     13. `[]` Clock Sysvar
     ///     14. `[]` SPL Token Program
-    Stake {
-        amount: i64,
-    },
+    Stake { amount: i64 },
     /// Withdraw Unbounded Tokens
     ///
     /// Transfer the unbounded tokens to a wallet once the duration has passed.
@@ -114,16 +110,23 @@ pub enum StakingInstruction {
     ///
     ///     1. `[writable,signer]` Transaction payer
     ///     2. `[writable]` The Endpoint
-    ///     3. `[]` The endpoint's primary beneficiary
-    ///     4. `[]` The primary owner's account
-    ///     5. `[signer]` The current owner (or holder of the NFT)
-    ///     6. `[]` The recipient address or nft mint
-    ///     7. `[writable]` The recipient beneficiary
-    ///     8. `[]` Rent
-    ///     9. `[]` System Program
-    TransferEndpoint {
-        new_authority: Authority,
-    },
+    ///     3. `[]` The endpoint's owner account
+    ///     4. `[signer]` The current owner (or holder of the NFT)
+    ///     5. `[]` The recipient address or nft mint
+    TransferEndpoint { new_authority: Authority },
+    /// Change the beneficiaries of an Endpoint. If the primary or secondary
+    /// beneficiaries don't exist yet, they will be created
+    ///
+    ///     1. `[writable,signer]` Transaction payer
+    ///     2. `[writable]` The Endpoint
+    ///     3. `[]` The endpoint's owner account
+    ///     4. `[signer]` The current owner (or holder of the NFT)
+    ///     5. `[]` New Primary Beneficiary Authority
+    ///     6. `[writable]` New Primary Beneficiary Account
+    ///     7. `[]` New Secondary Beneficiary Authority
+    ///     8. `[writable]` New Secondary Beneficiary Account
+    ///     9. `[]` Rent Sysvar
+    ///    10. `[]` System Program
     ChangeBeneficiaries,
 }
 

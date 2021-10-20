@@ -364,6 +364,7 @@ impl Processor {
 
         let rent = Rent::from_account_info(rent_info)?;
         let clock = Clock::from_account_info(clock_info)?;
+        spl_token::check_program_account(token_program_info.key)?;
 
         if !staker_info.is_signer {
             return Err(StakingError::MissingStakeSignature.into());
