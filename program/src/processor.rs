@@ -85,17 +85,14 @@ macro_rules! verify_associated {
 
 #[macro_export]
 macro_rules! create_beneficiary {
-    ($beneficiary_info:expr, $authority:expr, $funder_info:expr, $rent:expr, $program_id:expr) => {
-        let pubkey = match $authority {
-            Authority::None => Pubkey::default(),
-            Authority::Basic(key) => key,
-            Authority::NFT(key) => key,
-        };
-
-        let seed =
-            Beneficiary::verify_program_address($beneficiary_info.key, &pubkey, $program_id)?;
+    ($beneficiary_info:expr, $authority_info:expr, $funder_info:expr, $rent:expr, $program_id:expr) => {
+        let seed = Beneficiary::verify_program_address(
+            $beneficiary_info.key,
+            $authority_info.key,
+            $program_id,
+        )?;
         let beneficiary = Beneficiary {
-            authority: $authority,
+            authority: *$authority_info.key,
             staked: 0,
             reward_debt: 0,
             holding: 0,
@@ -114,7 +111,7 @@ macro_rules! create_beneficiary {
                 $program_id,
             ),
             &[$funder_info.clone(), $beneficiary_info.clone()],
-            &[&[b"beneficiary", &pubkey.to_bytes(), &[seed]]],
+            &[&[b"beneficiary", &$authority_info.key.to_bytes(), &[seed]]],
         )?;
         $beneficiary_info.data.borrow_mut().copy_from_slice(&data);
     };
@@ -133,15 +130,9 @@ impl Processor {
                 start_time,
                 unbonding_duration,
             } => Self::process_initialize(program_id, accounts, start_time, unbonding_duration),
-            StakingInstruction::RegisterEndpoint {
-                primary_authority,
-                secondary_authority,
-            } => Self::process_register_endpoint(
-                program_id,
-                accounts,
-                primary_authority,
-                secondary_authority,
-            ),
+            StakingInstruction::RegisterEndpoint { owner } => {
+                Self::process_register_endpoint(program_id, accounts, owner)
+            }
             StakingInstruction::InitializeStake => {
                 Self::process_initialize_stake(program_id, accounts)
             }
@@ -256,12 +247,12 @@ impl Processor {
     pub fn process_register_endpoint(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
-        primary_authority: Authority,
-        secondary_authority: Authority,
+        owner: Authority,
     ) -> ProgramResult {
         let iter = &mut accounts.iter();
         let funder_info = next_account_info(iter)?;
         let endpoint_info = next_account_info(iter)?;
+        let owner_info = next_account_info(iter)?;
         let primary_info = next_account_info(iter)?;
         let primary_beneficiary_info = next_account_info(iter)?;
         let secondary_info = next_account_info(iter)?;
@@ -272,8 +263,11 @@ impl Processor {
         let rent = Rent::from_account_info(rent_info)?;
         let clock = Clock::from_account_info(clock_info)?;
 
-        primary_authority.verify(&primary_info, false)?;
-        secondary_authority.verify(&secondary_info, true)?;
+        owner.verify(&owner_info)?;
+
+        if !endpoint_info.is_signer {
+            return Err(StakingError::InvalidEndpointAccount.into());
+        }
 
         if !endpoint_info.data_is_empty() {
             return Err(StakingError::EndpointAccountAlreadyExists.into());
@@ -282,12 +276,12 @@ impl Processor {
         if primary_beneficiary_info.data_is_empty() {
             create_beneficiary!(
                 primary_beneficiary_info,
-                primary_authority,
+                primary_info,
                 funder_info,
                 &rent,
                 program_id
             );
-            msg!("Primary Beneficiary created: {:?}", primary_authority);
+            msg!("Primary Beneficiary account created");
         } else {
             Beneficiary::verify_program_address(
                 primary_beneficiary_info.key,
@@ -299,12 +293,12 @@ impl Processor {
         if secondary_beneficiary_info.data_is_empty() {
             create_beneficiary!(
                 secondary_beneficiary_info,
-                secondary_authority,
+                secondary_info,
                 funder_info,
                 &rent,
                 program_id
             );
-            msg!("Secondary Beneficiary created: {:?}", secondary_authority);
+            msg!("Secondary Beneficiary account created");
         } else {
             Beneficiary::verify_program_address(
                 secondary_beneficiary_info.key,
@@ -316,6 +310,7 @@ impl Processor {
         let endpoint = Endpoint {
             creation_date: clock.unix_timestamp,
             total_stake: 0,
+            owner,
             primary: *primary_info.key,
             secondary: *secondary_info.key,
         };
@@ -422,7 +417,7 @@ impl Processor {
         if staker_beneficiary_info.data_is_empty() {
             create_beneficiary!(
                 staker_beneficiary_info,
-                Authority::Basic(*staker_info.key),
+                staker_info,
                 funder_info,
                 &rent,
                 program_id
@@ -733,8 +728,7 @@ impl Processor {
         let _funder_info = next_account_info(iter)?;
 
         let beneficiary_info = next_account_info(iter)?;
-        let authority_owner_info = next_account_info(iter)?;
-        let authority_signer_info = next_account_info(iter)?;
+        let authority_info = next_account_info(iter)?;
         let authority_associated_info = next_account_info(iter)?;
 
         let settings_info = next_account_info(iter)?;
@@ -746,19 +740,16 @@ impl Processor {
         let mut settings = Settings::from_account_info(settings_info, program_id)?;
 
         let mut beneficiary =
-            Beneficiary::from_account_info(beneficiary_info, authority_owner_info.key, program_id)?;
+            Beneficiary::from_account_info(beneficiary_info, authority_info.key, program_id)?;
 
-        if !beneficiary
-            .authority
-            .has_signed(&authority_owner_info, &authority_signer_info)
-        {
+        if !authority_info.is_signer {
             return Err(StakingError::MissingAuthoritySignature.into());
         }
 
         verify_associated!(
             authority_associated_info,
             settings.token,
-            *authority_signer_info.key
+            *authority_info.key
         )?;
 
         settings.update_rewards(clock.unix_timestamp);
@@ -792,60 +783,29 @@ impl Processor {
     pub fn process_transfer_endpoint(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
-        new_authority: Authority,
+        new_owner: Authority,
     ) -> ProgramResult {
         let iter = &mut accounts.iter();
-        let funder_info = next_account_info(iter)?;
+        let _funder_info = next_account_info(iter)?;
         let endpoint_info = next_account_info(iter)?;
-        let primary_beneficiary_info = next_account_info(iter)?;
         let owner_info = next_account_info(iter)?;
         let owner_signer_info = next_account_info(iter)?;
         let recipient_info = next_account_info(iter)?;
-        let recipient_beneficiary_info = next_account_info(iter)?;
-        let rent_info = next_account_info(iter)?;
-
-        let rent = Rent::from_account_info(rent_info)?;
 
         let mut endpoint = Endpoint::from_account_info(&endpoint_info, program_id)?;
-        let primary = Beneficiary::from_account_info(
-            &primary_beneficiary_info,
-            &endpoint.primary,
-            program_id,
-        )?;
-
-        if !primary
-            .authority
-            .has_signed(&owner_info, &owner_signer_info)
-        {
+        if endpoint.owner.has_signed(&owner_info, &owner_signer_info) {
             return Err(StakingError::MissingAuthoritySignature.into());
         }
 
-        new_authority.verify(&recipient_info, false)?;
-
-        if recipient_beneficiary_info.data_is_empty() {
-            create_beneficiary!(
-                recipient_beneficiary_info,
-                new_authority,
-                funder_info,
-                &rent,
-                program_id
-            );
-            msg!("Primary Beneficiary created: {:?}", new_authority);
-        } else {
-            Beneficiary::verify_program_address(
-                recipient_beneficiary_info.key,
-                recipient_info.key,
-                program_id,
-            )?;
-        }
-
-        endpoint.primary = *recipient_info.key;
+        new_owner.verify(&recipient_info)?;
 
         msg!(
             "transfer endpoint from {:?} to {:?}",
-            primary.authority,
-            new_authority
+            endpoint.owner,
+            new_owner
         );
+
+        endpoint.owner = new_owner;
 
         endpoint_info
             .data

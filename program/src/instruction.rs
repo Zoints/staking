@@ -29,16 +29,13 @@ pub enum StakingInstruction {
     ///     2. `[]` Endpoint Owner Pubkey
     ///     3. `[writable,signer]` Endpoint Account
     ///     4. `[]` Primary Beneficiary Authority
-    ///     5. `[]` Primary Beneficiary
+    ///     5. `[]` Primary Beneficiary Account
     ///     6. `[]` Secondary Beneficiary Authority
-    ///     7. `[]` Secondary Beneficiary
+    ///     7. `[]` Secondary Beneficiary Account
     ///     8. `[]` Rent Sysvar
     ///     9. `[]` Clock Sysvar
     ///     10. `[]` System Program
-    RegisterEndpoint {
-        primary_authority: Authority,
-        secondary_authority: Authority,
-    },
+    RegisterEndpoint { owner: Authority },
     /// Initialize a new stake
     ///
     /// Must be done before being able to stake ZEE to an Endpoint

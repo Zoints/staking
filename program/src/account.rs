@@ -204,11 +204,9 @@ impl RewardPool {
     }
 }
 
-/// The way that the "authority" address should be interpreted.
+/// The way that the "Authority" address should be interpreted.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, BorshDeserialize, BorshSerialize)]
 pub enum Authority {
-    /// The beneficiary has no authority and its yield can't be claimed
-    None,
     /// A regular Solana address that can sign instructions
     Basic(Pubkey),
     /// An NFT mint address where the signer is the NFT's current holder
@@ -216,21 +214,8 @@ pub enum Authority {
 }
 
 impl Authority {
-    pub fn verify(&self, account: &AccountInfo, can_be_none: bool) -> Result<(), ProgramError> {
+    pub fn verify(&self, account: &AccountInfo) -> Result<(), ProgramError> {
         match self {
-            Authority::None => {
-                if *account.key == Pubkey::default() {
-                    if can_be_none {
-                        Ok(())
-                    } else {
-                        msg!("Authority is not allowed to be None");
-                        Err(StakingError::InvalidAuthorityType.into())
-                    }
-                } else {
-                    msg!("None authority has non-null account");
-                    Err(StakingError::InvalidAuthorityType.into())
-                }
-            }
             Authority::Basic(pubkey) => {
                 if *pubkey == Pubkey::default() {
                     msg!("Basic authority has null pubkey");
@@ -259,7 +244,6 @@ impl Authority {
 
     pub fn has_signed(&self, owner: &AccountInfo, signer: &AccountInfo) -> bool {
         match self {
-            Authority::None => false,
             Authority::Basic(key) => {
                 *key == *owner.key && *owner.key == *signer.key && signer.is_signer
             }
@@ -288,6 +272,8 @@ pub struct Endpoint {
     pub creation_date: UnixTimestamp,
     /// Total amount of ZEE staked to this endpoint
     pub total_stake: u64,
+    /// The owner of the endpoint
+    pub owner: Authority,
     /// The primary beneficiary receiving 45% of yield
     pub primary: Pubkey,
     /// The secondary beneficiary receiving 5% of yield
@@ -312,8 +298,7 @@ impl Endpoint {
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
 pub struct Beneficiary {
     /// The authority that owns the Beneficiary
-    pub authority: Authority,
-
+    pub authority: Pubkey,
     /// The amount of ZEE staked for the beneficiary
     pub staked: u64,
     /// Helper variable. For more information see https://www.mathcha.io/editor/j4V1YiODsYQu8dee0NiO39Z05cePQvk0f9qPex6
@@ -350,7 +335,7 @@ impl Beneficiary {
 
     /// True if there is no authority
     pub fn is_empty(&self) -> bool {
-        self.authority == Authority::None
+        self.authority == Pubkey::default()
     }
 
     /// The total amount of theoretical ZEE owed if the amount staked had been staked
@@ -554,7 +539,7 @@ mod tests {
     pub fn test_deserialize_empty() {
         let data = [0; 56];
         let beneficiary: Beneficiary = Beneficiary::try_from_slice(&data).unwrap();
-        assert_eq!(beneficiary.authority, Authority::None);
+        assert_eq!(beneficiary.authority, Pubkey::default());
         assert_eq!(beneficiary.staked, 0);
         assert_eq!(beneficiary.reward_debt, 0);
         assert_eq!(beneficiary.holding, 0);

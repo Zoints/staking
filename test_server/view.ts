@@ -130,7 +130,7 @@ export async function viewEndpoint(staking: App, id: number): Promise<string> {
         <tr>
             <td colspan="2"><br><b>Secondary</b></td>
         </tr>
-        ${secondary}
+        ${secondaryText}
     </table>`;
 }
 
@@ -142,9 +142,43 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
     const wallet = staking.wallets[id].publicKey;
     const settings = await staking.staking.getSettings();
     const assoc = await staking.token.getOrCreateAssociatedAccountInfo(wallet);
-    const beneficiary = await staking.staking.getBeneficiary(wallet);
-
     const rps = settings.calculateRewardPerShare(new Date());
+
+    let beneficiary_data = '';
+    try {
+        const beneficiary = await staking.staking.getBeneficiary(wallet);
+        beneficiary_data = `
+        <h1>Beneficiary</h1>
+        <a href="/claim/${id}">Claim All</a><br>
+        <table>
+        <tr>
+            <td></td>
+            <td><a href="https://explorer.solana.com/address/${beneficiary.authority.address.toBase58()}?customUrl=${
+            staking.connectionURL
+        }&cluster=custom">${beneficiary.authority.address.toBase58()} (${
+            AuthorityType[beneficiary.authority.authorityType]
+        })</td>
+                </tr>
+                <tr>
+                    <td>Staked</td>
+                    <td>${beneficiary.staked.toString()}</td>
+                </tr>
+                <tr>
+                    <td>Reward Debt</td>
+                    <td>${beneficiary.rewardDebt.toString()}</td>
+                </tr>
+                <tr>
+                    <td>Holding</td>
+                    <td>${beneficiary.holding.toString()}</td>
+                </tr>
+                <tr>
+                    <td>Harvestable</td>
+                    <td>${beneficiary.calculateReward(rps).toString()}</td>
+                </tr>
+        </table>`;
+    } catch (e) {
+        beneficiary_data = `<h2>Beneficiary</h2> Not created yet.`;
+    }
 
     let endpoint_list = '';
     for (
@@ -249,7 +283,7 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
             </td></tr></table>`;
     }
 
-    let communities = `<h2>Communities</h2><a href="/claim/${id}">Claim All</a><br>${endpoint_list}`;
+    let communities = `<h2>Communities</h2>${endpoint_list}`;
 
     return `<table>
         <tr>
@@ -276,33 +310,12 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
         </tr>
         <tr><td></td><td><form action="/airdrop/${id}" method="GET"><input type="text" name="amount" placeholder="0"><input type="submit" value="Airdrop Zee"></form></td></tr>
     </table>
-    <h3>Beneficiary</h3>
-        <table>
-                   <td></td>
-                    <td><a href="https://explorer.solana.com/address/${beneficiary.authority.address.toBase58()}?customUrl=${
-        staking.connectionURL
-    }&cluster=custom">${beneficiary.authority.address.toBase58()} (${
-        AuthorityType[beneficiary.authority.authorityType]
-    })</td>
-                </tr>
-                <tr>
-                    <td>Staked</td>
-                    <td>${beneficiary.staked.toString()}</td>
-                </tr>
-                <tr>
-                    <td>Reward Debt</td>
-                    <td>${beneficiary.rewardDebt.toString()}</td>
-                </tr>
-                <tr>
-                    <td>Holding</td>
-                    <td>${beneficiary.holding.toString()}</td>
-                </tr>
-                <tr>
-                    <td>Harvestable</td>
-                    <td>${beneficiary.calculateReward(rps).toString()}</td>
-                </tr>
-        </table>
-    ${communities}`;
+    ${beneficiary_data}
+    ${communities}
+    
+    <h1>Make NFT</h1>
+    <form action="/addNFT/${id}"></form>
+    `;
 }
 
 export async function wrap(staking: App, content: string): Promise<string> {
