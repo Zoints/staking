@@ -1,10 +1,101 @@
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { Keypair, PublicKey } from '@solana/web3.js';
 import { Authority, AuthorityType, PRECISION, Staking } from '@zoints/staking';
 import { appendFile } from 'fs';
 import { App } from './staking/app';
 
 function pretty(d: Date): string {
     return d.toISOString().replace(/T/, ' ').replace(/\..+/, '');
+}
+
+export async function viewNFT(staking: App, id: number): Promise<string> {
+    if (!staking.loaded) {
+        return 'loading BPF and initializing contract in progress';
+    }
+
+    const pubkey = staking.nfts[id].publicKey;
+
+    const settings = await staking.staking.getSettings();
+
+    const token = new Token(
+        staking.connection,
+        pubkey,
+        TOKEN_PROGRAM_ID,
+        new Keypair()
+    );
+    const mint = await token.getMintInfo();
+
+    const allAccounts = await staking.connection.getTokenLargestAccounts(
+        pubkey
+    );
+    let assoc = PublicKey.default;
+    for (const acc of allAccounts.value) {
+        if (acc.amount == '1') {
+            assoc = acc.address;
+            break;
+        }
+    }
+
+    const acc = await token.getAccountInfo(assoc);
+
+    let endpoint_list = '';
+    for (let id = 0; id < staking.endpoints.length; id++) {
+        const ep = await staking.staking.getEndpoint(
+            staking.endpoints[id].publicKey
+        );
+        if (
+            ep.owner.authorityType == AuthorityType.NFT &&
+            ep.owner.address.equals(pubkey)
+        ) {
+            endpoint_list += `<li><a href="/endpoint/${id}">${id}. ${staking.endpoints[
+                id
+            ].publicKey.toBase58()}</a></li>`;
+        }
+    }
+
+    let selector = '<option value="-1" selected="selected">New Wallet</option>';
+    for (let id = 0; id < staking.wallets.length; id++) {
+        selector += `<option value="${id}">${id}. ${staking.wallets[
+            id
+        ].publicKey
+            .toBase58()
+            .slice(0, 8)}</option>`;
+    }
+
+    return `<h1>NFT</h1><table>
+<tr>
+    <td>Mint</td>
+    <td>${pubkey.toBase58()}</td>
+</tr>
+<tr>
+    <td>Current Owner</td>
+    <td><a href="/resolve/${acc.owner.toBase58()}">${acc.owner.toBase58()}</td>
+</tr>
+<tr>
+    <td>Associated Address</td>
+    <td>${assoc.toBase58()}</td>
+</tr>
+</table>
+
+    <h1>Endpoints Owned By This NFT</h1>
+    ${endpoint_list}
+    <h2>Add Endpoint</h2>
+    <form action="/addEndpoint" method="GET">
+    <input type="hidden" name="owner" value="1-${id}">
+    <table>
+    <tr>
+        <td>Primary</td>
+        <td><select name="primary">${selector}</select></td>
+    </tr>
+    <tr>
+        <td>Secondary</td>
+        <td><select name="secondary"><!--<option value="-2">None</option>-->${selector}</select></td>
+    </tr>
+    </table>
+    <input type="submit" value="Add" />
+    </form>
+
+`;
 }
 
 export async function viewEndpoint(staking: App, id: number): Promise<string> {
@@ -302,7 +393,7 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
         if (parsed.mint == staking.mint_id.publicKey.toBase58()) continue;
         if (parsed.tokenAmount.amount != '1') continue;
 
-        nft_list += `<li>${parsed.mint}</li>`;
+        nft_list += `<li><a href="/resolve/${parsed.mint}">${parsed.mint}</a></li>`;
     }
 
     let selector = '<option value="-1" selected="selected">New Wallet</option>';

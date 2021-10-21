@@ -1,6 +1,6 @@
 import { App } from './staking/app';
 import * as express from 'express';
-import { viewEndpoint, wrap, viewWallet } from './view';
+import { viewEndpoint, wrap, viewWallet, viewNFT } from './view';
 import { EngineDirect } from './staking/engine-direct';
 import { Authority, AuthorityType } from '@zoints/staking';
 import { PublicKey } from '@solana/web3.js';
@@ -26,6 +26,38 @@ const staking = new App(
 
 // Parse URL-encoded bodies (as sent by HTML forms)
 app.use(express.urlencoded({ extended: false }));
+
+app.get(
+    '/resolve/:pubkey',
+    async (req: express.Request, res: express.Response) => {
+        const pk = req.params.pubkey;
+        const key = new PublicKey(pk);
+
+        for (let id = 0; id < staking.wallets.length; id++) {
+            console.log(staking.wallets[id].publicKey, key);
+            if (staking.wallets[id].publicKey.equals(key)) {
+                res.redirect('/wallet/' + id);
+                return;
+            }
+        }
+
+        for (let id = 0; id < staking.nfts.length; id++) {
+            if (staking.nfts[id].publicKey.equals(key)) {
+                res.redirect('/nft/' + id);
+                return;
+            }
+        }
+
+        for (let id = 0; id < staking.endpoints.length; id++) {
+            if (staking.endpoints[id].publicKey.equals(key)) {
+                res.redirect('/endpoint/' + id);
+                return;
+            }
+        }
+
+        res.send(await wrap(staking, `unable to find pubkey ${pk} anywhere`));
+    }
+);
 
 app.get(
     '/endpoint/:id',
@@ -73,6 +105,16 @@ app.get('/wallet/:id', async (req: express.Request, res: express.Response) => {
         return;
     }
     res.send(await wrap(staking, await viewWallet(staking, id)));
+});
+
+app.get('/nft/:id', async (req: express.Request, res: express.Response) => {
+    const id = Number(req.params.id);
+    if (id >= staking.nfts.length) {
+        console.log(`tried to access nonexistent nft`);
+        res.redirect('/');
+        return;
+    }
+    res.send(await wrap(staking, await viewNFT(staking, id)));
 });
 
 app.get('/addWallet', async (req: express.Request, res: express.Response) => {
