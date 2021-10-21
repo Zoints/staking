@@ -419,31 +419,43 @@ export class Instruction {
         endpoint: PublicKey,
         owner: PublicKey,
         ownerSigner: PublicKey,
-        primary: PublicKey,
-        secondary?: PublicKey
+        oldPrimary: PublicKey,
+        oldSecondary: PublicKey,
+        newPrimary: PublicKey,
+        newSecondary?: PublicKey
     ): Promise<TransactionInstruction> {
-        if (secondary === undefined) {
-            secondary = PublicKey.default;
+        if (newSecondary === undefined) {
+            newSecondary = PublicKey.default;
         }
 
-        const primaryBeneficiary = await Staking.beneficiary(
-            primary,
+        const oldPrimaryBeneficiary = await Staking.beneficiary(
+            oldPrimary,
             programId
         );
-        const secondaryBeneficiary = await Staking.beneficiary(
-            secondary,
+        const oldSecondaryBeneficiary = await Staking.beneficiary(
+            oldSecondary,
             programId
         );
 
+        const newPrimaryBeneficiary = await Staking.beneficiary(
+            newPrimary,
+            programId
+        );
+        const newSecondaryBeneficiary = await Staking.beneficiary(
+            newSecondary,
+            programId
+        );
         const keys: AccountMeta[] = [
             am(funder, true, true),
             am(endpoint, true, true),
             am(owner, false, false),
             am(ownerSigner, true, false),
-            am(primary, false, false),
-            am(primaryBeneficiary, false, true),
-            am(secondary, false, false),
-            am(secondaryBeneficiary, false, true),
+            am(oldPrimary, false, true),
+            am(oldSecondary, false, true),
+            am(newPrimary, false, false),
+            am(newPrimaryBeneficiary, false, true),
+            am(newSecondary, false, false),
+            am(newSecondaryBeneficiary, false, true),
             am(SYSVAR_RENT_PUBKEY, false, false),
             am(SYSVAR_CLOCK_PUBKEY, false, false),
             am(SystemProgram.programId, false, false)
