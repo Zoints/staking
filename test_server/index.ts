@@ -41,18 +41,29 @@ app.get(
     }
 );
 
-app.get(
-    '/addEndpoint/:type/:id/:primary/:secondary',
-    async (req: express.Request, res: express.Response) => {
-        const type = Number(req.params.type);
-        const id = Number(req.params.id);
-        const primary = Number(req.params.primary);
-        const secondary = Number(req.params.secondary);
-
-        await staking.addEndpoint(type, id, primary, secondary);
-        res.redirect('/');
+app.get('/addEndpoint', async (req: express.Request, res: express.Response) => {
+    let type: number;
+    let id: number;
+    if (typeof req.query.owner === 'string') {
+        const split = req.query.owner.split('-');
+        type = Number(split[0]);
+        id = Number(split[1]);
+    } else {
+        type = 0;
+        id = await staking.addWallet();
     }
-);
+    let primary = Number(req.query.primary);
+    if (primary < 0) {
+        primary = await staking.addWallet();
+    }
+    let secondary = Number(req.query.secondary);
+    if (secondary < 0) {
+        secondary = await staking.addWallet();
+    }
+
+    await staking.addEndpoint(type, id, primary, secondary);
+    res.redirect('/');
+});
 
 app.get('/wallet/:id', async (req: express.Request, res: express.Response) => {
     const id = Number(req.params.id);
@@ -65,8 +76,8 @@ app.get('/wallet/:id', async (req: express.Request, res: express.Response) => {
 });
 
 app.get('/addWallet', async (req: express.Request, res: express.Response) => {
-    await staking.addWallet();
-    res.redirect('/');
+    const id = await staking.addWallet();
+    res.redirect('/wallet/' + id);
 });
 
 app.get('/addNFT/:id', async (req: express.Request, res: express.Response) => {
@@ -106,7 +117,7 @@ app.get('/airdrop/:id', async (req: express.Request, res: express.Response) => {
     const amount = Number(req.query.amount);
     const id = Number(req.params.id);
     await staking.airdrop(id, amount);
-    res.redirect('/staker/' + id);
+    res.redirect('/wallet/' + id);
 });
 
 app.get('/', async (req: express.Request, res: express.Response) => {

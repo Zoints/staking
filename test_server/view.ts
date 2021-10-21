@@ -198,7 +198,7 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
         const endpoint = staking.endpoints[endpointId].publicKey;
         endpoint_list += `<h3>${endpointId} - ${endpoint
             .toBase58()
-            .substr(0, 8)}</h3><table>`;
+            .slice(0, 8)}</h3><table>`;
         try {
             const stakeId = await Staking.stakeAddress(
                 staking.program_id,
@@ -291,7 +291,6 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
             <form action="/stake/${endpointId}/${id}" method="POST"><input type="text" name="amount" placeholder="0"><input type="submit" value="Stake"></form>
             </td></tr></table>`;
     }
-    const communities = `<h2>Communities</h2>${endpoint_list}`;
 
     let nft_list = ``;
     const nfts = await staking.connection.getParsedTokenAccountsByOwner(
@@ -304,6 +303,15 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
         if (parsed.tokenAmount.amount != '1') continue;
 
         nft_list += `<li>${parsed.mint}</li>`;
+    }
+
+    let selector = '<option value="-1" selected="selected">New Wallet</option>';
+    for (let id = 0; id < staking.wallets.length; id++) {
+        selector += `<option value="${id}">${id}. ${staking.wallets[
+            id
+        ].publicKey
+            .toBase58()
+            .slice(0, 8)}</option>`;
     }
 
     return `<table>
@@ -332,7 +340,23 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
         <tr><td></td><td><form action="/airdrop/${id}" method="GET"><input type="text" name="amount" placeholder="0"><input type="submit" value="Airdrop Zee"></form></td></tr>
     </table>
     ${beneficiary_data}
-    ${communities}
+    <h1>Endpoints</h1>
+    ${endpoint_list}
+    <h2>Add Endpoint</h2>
+    <form action="/addEndpoint" method="GET">
+    <input type="hidden" name="owner" value="0-${id}">
+    <table>
+    <tr>
+        <td>Primary</td>
+        <td><select name="primary">${selector}</select></td>
+    </tr>
+    <tr>
+        <td>Secondary</td>
+        <td><select name="secondary"><!--<option value="-2">None</option>-->${selector}</select></td>
+    </tr>
+    </table>
+    <input type="submit" value="Add" />
+    </form>
     
     <h1>NFTs</h1>
     <ul>${nft_list}</ul>
@@ -353,7 +377,7 @@ export async function wrap(staking: App, content: string): Promise<string> {
         const endpoint = staking.endpoints[id].publicKey;
         endpoint_list += `<li><a href="/endpoint/${id}"> ${endpoint
             .toBase58()
-            .substr(0, 8)}</a></li>`;
+            .slice(0, 8)}</a></li>`;
     }
     const endpoints = `<ol>${endpoint_list}</ol>`;
 
@@ -362,7 +386,7 @@ export async function wrap(staking: App, content: string): Promise<string> {
         const wallet = staking.wallets[id].publicKey;
         wallets_list += `<li><a href="/wallet/${id}"> ${wallet
             .toBase58()
-            .substr(0, 8)}</a></li>`;
+            .slice(0, 8)}</a></li>`;
     }
     const wallets = `<ol>${wallets_list}</ol> <a href="/addWallet">Add Wallet</a>`;
 
@@ -371,7 +395,7 @@ export async function wrap(staking: App, content: string): Promise<string> {
         const nft = staking.nfts[id].publicKey;
         nft_list += `<li><a href="/nft/${id}"> ${nft
             .toBase58()
-            .substr(0, 8)}</a></li>`;
+            .slice(0, 8)}</a></li>`;
     }
     const nfts = `<ol>${nft_list}</ol>`;
 

@@ -295,6 +295,8 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
         this.wallets.push(key);
         await this.token.getOrCreateAssociatedAccountInfo(key.publicKey);
         console.log(`Added wallet ${id}: ${key.publicKey.toBase58()}`);
+
+        return id;
     }
 
     async addNFT(wallet: number) {
