@@ -93,8 +93,8 @@ app.get('/addEndpoint', async (req: express.Request, res: express.Response) => {
         secondary = await staking.addWallet();
     }
 
-    await staking.addEndpoint(type, id, primary, secondary);
-    res.redirect('/');
+    const newid = await staking.addEndpoint(type, id, primary, secondary);
+    res.redirect('/endpoint/' + newid);
 });
 
 app.get('/wallet/:id', async (req: express.Request, res: express.Response) => {

@@ -47,7 +47,7 @@ export async function viewNFT(staking: App, id: number): Promise<string> {
             ep.owner.authorityType == AuthorityType.NFT &&
             ep.owner.address.equals(pubkey)
         ) {
-            endpoint_list += `<li><a href="/endpoint/${id}">${id}. ${staking.endpoints[
+            endpoint_list += `<li value="${id}"><a href="/endpoint/${id}">${staking.endpoints[
                 id
             ].publicKey.toBase58()}</a></li>`;
         }
@@ -78,7 +78,7 @@ export async function viewNFT(staking: App, id: number): Promise<string> {
 </table>
 
     <h1>Endpoints Owned By This NFT</h1>
-    ${endpoint_list}
+    <ol>${endpoint_list}</ol>
     <h2>Add Endpoint</h2>
     <form action="/addEndpoint" method="GET">
     <input type="hidden" name="owner" value="1-${id}">
@@ -280,14 +280,14 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
         beneficiary_data = `<h2>Beneficiary</h2> Not created yet.`;
     }
 
-    let endpoint_list = '';
+    let staking_list = '';
     for (
         let endpointId = 0;
         endpointId < staking.endpoints.length;
         endpointId++
     ) {
         const endpoint = staking.endpoints[endpointId].publicKey;
-        endpoint_list += `<h3>${endpointId} - ${endpoint
+        staking_list += `<h3>${endpointId} - ${endpoint
             .toBase58()
             .slice(0, 8)}</h3><table>`;
         try {
@@ -338,7 +338,7 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
                 unbonding = `<a href="/withdraw/${endpointId}/${id}">Ready to Withdraw</a>`;
             }
 
-            endpoint_list += `
+            staking_list += `
                 <tr>
                     <td>Stake ID</td>
                     <td>${wallet.toBase58()}</td>
@@ -375,10 +375,10 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
                 </tr>                <tr>
             `;
         } catch (e: any) {
-            endpoint_list += `<tr><td colspan="2">No stake found</td></tr></table>`;
+            staking_list += `<tr><td colspan="2">No stake found</td></tr></table>`;
             //console.log(e);
         }
-        endpoint_list += `<tr><td>
+        staking_list += `<tr><td>
             <form action="/stake/${endpointId}/${id}" method="POST"><input type="text" name="amount" placeholder="0"><input type="submit" value="Stake"></form>
             </td></tr></table>`;
     }
@@ -403,6 +403,21 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
         ].publicKey
             .toBase58()
             .slice(0, 8)}</option>`;
+    }
+
+    let endpoint_list = '';
+    for (let id = 0; id < staking.endpoints.length; id++) {
+        const ep = await staking.staking.getEndpoint(
+            staking.endpoints[id].publicKey
+        );
+        if (
+            ep.owner.authorityType == AuthorityType.Basic &&
+            ep.owner.address.equals(wallet)
+        ) {
+            endpoint_list += `<li value="${id}"><a href="/endpoint/${id}">${staking.endpoints[
+                id
+            ].publicKey.toBase58()}</a></li>`;
+        }
     }
 
     return `<table>
@@ -431,8 +446,10 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
         <tr><td></td><td><form action="/airdrop/${id}" method="GET"><input type="text" name="amount" placeholder="0"><input type="submit" value="Airdrop Zee"></form></td></tr>
     </table>
     ${beneficiary_data}
-    <h1>Endpoints</h1>
-    ${endpoint_list}
+    <h1>Staking</h1>
+    ${staking_list}
+    <h1>Endpoints Owned By This Address</h1>
+    <ol start="0">${endpoint_list}</ol>
     <h2>Add Endpoint</h2>
     <form action="/addEndpoint" method="GET">
     <input type="hidden" name="owner" value="0-${id}">

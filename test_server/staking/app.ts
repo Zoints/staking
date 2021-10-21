@@ -287,6 +287,8 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
             this.wallets[primary].publicKey,
             this.wallets[secondary].publicKey
         );
+
+        return id;
     }
 
     async addWallet() {
