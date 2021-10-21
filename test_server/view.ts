@@ -470,7 +470,7 @@ export async function wrap(staking: App, content: string): Promise<string> {
             .toBase58()
             .slice(0, 8)}</a></li>`;
     }
-    const endpoints = `<ol>${endpoint_list}</ol>`;
+    const endpoints = `<ol start="0">${endpoint_list}</ol>`;
 
     let wallets_list = '';
     for (let id = 0; id < staking.wallets.length; id++) {
@@ -479,7 +479,7 @@ export async function wrap(staking: App, content: string): Promise<string> {
             .toBase58()
             .slice(0, 8)}</a></li>`;
     }
-    const wallets = `<ol>${wallets_list}</ol> <a href="/addWallet">Add Wallet</a>`;
+    const wallets = `<ol start="0">${wallets_list}</ol> <a href="/addWallet">Add Wallet</a>`;
 
     let nft_list = '';
     for (let id = 0; id < staking.nfts.length; id++) {
@@ -488,7 +488,7 @@ export async function wrap(staking: App, content: string): Promise<string> {
             .toBase58()
             .slice(0, 8)}</a></li>`;
     }
-    const nfts = `<ol>${nft_list}</ol>`;
+    const nfts = `<ol start="0">${nft_list}</ol>`;
 
     const rewardPoolId = await Staking.rewardPoolId(staking.program_id);
     const rewardPool = await staking.token.getAccountInfo(rewardPoolId);
