@@ -98,7 +98,7 @@ app.post(
         const staker = Number(req.params.staker);
 
         await staking.stake(endpoint, staker, amount);
-        res.redirect('/staker/' + staker);
+        res.redirect('/wallet/' + staker);
     }
 );
 
@@ -109,7 +109,7 @@ app.get(
         const staker = Number(req.params.staker);
 
         await staking.withdrawUnbond(community, staker);
-        res.redirect('/staker/' + staker);
+        res.redirect('/wallet/' + staker);
     }
 );
 

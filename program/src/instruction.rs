@@ -121,12 +121,15 @@ pub enum StakingInstruction {
     ///     2. `[writable]` The Endpoint
     ///     3. `[]` The endpoint's owner account
     ///     4. `[signer]` The current owner (or holder of the NFT)
-    ///     5. `[]` New Primary Beneficiary Authority
-    ///     6. `[writable]` New Primary Beneficiary Account
-    ///     7. `[]` New Secondary Beneficiary Authority
-    ///     8. `[writable]` New Secondary Beneficiary Account
-    ///     9. `[]` Rent Sysvar
-    ///    10. `[]` System Program
+    ///     5. `[writable]` Old Primary Beneficiary Account
+    ///     6. `[writable]` Old Secondary Beneficiary Account
+    ///     7. `[]` New Primary Beneficiary Authority
+    ///     8. `[writable]` New Primary Beneficiary Account
+    ///     9. `[]` New Secondary Beneficiary Authority
+    ///    10. `[writable]` New Secondary Beneficiary Account
+    ///    11. `[]` Rent Sysvar
+    ///    12. `[]` Clock Sysvar
+    ///    13. `[]` System Program
     ChangeBeneficiaries,
 }
 

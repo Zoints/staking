@@ -732,8 +732,8 @@ impl Processor {
         let iter = &mut accounts.iter();
         let _funder_info = next_account_info(iter)?;
 
-        let beneficiary_info = next_account_info(iter)?;
         let authority_info = next_account_info(iter)?;
+        let beneficiary_info = next_account_info(iter)?;
         let authority_associated_info = next_account_info(iter)?;
 
         let settings_info = next_account_info(iter)?;
@@ -826,23 +826,44 @@ impl Processor {
         let owner_info = next_account_info(iter)?;
         let owner_signer_info = next_account_info(iter)?;
 
-        let primary_info = next_account_info(iter)?;
-        let primary_beneficiary_info = next_account_info(iter)?;
-        let secondary_info = next_account_info(iter)?;
-        let secondary_beneficiary_info = next_account_info(iter)?;
+        let old_primary_beneficiary_info = next_account_info(iter)?;
+        let old_secondary_beneficiary_info = next_account_info(iter)?;
+
+        let new_primary_info = next_account_info(iter)?;
+        let new_primary_beneficiary_info = next_account_info(iter)?;
+        let new_secondary_info = next_account_info(iter)?;
+        let new_secondary_beneficiary_info = next_account_info(iter)?;
+
+        let settings_info = next_account_info(iter)?;
+
         let rent_info = next_account_info(iter)?;
+        let clock_info = next_account_info(iter)?;
 
         let rent = Rent::from_account_info(rent_info)?;
+        let clock = Clock::from_account_info(clock_info)?;
+
+        let mut settings = Settings::from_account_info(settings_info, program_id)?;
 
         let mut endpoint = Endpoint::from_account_info(&endpoint_info, program_id)?;
         if endpoint.owner.has_signed(&owner_info, &owner_signer_info) {
             return Err(StakingError::MissingAuthoritySignature.into());
         }
 
-        if primary_beneficiary_info.data_is_empty() {
+        let mut old_primary_beneficiary = Beneficiary::from_account_info(
+            old_primary_beneficiary_info,
+            &endpoint.primary,
+            program_id,
+        )?;
+        let mut old_secondary_beneficiary = Beneficiary::from_account_info(
+            old_secondary_beneficiary_info,
+            &endpoint.secondary,
+            program_id,
+        )?;
+
+        if new_primary_beneficiary_info.data_is_empty() {
             create_beneficiary!(
-                primary_beneficiary_info,
-                primary_info,
+                new_primary_beneficiary_info,
+                new_primary_info,
                 funder_info,
                 &rent,
                 program_id
@@ -850,16 +871,16 @@ impl Processor {
             msg!("Primary Beneficiary account created");
         } else {
             Beneficiary::verify_program_address(
-                primary_beneficiary_info.key,
-                primary_info.key,
+                new_primary_beneficiary_info.key,
+                new_primary_info.key,
                 program_id,
             )?;
         }
 
-        if secondary_beneficiary_info.data_is_empty() {
+        if new_secondary_beneficiary_info.data_is_empty() {
             create_beneficiary!(
-                secondary_beneficiary_info,
-                secondary_info,
+                new_secondary_beneficiary_info,
+                new_secondary_info,
                 funder_info,
                 &rent,
                 program_id
@@ -867,25 +888,95 @@ impl Processor {
             msg!("Secondary Beneficiary account created");
         } else {
             Beneficiary::verify_program_address(
-                secondary_beneficiary_info.key,
-                secondary_info.key,
+                new_secondary_beneficiary_info.key,
+                new_secondary_info.key,
                 program_id,
             )?;
         }
 
+        let mut new_primary_beneficiary = Beneficiary::from_account_info(
+            new_primary_beneficiary_info,
+            new_primary_info.key,
+            program_id,
+        )?;
+        let mut new_secondary_beneficiary = Beneficiary::from_account_info(
+            new_secondary_beneficiary_info,
+            new_secondary_info.key,
+            program_id,
+        )?;
+
+        settings.update_rewards(clock.unix_timestamp);
+
+        let (_, primary_share, secondary_share) = split_stake(endpoint.total_stake);
+
+        msg!(
+            "transfering {} stake from old primary to new primary",
+            primary_share
+        );
+        msg!(
+            "transfering {} stake from old secondary to new secondary",
+            secondary_share
+        );
+
+        old_primary_beneficiary.pay_out(
+            old_primary_beneficiary
+                .staked
+                .checked_div(primary_share)
+                .unwrap(),
+            settings.reward_per_share,
+        );
+        old_secondary_beneficiary.pay_out(
+            old_secondary_beneficiary
+                .staked
+                .checked_div(secondary_share)
+                .unwrap(),
+            settings.reward_per_share,
+        );
+
+        new_primary_beneficiary.pay_out(
+            new_primary_beneficiary.staked + primary_share,
+            settings.reward_per_share,
+        );
+        new_secondary_beneficiary.pay_out(
+            new_secondary_beneficiary.staked + secondary_share,
+            settings.reward_per_share,
+        );
+
         msg!(
             "changing endpoint primary from {} to {}",
             endpoint.primary,
-            primary_info.key
+            new_primary_info.key
         );
         msg!(
             "changing endpoint secondary from {} to {}",
             endpoint.secondary,
-            secondary_info.key
+            new_secondary_info.key
         );
 
-        endpoint.primary = *primary_info.key;
-        endpoint.secondary = *secondary_info.key;
+        endpoint.primary = *new_primary_info.key;
+        endpoint.secondary = *new_secondary_info.key;
+
+        settings_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&settings.try_to_vec()?);
+        old_primary_beneficiary_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&old_primary_beneficiary.try_to_vec()?);
+        old_secondary_beneficiary_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&old_secondary_beneficiary.try_to_vec()?);
+
+        new_primary_beneficiary_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&new_primary_beneficiary.try_to_vec()?);
+        new_secondary_beneficiary_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&new_secondary_beneficiary.try_to_vec()?);
 
         endpoint_info
             .data
