@@ -921,14 +921,14 @@ impl Processor {
         old_primary_beneficiary.pay_out(
             old_primary_beneficiary
                 .staked
-                .checked_div(primary_share)
+                .checked_sub(primary_share)
                 .unwrap(),
             settings.reward_per_share,
         );
         old_secondary_beneficiary.pay_out(
             old_secondary_beneficiary
                 .staked
-                .checked_div(secondary_share)
+                .checked_sub(secondary_share)
                 .unwrap(),
             settings.reward_per_share,
         );

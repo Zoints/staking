@@ -424,6 +424,7 @@ export class Instruction {
         newPrimary: PublicKey,
         newSecondary?: PublicKey
     ): Promise<TransactionInstruction> {
+        const settingsId = await Staking.settingsId(programId);
         if (newSecondary === undefined) {
             newSecondary = PublicKey.default;
         }
@@ -447,15 +448,16 @@ export class Instruction {
         );
         const keys: AccountMeta[] = [
             am(funder, true, true),
-            am(endpoint, true, true),
+            am(endpoint, false, true),
             am(owner, false, false),
             am(ownerSigner, true, false),
-            am(oldPrimary, false, true),
-            am(oldSecondary, false, true),
+            am(oldPrimaryBeneficiary, false, true),
+            am(oldSecondaryBeneficiary, false, true),
             am(newPrimary, false, false),
             am(newPrimaryBeneficiary, false, true),
             am(newSecondary, false, false),
             am(newSecondaryBeneficiary, false, true),
+            am(settingsId, false, true),
             am(SYSVAR_RENT_PUBKEY, false, false),
             am(SYSVAR_CLOCK_PUBKEY, false, false),
             am(SystemProgram.programId, false, false)

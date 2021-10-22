@@ -410,6 +410,43 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
         }
     }
 
+    async getEndpointOwnerAndOwnerSigner(
+        id: number
+    ): Promise<{ owner: PublicKey; ownerSigner: Keypair }> {
+        const pubkey = this.endpoints[id].publicKey;
+        const endpoint = await this.staking.getEndpoint(pubkey);
+
+        if (endpoint.owner.authorityType == AuthorityType.Basic) {
+            for (let id = 0; id < this.wallets.length; id++) {
+                if (this.wallets[id].publicKey.equals(endpoint.owner.address)) {
+                    return {
+                        owner: this.wallets[id].publicKey,
+                        ownerSigner: this.wallets[id]
+                    };
+                }
+            }
+        } else if (endpoint.owner.authorityType == AuthorityType.NFT) {
+            for (let id = 0; id < this.nfts.length; id++) {
+                if (this.nfts[id].publicKey.equals(endpoint.owner.address)) {
+                    const ownerSigner =
+                        this.wallets[await this.getNFTOwner(id)];
+                    return {
+                        owner: await Token.getAssociatedTokenAddress(
+                            ASSOCIATED_TOKEN_PROGRAM_ID,
+                            TOKEN_PROGRAM_ID,
+                            this.nfts[id].publicKey,
+                            ownerSigner.publicKey,
+                            true
+                        ),
+                        ownerSigner
+                    };
+                }
+            }
+        }
+
+        throw new Error('invalid endpoint data');
+    }
+
     async getNFTOwner(id: number): Promise<number> {
         const nft = this.nfts[id];
         const accs = await this.connection.getTokenLargestAccounts(

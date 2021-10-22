@@ -127,9 +127,10 @@ pub enum StakingInstruction {
     ///     8. `[writable]` New Primary Beneficiary Account
     ///     9. `[]` New Secondary Beneficiary Authority
     ///    10. `[writable]` New Secondary Beneficiary Account
-    ///    11. `[]` Rent Sysvar
-    ///    12. `[]` Clock Sysvar
-    ///    13. `[]` System Program
+    ///    11. `[writable]` Settings
+    ///    12. `[]` Rent Sysvar
+    ///    13. `[]` Clock Sysvar
+    ///    14. `[]` System Program
     ChangeBeneficiaries,
 }
 

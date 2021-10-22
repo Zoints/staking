@@ -173,37 +173,8 @@ app.post(
         const id = Number(req.params.id);
 
         const pubkey = staking.endpoints[id].publicKey;
-        const endpoint = await staking.staking.getEndpoint(pubkey);
-
-        let owner = PublicKey.default;
-        let ownerSigner = new Keypair();
-        if (endpoint.owner.authorityType == AuthorityType.Basic) {
-            for (let id = 0; id < staking.wallets.length; id++) {
-                if (
-                    staking.wallets[id].publicKey.equals(endpoint.owner.address)
-                ) {
-                    owner = staking.wallets[id].publicKey;
-                    ownerSigner = staking.wallets[id];
-                    break;
-                }
-            }
-        } else {
-            for (let id = 0; id < staking.nfts.length; id++) {
-                if (staking.nfts[id].publicKey.equals(endpoint.owner.address)) {
-                    ownerSigner =
-                        staking.wallets[await staking.getNFTOwner(id)];
-                    owner = await Token.getAssociatedTokenAddress(
-                        ASSOCIATED_TOKEN_PROGRAM_ID,
-                        TOKEN_PROGRAM_ID,
-                        staking.nfts[id].publicKey,
-                        ownerSigner.publicKey,
-                        true
-                    );
-
-                    break;
-                }
-            }
-        }
+        const { owner, ownerSigner } =
+            await staking.getEndpointOwnerAndOwnerSigner(id);
 
         const [rType, rId] = String(req.body.newOwner).split('-');
         let recipient: Authority;
@@ -225,6 +196,44 @@ app.post(
             owner,
             ownerSigner,
             recipient
+        );
+
+        res.redirect('/endpoint/' + id);
+    }
+);
+
+app.post(
+    '/change-beneficiaries/:id',
+    async (req: express.Request, res: express.Response) => {
+        const id = Number(req.params.id);
+        let pid = Number(req.body.primary);
+        let sid = Number(req.body.secondary);
+
+        if (pid < 0) {
+            pid = await staking.addWallet();
+        }
+        if (sid < 0) {
+            sid = await staking.addWallet();
+        }
+
+        const pubkey = staking.endpoints[id].publicKey;
+
+        const { owner, ownerSigner } =
+            await staking.getEndpointOwnerAndOwnerSigner(id);
+
+        const endpoint = await staking.staking.getEndpoint(pubkey);
+
+        console.log(pid, sid);
+
+        await staking.engine.changeBeneficiaries(
+            staking,
+            pubkey,
+            owner,
+            ownerSigner,
+            endpoint.primary,
+            endpoint.secondary,
+            staking.wallets[pid].publicKey,
+            staking.wallets[sid].publicKey
         );
 
         res.redirect('/endpoint/' + id);

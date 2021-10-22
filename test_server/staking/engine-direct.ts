@@ -157,4 +157,37 @@ export class EngineDirect implements StakeEngine {
         ]);
         console.log(`Endpoint ${endpoint.toBase58()} transferred: ${sig}`);
     }
+
+    async changeBeneficiaries(
+        app: App,
+        endpoint: PublicKey,
+        owner: PublicKey,
+        ownerSigner: Keypair,
+        oldPrimary: PublicKey,
+        oldSecondary: PublicKey,
+        newPrimary: PublicKey,
+        newSecondary: PublicKey
+    ): Promise<void> {
+        const trans = new Transaction();
+        trans.add(
+            await Instruction.ChangeBeneficiaries(
+                app.program_id,
+                app.funder.publicKey,
+                endpoint,
+                owner,
+                ownerSigner.publicKey,
+                oldPrimary,
+                oldSecondary,
+                newPrimary,
+                newSecondary
+            )
+        );
+        const sig = await sendAndConfirmTransaction(app.connection, trans, [
+            app.funder,
+            ownerSigner
+        ]);
+        console.log(
+            `Endpoint ${endpoint.toBase58()} changed beneficiaries: ${sig}`
+        );
+    }
 }

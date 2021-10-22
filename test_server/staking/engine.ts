@@ -33,4 +33,14 @@ export interface StakeEngine {
         ownerSigner: Keypair,
         recipient: Authority
     ): Promise<void>;
+    changeBeneficiaries(
+        app: App,
+        endpoint: PublicKey,
+        owner: PublicKey,
+        ownerSigner: Keypair,
+        oldPrimary: PublicKey,
+        oldSecondary: PublicKey,
+        newPrimary: PublicKey,
+        newSecondary: PublicKey
+    ): Promise<void>;
 }

@@ -177,8 +177,16 @@ export async function viewEndpoint(staking: App, id: number): Promise<string> {
             id
         ].publicKey.toBase58()}</option>`;
     }
-
     selector += '</optgroup>';
+
+    let selectorBene =
+        '<optgroup label="Wallet"><option value="-1">New Wallet</option>';
+    for (let id = 0; id < staking.wallets.length; id++) {
+        selectorBene += `<option value="${id}">${id}. ${staking.wallets[
+            id
+        ].publicKey.toBase58()}</option>`;
+    }
+    selectorBene += '</optgroup>';
 
     return `<table>
         <tr>
@@ -250,15 +258,10 @@ export async function viewEndpoint(staking: App, id: number): Promise<string> {
         ${secondaryText}
     </table>
     
-    <h1>Transfer Endpoint ${pubkey.toBase58()}</h1>
+    <hr>
+    <h1>Transfer Endpoint</h1>
 <form action="/transfer/${id}" method="POST">
 <table>
-<tr>
-    <td>Current Owner</td>
-    <td><a href="/resolve/${endpoint.owner.address.toBase58()}">${endpoint.owner.address.toBase58()}</a> (${
-        AuthorityType[endpoint.owner.authorityType]
-    })</td>
-</tr>
 <tr>
     <td>New Owner</td>
     <td>
@@ -269,7 +272,28 @@ export async function viewEndpoint(staking: App, id: number): Promise<string> {
 </table>
 </form>
     
-    
+
+    <hr>
+    <h1>Change Beneficiaries</h1>
+<form action="/change-beneficiaries/${id}" method="POST">
+<table>
+<tr>
+    <td>Primary</td>
+    <td>
+        <select name="primary">${selectorBene}</select>
+    </td>
+</tr>
+<tr>
+    <td>Secondary</td>
+    <td>
+        <select name="secondary">${selectorBene}</select>
+    </td>
+</tr>
+<tr><td></td><td><input type="submit" value="Change Beneficiaries" /></td></tr>
+</table>
+</form>
+
+
     `;
 }
 
