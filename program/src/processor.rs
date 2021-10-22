@@ -504,24 +504,45 @@ impl Processor {
         let mut settings = Settings::from_account_info(settings_info, program_id)?;
 
         let mut endpoint = Endpoint::from_account_info(endpoint_info, program_id)?;
-        let mut primary_beneficiary = Beneficiary::from_account_info(
-            primary_beneficiary_info,
-            &endpoint.primary,
-            program_id,
-        )?;
-        let mut secondary_beneficiary = Beneficiary::from_account_info(
-            secondary_beneficiary_info,
-            &endpoint.secondary,
-            program_id,
-        )?;
 
         let staker_assoc =
             verify_associated!(staker_associated_info, settings.token, *staker_info.key)?;
 
         let mut stake =
             Stake::from_account_info(stake_info, endpoint_info.key, staker_info.key, program_id)?;
-        let mut staker_beneficiary =
-            Beneficiary::from_account_info(staker_beneficiary_info, staker_info.key, program_id)?;
+
+        // holds the beneficiaries so we don't have duplicate objects
+        let mut beneficiaries = vec![];
+        let staker_beneficiary = 0;
+        beneficiaries.push(Beneficiary::from_account_info(
+            staker_beneficiary_info,
+            staker_info.key,
+            program_id,
+        )?);
+
+        let primary_beneficiary = if *primary_beneficiary_info.key == *staker_beneficiary_info.key {
+            staker_beneficiary
+        } else {
+            beneficiaries.push(Beneficiary::from_account_info(
+                primary_beneficiary_info,
+                &endpoint.primary,
+                program_id,
+            )?);
+            1
+        };
+        let secondary_beneficiary =
+            if *secondary_beneficiary_info.key == *staker_beneficiary_info.key {
+                staker_beneficiary
+            } else if *secondary_beneficiary_info.key == *primary_beneficiary_info.key {
+                primary_beneficiary
+            } else {
+                beneficiaries.push(Beneficiary::from_account_info(
+                    secondary_beneficiary_info,
+                    &endpoint.secondary,
+                    program_id,
+                )?);
+                primary_beneficiary + 1
+            };
 
         let staking = raw_amount >= 0;
         let amount = raw_amount.abs() as u64;
@@ -561,25 +582,20 @@ impl Processor {
 
         // PROCESS STAKER'S REWARD
 
-        staker_beneficiary.pay_out(
-            staker_beneficiary.staked + new_staker - old_staker,
-            settings.reward_per_share,
-        );
+        let new_stake = beneficiaries[staker_beneficiary].staked + new_staker - old_staker;
+        beneficiaries[staker_beneficiary].pay_out(new_stake, settings.reward_per_share);
 
         // allow them to re-stake their pending reward immediately
-        if staking && staker_assoc.amount + staker_beneficiary.holding < amount {
+        if staking && staker_assoc.amount + beneficiaries[staker_beneficiary].holding < amount {
             return Err(StakingError::StakerBalanceTooLow.into());
         }
 
         // primary + secondary
-        primary_beneficiary.pay_out(
-            primary_beneficiary.staked + new_primary - old_primary,
-            settings.reward_per_share,
-        );
-        secondary_beneficiary.pay_out(
-            secondary_beneficiary.staked + new_secondary - old_secondary,
-            settings.reward_per_share,
-        );
+        let new_stake = beneficiaries[primary_beneficiary].staked + new_primary - old_primary;
+        beneficiaries[primary_beneficiary].pay_out(new_stake, settings.reward_per_share);
+
+        let new_stake = beneficiaries[secondary_beneficiary].staked + new_secondary - old_secondary;
+        beneficiaries[secondary_beneficiary].pay_out(new_stake, settings.reward_per_share);
 
         // pay out pending reward first
         pool_transfer!(
@@ -588,10 +604,10 @@ impl Processor {
             staker_associated_info,
             pool_authority_info,
             program_id,
-            staker_beneficiary.holding
+            beneficiaries[staker_beneficiary].holding
         )?;
-        msg!("zee claimed: {}", staker_beneficiary.holding);
-        staker_beneficiary.holding = 0;
+        msg!("zee claimed: {}", beneficiaries[staker_beneficiary].holding);
+        beneficiaries[staker_beneficiary].holding = 0;
 
         if staking {
             // transfer the new staked amount to fund pool
@@ -632,15 +648,15 @@ impl Processor {
         staker_beneficiary_info
             .data
             .borrow_mut()
-            .copy_from_slice(&staker_beneficiary.try_to_vec()?);
+            .copy_from_slice(&beneficiaries[staker_beneficiary].try_to_vec()?);
         primary_beneficiary_info
             .data
             .borrow_mut()
-            .copy_from_slice(&primary_beneficiary.try_to_vec()?);
+            .copy_from_slice(&beneficiaries[primary_beneficiary].try_to_vec()?);
         secondary_beneficiary_info
             .data
             .borrow_mut()
-            .copy_from_slice(&secondary_beneficiary.try_to_vec()?);
+            .copy_from_slice(&beneficiaries[secondary_beneficiary].try_to_vec()?);
 
         Ok(())
     }

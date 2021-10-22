@@ -94,7 +94,7 @@ app.get('/addEndpoint', async (req: express.Request, res: express.Response) => {
         primary = await staking.addWallet();
     }
     let secondary = Number(req.query.secondary);
-    if (secondary < 0) {
+    if (secondary == -1) {
         secondary = await staking.addWallet();
     }
 
@@ -212,8 +212,15 @@ app.post(
         if (pid < 0) {
             pid = await staking.addWallet();
         }
+        let secondary = PublicKey.default;
         if (sid < 0) {
-            sid = await staking.addWallet();
+            if (sid == -1) {
+                const id = await staking.addWallet();
+                secondary = staking.wallets[id].publicKey;
+            }
+            // leave it default
+        } else {
+            secondary = staking.wallets[sid].publicKey;
         }
 
         const pubkey = staking.endpoints[id].publicKey;
@@ -230,7 +237,7 @@ app.post(
             endpoint.primary,
             endpoint.secondary,
             staking.wallets[pid].publicKey,
-            staking.wallets[sid].publicKey
+            secondary
         );
 
         res.redirect('/endpoint/' + id);

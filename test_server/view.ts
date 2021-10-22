@@ -180,7 +180,7 @@ export async function viewEndpoint(staking: App, id: number): Promise<string> {
     selector += '</optgroup>';
 
     let selectorBene =
-        '<optgroup label="Wallet"><option value="-1">New Wallet</option>';
+        '<option value="-1">New Wallet</option><optgroup label="Wallet">';
     for (let id = 0; id < staking.wallets.length; id++) {
         selectorBene += `<option value="${id}">${id}. ${staking.wallets[
             id
@@ -286,7 +286,7 @@ export async function viewEndpoint(staking: App, id: number): Promise<string> {
 <tr>
     <td>Secondary</td>
     <td>
-        <select name="secondary">${selectorBene}</select>
+        <select name="secondary"><option value="-2">None</option>${selectorBene}</select>
     </td>
 </tr>
 <tr><td></td><td><input type="submit" value="Change Beneficiaries" /></td></tr>
@@ -522,7 +522,7 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
     </tr>
     <tr>
         <td>Secondary</td>
-        <td><select name="secondary"><!--<option value="-2">None</option>-->${selector}</select></td>
+        <td><select name="secondary"><option value="-2">None</option>${selector}</select></td>
     </tr>
     </table>
     <input type="submit" value="Add" />

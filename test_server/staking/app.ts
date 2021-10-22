@@ -280,12 +280,17 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
             address
         });
 
+        let sec = PublicKey.default;
+        if (secondary >= 0) {
+            sec = this.wallets[secondary].publicKey;
+        }
+
         await this.engine.registerEndpoint(
             this,
             key,
             authority,
             this.wallets[primary].publicKey,
-            this.wallets[secondary].publicKey
+            sec
         );
 
         return id;
