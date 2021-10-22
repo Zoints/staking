@@ -610,9 +610,11 @@ export async function wrap(staking: App, content: string): Promise<string> {
 <body>
 <div class="row">
 <div style="flex: 0 0 25em">
-<a href="/settings">Settings</a>
 <table>
     <tr><td>Slot</td><td>${recent.context.slot}</td></tr>
+    <tr><td colspan="2">${(
+        await Staking.settingsId(staking.program_id)
+    ).toBase58()}</td></tr>
     <tr>
         <td>Total Stake</td>
         <td>${settings.totalStake.toString()}</td>
@@ -639,7 +641,7 @@ export async function wrap(staking: App, content: string): Promise<string> {
     </tr>
     <tr>
         <td>Reward Per Share</td>
-        <td>${settings.rewardPerShare.div(PRECISION).toString()}</td>
+        <td>${settings.rewardPerShare.toString()}</td>
     </tr>
     <tr>
         <td></td>
