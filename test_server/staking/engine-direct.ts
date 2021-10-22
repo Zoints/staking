@@ -132,4 +132,29 @@ export class EngineDirect implements StakeEngine {
             console.log(`Withdraw Unbond ${endpoint.toBase58()}: ${sig}`);
         }
     }
+
+    async transfer(
+        app: App,
+        endpoint: PublicKey,
+        owner: PublicKey,
+        ownerSigner: Keypair,
+        recipient: Authority
+    ): Promise<void> {
+        const trans = new Transaction();
+        trans.add(
+            await Instruction.TransferEndpoint(
+                app.program_id,
+                app.funder.publicKey,
+                endpoint,
+                owner,
+                ownerSigner.publicKey,
+                recipient
+            )
+        );
+        const sig = await sendAndConfirmTransaction(app.connection, trans, [
+            app.funder,
+            ownerSigner
+        ]);
+        console.log(`Endpoint ${endpoint.toBase58()} transferred: ${sig}`);
+    }
 }

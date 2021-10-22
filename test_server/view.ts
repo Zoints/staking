@@ -137,9 +137,9 @@ export async function viewEndpoint(staking: App, id: number): Promise<string> {
     } else {
         secondaryText = `        <tr>
             <td>Authority</td>
-            <td><a href="https://explorer.solana.com/address/${secondary.authority.toBase58()}?customUrl=${
+            <td><a href="/resolve/${secondary.authority.toBase58()}">${secondary.authority.toBase58()}</a> (<a href="https://explorer.solana.com/address/${secondary.authority.toBase58()}?customUrl=${
             staking.connectionURL
-        }&cluster=custom">${secondary.authority.toBase58()}</a></td>
+        }&cluster=custom">explorer</a>)</td>
         </tr>
         <tr>
             <td>Staked</td>
@@ -164,6 +164,21 @@ export async function viewEndpoint(staking: App, id: number): Promise<string> {
                 .toString()}</td>
         </tr>`;
     }
+
+    let selector = '<optgroup label="Wallet">';
+    for (let id = 0; id < staking.wallets.length; id++) {
+        selector += `<option value="0-${id}">${id}. ${staking.wallets[
+            id
+        ].publicKey.toBase58()}</option>`;
+    }
+    selector += '</optgroup><optgroup label="NFT">';
+    for (let id = 0; id < staking.nfts.length; id++) {
+        selector += `<option value="1-${id}">${id}. ${staking.nfts[
+            id
+        ].publicKey.toBase58()}</option>`;
+    }
+
+    selector += '</optgroup>';
 
     return `<table>
         <tr>
@@ -193,18 +208,18 @@ export async function viewEndpoint(staking: App, id: number): Promise<string> {
         </tr>
         <tr>
             <td>Authority</td>
-            <td><a href="https://explorer.solana.com/address/${endpoint.owner.address.toBase58()}?customUrl=${
+            <td><a href="/resolve/${endpoint.owner.address.toBase58()}">${endpoint.owner.address.toBase58()}</a> (<a href="https://explorer.solana.com/address/${endpoint.owner.address.toBase58()}?customUrl=${
         staking.connectionURL
-    }&cluster=custom">${endpoint.owner.address.toBase58()}</a></td>
+    }&cluster=custom">explorer</a>)</td>
         </tr>
         <tr>
             <td colspan="2"><br><b>Primary</b></td>
         </tr>
         <tr>
             <td>Authority</td>
-            <td><a href="https://explorer.solana.com/address/${primary.authority.toBase58()}?customUrl=${
+            <td><a href="/resolve/${primary.authority.toBase58()}">${primary.authority.toBase58()}</a> (<a href="https://explorer.solana.com/address/${primary.authority.toBase58()}?customUrl=${
         staking.connectionURL
-    }&cluster=custom">${primary.authority.toBase58()}</a></td>
+    }&cluster=custom">explorer</a>)</td>
         </tr>
         <tr>
             <td>Staked</td>
@@ -233,7 +248,29 @@ export async function viewEndpoint(staking: App, id: number): Promise<string> {
             <td colspan="2"><br><b>Secondary</b></td>
         </tr>
         ${secondaryText}
-    </table>`;
+    </table>
+    
+    <h1>Transfer Endpoint ${pubkey.toBase58()}</h1>
+<form action="/transfer/${id}" method="POST">
+<table>
+<tr>
+    <td>Current Owner</td>
+    <td><a href="/resolve/${endpoint.owner.address.toBase58()}">${endpoint.owner.address.toBase58()}</a> (${
+        AuthorityType[endpoint.owner.authorityType]
+    })</td>
+</tr>
+<tr>
+    <td>New Owner</td>
+    <td>
+        <select name="newOwner">${selector}</select>
+    </td>
+</tr>
+<tr><td></td><td><input type="submit" value="Transfer" /></td></tr>
+</table>
+</form>
+    
+    
+    `;
 }
 
 export async function viewWallet(staking: App, id: number): Promise<string> {
@@ -250,6 +287,7 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
     try {
         const beneficiary = await staking.staking.getBeneficiary(wallet);
         beneficiary_data = `
+        <hr>
         <h1>Beneficiary</h1>
         <a href="/claim/${id}">Claim All</a><br>
         <table>
@@ -446,9 +484,9 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
         <tr><td></td><td><form action="/airdrop/${id}" method="GET"><input type="text" name="amount" placeholder="0"><input type="submit" value="Airdrop Zee"></form></td></tr>
     </table>
     ${beneficiary_data}
-    <h1>Staking</h1>
+    <hr><h1>Staking</h1>
     ${staking_list}
-    <h1>Endpoints Owned By This Address</h1>
+    <hr><h1>Endpoints Owned By This Address</h1>
     <ol start="0">${endpoint_list}</ol>
     <h2>Add Endpoint</h2>
     <form action="/addEndpoint" method="GET">
@@ -466,7 +504,7 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
     <input type="submit" value="Add" />
     </form>
     
-    <h1>NFTs</h1>
+    <hr><h1>NFTs</h1>
     <ul>${nft_list}</ul>
     <a href="/addNFT/${id}">Mint an NFT for this address</a>
     `;

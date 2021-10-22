@@ -26,4 +26,11 @@ export interface StakeEngine {
         staker: Keypair,
         communities: PublicKey[]
     ): Promise<void>;
+    transfer(
+        app: App,
+        endpoint: PublicKey,
+        owner: PublicKey,
+        ownerSigner: Keypair,
+        recipient: Authority
+    ): Promise<void>;
 }

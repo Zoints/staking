@@ -3,7 +3,12 @@ import * as express from 'express';
 import { viewEndpoint, wrap, viewWallet, viewNFT } from './view';
 import { EngineDirect } from './staking/engine-direct';
 import { Authority, AuthorityType } from '@zoints/staking';
-import { PublicKey } from '@solana/web3.js';
+import { Keypair, PublicKey } from '@solana/web3.js';
+import {
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    Token,
+    TOKEN_PROGRAM_ID
+} from '@solana/spl-token';
 //import { EngineBackend } from './staking/engine-backend';
 
 const app = express.default();
@@ -161,6 +166,70 @@ app.get('/airdrop/:id', async (req: express.Request, res: express.Response) => {
     await staking.airdrop(id, amount);
     res.redirect('/wallet/' + id);
 });
+
+app.post(
+    '/transfer/:id',
+    async (req: express.Request, res: express.Response) => {
+        const id = Number(req.params.id);
+
+        const pubkey = staking.endpoints[id].publicKey;
+        const endpoint = await staking.staking.getEndpoint(pubkey);
+
+        let owner = PublicKey.default;
+        let ownerSigner = new Keypair();
+        if (endpoint.owner.authorityType == AuthorityType.Basic) {
+            for (let id = 0; id < staking.wallets.length; id++) {
+                if (
+                    staking.wallets[id].publicKey.equals(endpoint.owner.address)
+                ) {
+                    owner = staking.wallets[id].publicKey;
+                    ownerSigner = staking.wallets[id];
+                    break;
+                }
+            }
+        } else {
+            for (let id = 0; id < staking.nfts.length; id++) {
+                if (staking.nfts[id].publicKey.equals(endpoint.owner.address)) {
+                    ownerSigner =
+                        staking.wallets[await staking.getNFTOwner(id)];
+                    owner = await Token.getAssociatedTokenAddress(
+                        ASSOCIATED_TOKEN_PROGRAM_ID,
+                        TOKEN_PROGRAM_ID,
+                        staking.nfts[id].publicKey,
+                        ownerSigner.publicKey,
+                        true
+                    );
+
+                    break;
+                }
+            }
+        }
+
+        const [rType, rId] = String(req.body.newOwner).split('-');
+        let recipient: Authority;
+        if (rType == '1') {
+            recipient = new Authority({
+                authorityType: AuthorityType.NFT,
+                address: staking.nfts[Number(rId)].publicKey
+            });
+        } else {
+            recipient = new Authority({
+                authorityType: AuthorityType.Basic,
+                address: staking.wallets[Number(rId)].publicKey
+            });
+        }
+
+        await staking.engine.transfer(
+            staking,
+            pubkey,
+            owner,
+            ownerSigner,
+            recipient
+        );
+
+        res.redirect('/endpoint/' + id);
+    }
+);
 
 app.get('/', async (req: express.Request, res: express.Response) => {
     res.send(await wrap(staking, 'Hello World'));

@@ -410,6 +410,30 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
         }
     }
 
+    async getNFTOwner(id: number): Promise<number> {
+        const nft = this.nfts[id];
+        const accs = await this.connection.getTokenLargestAccounts(
+            nft.publicKey
+        );
+        for (const acc of accs.value) {
+            if (acc.amount == '1') {
+                const token = new Token(
+                    this.connection,
+                    nft.publicKey,
+                    TOKEN_PROGRAM_ID,
+                    new Keypair()
+                );
+                const assoc = await token.getAccountInfo(acc.address);
+                for (let id = 0; id < this.wallets.length; id++) {
+                    if (this.wallets[id].publicKey.equals(assoc.owner)) {
+                        return id;
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
     private async initializeProgram() {
         // Token library doesn't accept tokens with pre-defined mint for some reason
         const balanceNeeded = await Token.getMinBalanceRentForExemptMint(
