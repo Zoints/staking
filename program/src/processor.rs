@@ -798,7 +798,7 @@ impl Processor {
         let recipient_info = next_account_info(iter)?;
 
         let mut endpoint = Endpoint::from_account_info(&endpoint_info, program_id)?;
-        if endpoint.owner.has_signed(&owner_info, &owner_signer_info) {
+        if !endpoint.owner.has_signed(&owner_info, &owner_signer_info) {
             return Err(StakingError::MissingAuthoritySignature.into());
         }
 
@@ -845,7 +845,7 @@ impl Processor {
         let mut settings = Settings::from_account_info(settings_info, program_id)?;
 
         let mut endpoint = Endpoint::from_account_info(&endpoint_info, program_id)?;
-        if endpoint.owner.has_signed(&owner_info, &owner_signer_info) {
+        if !endpoint.owner.has_signed(&owner_info, &owner_signer_info) {
             return Err(StakingError::MissingAuthoritySignature.into());
         }
 
