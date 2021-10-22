@@ -222,9 +222,6 @@ app.post(
             await staking.getEndpointOwnerAndOwnerSigner(id);
 
         const endpoint = await staking.staking.getEndpoint(pubkey);
-
-        console.log(pid, sid);
-
         await staking.engine.changeBeneficiaries(
             staking,
             pubkey,
