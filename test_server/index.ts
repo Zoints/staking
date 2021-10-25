@@ -1,16 +1,23 @@
 import { App } from './staking/app';
 import * as express from 'express';
-import { viewSettings, viewCommunity, wrap, viewStaker } from './view';
+import { viewEndpoint, wrap, viewWallet, viewNFT } from './view';
 import { EngineDirect } from './staking/engine-direct';
-import { EngineBackend } from './staking/engine-backend';
+import { Authority, AuthorityType } from '@zoints/staking';
+import { Keypair, PublicKey } from '@solana/web3.js';
+import {
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    Token,
+    TOKEN_PROGRAM_ID
+} from '@solana/spl-token';
+//import { EngineBackend } from './staking/engine-backend';
 
 const app = express.default();
 const port = 8081;
 
-const engine =
-    process.env.ENGINE?.toLowerCase() === 'direct'
+const engine = new EngineDirect();
+/*  process.env.ENGINE?.toLowerCase() === 'direct'
         ? new EngineDirect()
-        : new EngineBackend('http://localhost:8080/');
+        : new EngineBackend('http://localhost:8080/');*/
 console.log(
     `Engine: ${process.env.ENGINE === 'direct' ? 'direct' : 'backend'}`
 );
@@ -18,70 +25,127 @@ console.log(
 const staking = new App(
     'http://localhost:8899',
     '../program/target/deploy/staking.so',
-    './seed.json',
+    './seed.txt',
     engine
 );
 
 // Parse URL-encoded bodies (as sent by HTML forms)
 app.use(express.urlencoded({ extended: false }));
 
-app.get('/reload', async (req: express.Request, res: express.Response) => {
-    await staking.regenerate();
-    res.redirect('/');
-});
+app.get(
+    '/resolve/:pubkey',
+    async (req: express.Request, res: express.Response) => {
+        const pk = req.params.pubkey;
+        const key = new PublicKey(pk);
 
-app.get('/reloadBPF', async (req: express.Request, res: express.Response) => {
-    await staking.loadBPF();
-    res.redirect('/');
-});
+        for (let id = 0; id < staking.wallets.length; id++) {
+            console.log(staking.wallets[id].publicKey, key);
+            if (staking.wallets[id].publicKey.equals(key)) {
+                res.redirect('/wallet/' + id);
+                return;
+            }
+        }
+
+        for (let id = 0; id < staking.nfts.length; id++) {
+            if (staking.nfts[id].publicKey.equals(key)) {
+                res.redirect('/nft/' + id);
+                return;
+            }
+        }
+
+        for (let id = 0; id < staking.endpoints.length; id++) {
+            if (staking.endpoints[id].publicKey.equals(key)) {
+                res.redirect('/endpoint/' + id);
+                return;
+            }
+        }
+
+        res.send(await wrap(staking, `unable to find pubkey ${pk} anywhere`));
+    }
+);
 
 app.get(
-    '/community/:id',
+    '/endpoint/:id',
     async (req: express.Request, res: express.Response) => {
         const id = Number(req.params.id);
-        if (id >= staking.communities.length) {
-            console.log(`tried to access nonexistent community`);
+        if (id >= staking.endpoints.length) {
+            console.log(`tried to access nonexistent endpoint`);
             res.redirect('/');
             return;
         }
 
-        res.send(await wrap(staking, await viewCommunity(staking, id)));
+        res.send(await wrap(staking, await viewEndpoint(staking, id)));
     }
 );
 
-app.get(
-    '/addCommunity',
-    async (req: express.Request, res: express.Response) => {
-        const noSecondary = req.query.nosec === 'true';
-        await staking.addCommunity(noSecondary);
-        res.redirect('/');
+app.get('/addEndpoint', async (req: express.Request, res: express.Response) => {
+    let type: number;
+    let id: number;
+    if (typeof req.query.owner === 'string') {
+        const split = req.query.owner.split('-');
+        type = Number(split[0]);
+        id = Number(split[1]);
+    } else {
+        type = 0;
+        id = await staking.addWallet();
     }
-);
+    let primary = Number(req.query.primary);
+    if (primary < 0) {
+        primary = await staking.addWallet();
+    }
+    let secondary = Number(req.query.secondary);
+    if (secondary == -1) {
+        secondary = await staking.addWallet();
+    }
 
-app.get('/staker/:id', async (req: express.Request, res: express.Response) => {
+    const newid = await staking.addEndpoint(type, id, primary, secondary);
+    res.redirect('/endpoint/' + newid);
+});
+
+app.get('/wallet/:id', async (req: express.Request, res: express.Response) => {
     const id = Number(req.params.id);
-    if (id >= staking.stakers.length) {
-        console.log(`tried to access nonexistent staker`);
+    if (id >= staking.wallets.length) {
+        console.log(`tried to access nonexistent wallet`);
         res.redirect('/');
         return;
     }
-    res.send(await wrap(staking, await viewStaker(staking, id)));
+    res.send(await wrap(staking, await viewWallet(staking, id)));
 });
 
-app.get('/addStaker', async (req: express.Request, res: express.Response) => {
-    await staking.addStaker();
-    res.redirect('/');
+app.get('/nft/:id', async (req: express.Request, res: express.Response) => {
+    const id = Number(req.params.id);
+    if (id >= staking.nfts.length) {
+        console.log(`tried to access nonexistent nft`);
+        res.redirect('/');
+        return;
+    }
+    res.send(await wrap(staking, await viewNFT(staking, id)));
+});
+
+app.get('/addWallet', async (req: express.Request, res: express.Response) => {
+    const id = await staking.addWallet();
+    res.redirect('/wallet/' + id);
+});
+
+app.get('/addNFT/:id', async (req: express.Request, res: express.Response) => {
+    await staking.addNFT(Number(req.params.id));
+    res.redirect('/wallet/' + req.params.id);
+});
+
+app.get('/claim/:id', async (req: express.Request, res: express.Response) => {
+    await staking.claimWallet(Number(req.params.id));
+    res.redirect('/wallet/' + req.params.id);
 });
 
 app.post(
-    '/stake/:community/:staker',
+    '/stake/:endpoint/:staker',
     async (req: express.Request, res: express.Response) => {
         const amount = Number(req.body.amount);
-        const community = Number(req.params.community);
+        const endpoint = Number(req.params.endpoint);
         const staker = Number(req.params.staker);
 
-        await staking.stake(community, staker, amount);
-        res.redirect('/staker/' + staker);
+        await staking.stake(endpoint, staker, amount);
+        res.redirect('/wallet/' + staker);
     }
 );
 
@@ -92,34 +156,7 @@ app.get(
         const staker = Number(req.params.staker);
 
         await staking.withdrawUnbond(community, staker);
-        res.redirect('/staker/' + staker);
-    }
-);
-
-app.get(
-    '/multiclaim/:staker',
-    async (req: express.Request, res: express.Response) => {
-        const staker = Number(req.params.staker);
-        await staking.claimStaker(staker);
-        res.redirect('/staker/' + staker);
-    }
-);
-
-app.get('/claim/fee', async (req: express.Request, res: express.Response) => {
-    await staking.claimFee();
-    res.redirect('/');
-});
-
-app.get(
-    '/claim/:community/:primary',
-    async (req: express.Request, res: express.Response) => {
-        const community = Number(req.params.community);
-        if (req.params.primary === 'primary') {
-            await staking.claimPrimary(community);
-        } else {
-            await staking.claimSecondary(community);
-        }
-        res.redirect('/community/' + community);
+        res.redirect('/wallet/' + staker);
     }
 );
 
@@ -127,12 +164,85 @@ app.get('/airdrop/:id', async (req: express.Request, res: express.Response) => {
     const amount = Number(req.query.amount);
     const id = Number(req.params.id);
     await staking.airdrop(id, amount);
-    res.redirect('/staker/' + id);
+    res.redirect('/wallet/' + id);
 });
 
-app.get('/settings', async (req: express.Request, res: express.Response) => {
-    res.send(await wrap(staking, await viewSettings(staking)));
-});
+app.post(
+    '/transfer/:id',
+    async (req: express.Request, res: express.Response) => {
+        const id = Number(req.params.id);
+
+        const pubkey = staking.endpoints[id].publicKey;
+        const { owner, ownerSigner } =
+            await staking.getEndpointOwnerAndOwnerSigner(id);
+
+        const [rType, rId] = String(req.body.newOwner).split('-');
+        let recipient: Authority;
+        if (rType == '1') {
+            recipient = new Authority({
+                authorityType: AuthorityType.NFT,
+                address: staking.nfts[Number(rId)].publicKey
+            });
+        } else {
+            recipient = new Authority({
+                authorityType: AuthorityType.Basic,
+                address: staking.wallets[Number(rId)].publicKey
+            });
+        }
+
+        await staking.engine.transfer(
+            staking,
+            pubkey,
+            owner,
+            ownerSigner,
+            recipient
+        );
+
+        res.redirect('/endpoint/' + id);
+    }
+);
+
+app.post(
+    '/change-beneficiaries/:id',
+    async (req: express.Request, res: express.Response) => {
+        const id = Number(req.params.id);
+        let pid = Number(req.body.primary);
+        let sid = Number(req.body.secondary);
+
+        if (pid < 0) {
+            pid = await staking.addWallet();
+        }
+        let secondary = PublicKey.default;
+        if (sid < 0) {
+            if (sid == -1) {
+                const id = await staking.addWallet();
+                secondary = staking.wallets[id].publicKey;
+            }
+            // leave it default
+        } else {
+            secondary = staking.wallets[sid].publicKey;
+        }
+
+        const pubkey = staking.endpoints[id].publicKey;
+
+        const { owner, ownerSigner } =
+            await staking.getEndpointOwnerAndOwnerSigner(id);
+
+        const endpoint = await staking.staking.getEndpoint(pubkey);
+        await staking.engine.changeBeneficiaries(
+            staking,
+            pubkey,
+            owner,
+            ownerSigner,
+            endpoint.primary,
+            endpoint.secondary,
+            staking.wallets[pid].publicKey,
+            secondary
+        );
+
+        res.redirect('/endpoint/' + id);
+    }
+);
 
 app.get('/', async (req: express.Request, res: express.Response) => {
     res.send(await wrap(staking, 'Hello World'));

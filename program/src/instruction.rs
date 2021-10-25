@@ -1,5 +1,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 
+use crate::account::Authority;
+
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
 pub enum StakingInstruction {
@@ -11,44 +13,42 @@ pub enum StakingInstruction {
     ///     3. `[]` Pool Authority
     ///     4. `[writable]` Reward Pool
     ///     5. `[]` ZEE Token Mint
-    ///     6. `[signer]` Fee Beneficiary Authority
-    ///     7. `[writable]` Fee Beneficiary
-    ///     8. `[]` Rent Sysvar
-    ///     9. `[]` SPL Token Program
-    ///     10. `[]` System Program
+    ///     6. `[]` Rent Sysvar
+    ///     7. `[]` SPL Token Program
+    ///     8. `[]` System Program
     Initialize {
         /// The time after which yields start to pay out
         start_time: i64,
         /// The amount of time (in seconds) to lock unbonded funds
         unbonding_duration: u64,
     },
-    /// Register a new community.
+    /// Register a new endpoint.
     ///
     /// Expected Accounts:
     ///     1. `[writable,signer]` Transaction payer
-    ///     2. `[]` Community Owner
-    ///     3. `[writable,signer]` Community Account
+    ///     2. `[writable,signer]` Endpoint Account
+    ///     3. `[]` Endpoint Owner Pubkey
     ///     4. `[]` Primary Beneficiary Authority
-    ///     5. `[]` Primary Beneficiary
+    ///     5. `[]` Primary Beneficiary Account
     ///     6. `[]` Secondary Beneficiary Authority
-    ///     7. `[]` Secondary Beneficiary
+    ///     7. `[]` Secondary Beneficiary Account
     ///     8. `[]` Rent Sysvar
     ///     9. `[]` Clock Sysvar
     ///     10. `[]` System Program
-    RegisterCommunity,
+    RegisterEndpoint { owner: Authority },
     /// Initialize a new stake
     ///
-    /// Must be done before being able to stake ZEE to a community
+    /// Must be done before being able to stake ZEE to an Endpoint
     ///
     /// Expected Accounts:
     ///     1. `[writable,signer]` Transaction payer
     ///     2. `[signer]` Staker
     ///     3. `[writable]` Staker Fund
     ///     4. `[writable]` Staker Beneficiary
-    ///     5. `[writable]` Community Account
+    ///     5. `[writable]` Endpoint Account
     ///     6. `[writable]` Stake Account
     ///     7. `[]` ZEE Token Mint
-    ///     8. `[]` Settings Account
+    ///     8. `[writable]` Settings Account
     ///     9. `[]` Rent Sysvar
     ///     10. `[]` Clock Sysvar
     ///     11. `[]` SPL Token Program
@@ -66,16 +66,15 @@ pub enum StakingInstruction {
     ///     3. `[writable]` Staker Beneficiary
     ///     4. `[writable]` Staker Fund
     ///     5. `[writable]` Staker ZEE Token Account
-    ///     6. `[writable]` Community
-    ///     7. `[writable]` Community Primary Beneficiary
-    ///     8. `[writable]` Community Secondary Beneficiary
+    ///     6. `[writable]` Endpoint
+    ///     7. `[writable]` Endpoint Primary Beneficiary
+    ///     8. `[writable]` Endpoint Secondary Beneficiary
     ///     9. `[]` Pool Authority
     ///     10. `[writable]` Reward Pool
     ///     11. `[writable]` Settings
-    ///     12. `[writable]` Fee Beneficiary
-    ///     13. `[writable]` Stake Account
-    ///     14. `[]` Clock Sysvar
-    ///     15. `[]` SPL Token Program
+    ///     12. `[writable]` Stake Account
+    ///     13. `[]` Clock Sysvar
+    ///     14. `[]` SPL Token Program
     Stake { amount: i64 },
     /// Withdraw Unbounded Tokens
     ///
@@ -83,13 +82,13 @@ pub enum StakingInstruction {
     ///
     /// Expected Accounts:
     ///     1. `[writable,signer]` Transaction payer
-    ///     2. `[signer]` Staker
-    ///     3. `[signer]` Staker Fund
-    ///     4. `[writable]` Staker's ZEE Token Account
-    ///     5. `[]` Community
-    ///     6. `[]` Settings
-    ///     7. `[]` Pool Authority
-    ///     8. `[writable]` Stake Account
+    ///     2. `[writable]` Stake Account
+    ///     3. `[signer]` Staker
+    ///     4. `[signer]` Staker Fund
+    ///     5. `[writable]` Staker's ZEE Token Account
+    ///     6. `[]` Endpoint
+    ///     7. `[]` Settings
+    ///     8. `[]` Pool Authority
     ///     9. `[]` Clock Sysvar
     ///     10. `[]` SPL Token Program
     WithdrawUnbond,
@@ -106,6 +105,33 @@ pub enum StakingInstruction {
     ///     8. `[]` Clock Sysvar
     ///     9. `[]` SPL Token Program
     Claim,
+    /// Transfer an Endpoint from one owner to the next. If the recipient is an NFT
+    /// then the NFT has to already exist.
+    ///
+    ///     1. `[writable,signer]` Transaction payer
+    ///     2. `[writable]` The Endpoint
+    ///     3. `[]` The endpoint's owner account
+    ///     4. `[signer]` The current owner (or holder of the NFT)
+    ///     5. `[]` The recipient address or nft mint
+    TransferEndpoint { new_authority: Authority },
+    /// Change the beneficiaries of an Endpoint. If the primary or secondary
+    /// beneficiaries don't exist yet, they will be created
+    ///
+    ///     1. `[writable,signer]` Transaction payer
+    ///     2. `[writable]` The Endpoint
+    ///     3. `[]` The endpoint's owner account
+    ///     4. `[signer]` The current owner (or holder of the NFT)
+    ///     5. `[writable]` Old Primary Beneficiary Account
+    ///     6. `[writable]` Old Secondary Beneficiary Account
+    ///     7. `[]` New Primary Beneficiary Authority
+    ///     8. `[writable]` New Primary Beneficiary Account
+    ///     9. `[]` New Secondary Beneficiary Authority
+    ///    10. `[writable]` New Secondary Beneficiary Account
+    ///    11. `[writable]` Settings
+    ///    12. `[]` Rent Sysvar
+    ///    13. `[]` Clock Sysvar
+    ///    14. `[]` System Program
+    ChangeBeneficiaries,
 }
 
 #[cfg(test)]
@@ -117,7 +143,7 @@ mod tests {
         let init = StakingInstruction::Stake { amount };
         let data = init.try_to_vec().unwrap();
 
-        let mut should = vec![0];
+        let mut should = vec![3];
         should.extend(amount.to_le_bytes().iter());
 
         assert_eq!(data, should);

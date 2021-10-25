@@ -16,7 +16,6 @@ Date.prototype.getUnixTime = function (): number {
 export class Settings {
     public token: PublicKey;
     public unbondingTime: BN;
-    public feeRecipient: PublicKey;
 
     public nextEmissionChange: Date;
     public emission: BN;
@@ -28,7 +27,6 @@ export class Settings {
     constructor(params: {
         token: PublicKey;
         unbondingTime: BN;
-        feeRecipient: PublicKey;
         nextEmissionChange: Date;
         emission: BN;
         totalStake: BN;
@@ -37,7 +35,6 @@ export class Settings {
     }) {
         this.token = params.token;
         this.unbondingTime = params.unbondingTime;
-        this.feeRecipient = params.feeRecipient;
         this.nextEmissionChange = params.nextEmissionChange;
         this.emission = params.emission;
         this.totalStake = params.totalStake;
@@ -70,7 +67,7 @@ export class Settings {
                 );
                 lastReward = nextEmissionChange;
                 nextEmissionChange += SECONDS_PER_YEAR.toNumber();
-                emission = emission.muln(3).divn(4);
+                emission = emission.muln(9).divn(10);
             }
 
             const seconds = new BN(newSeconds - lastReward);
@@ -85,6 +82,21 @@ export class Settings {
         }
 
         return reward;
+    }
+}
+
+export enum AuthorityType {
+    Basic,
+    NFT
+}
+
+export class Authority {
+    authorityType: AuthorityType;
+    address: PublicKey;
+
+    constructor(params: { authorityType: AuthorityType; address: PublicKey }) {
+        this.authorityType = params.authorityType;
+        this.address = params.address;
     }
 }
 
@@ -114,25 +126,28 @@ export class Beneficiary {
     }
 
     public isEmpty(): boolean {
-        return this.authority.equals(PublicKey.default);
+        return this.authority == PublicKey.default;
     }
 }
 
-export class Community {
+export class Endpoint {
     public creationDate: Date;
-    public authority: PublicKey;
+    public totalStake: BN;
 
+    public owner: Authority;
     public primary: PublicKey;
     public secondary: PublicKey;
 
     constructor(params: {
         creationDate: Date;
-        authority: PublicKey;
+        totalStake: BN;
+        owner: Authority;
         primary: PublicKey;
         secondary: PublicKey;
     }) {
         this.creationDate = params.creationDate;
-        this.authority = params.authority;
+        this.totalStake = params.totalStake;
+        this.owner = params.owner;
         this.primary = params.primary;
         this.secondary = params.secondary;
     }
@@ -168,10 +183,8 @@ export const ACCOUNT_SCHEMA: borsh.Schema = new Map<any, any>([
             fields: [
                 ['token', 'PublicKey'],
                 ['unbondingTime', 'u64'],
-                ['feeRecipient', 'PublicKey'],
                 ['nextEmissionChange', 'Date'],
                 ['emission', 'u64'],
-
                 ['totalStake', 'u64'],
                 ['rewardPerShare', 'u128'],
                 ['lastReward', 'Date']
@@ -191,12 +204,13 @@ export const ACCOUNT_SCHEMA: borsh.Schema = new Map<any, any>([
         }
     ],
     [
-        Community,
+        Endpoint,
         {
             kind: 'struct',
             fields: [
                 ['creationDate', 'Date'],
-                ['authority', 'PublicKey'],
+                ['totalStake', 'u64'],
+                ['owner', 'Authority'],
                 ['primary', 'PublicKey'],
                 ['secondary', 'PublicKey']
             ]

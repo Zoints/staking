@@ -7,11 +7,11 @@ describe('Errors', () => {
         expect(
             parseError(
                 new Error(
-                    'failed to send transaction: Transaction simulation failed: Error processing Instruction 1: custom program error: 0x11'
+                    'failed to send transaction: Transaction simulation failed: Error processing Instruction 1: custom program error: 0x12'
                 )
             ).message
         ).to.eql(
-            'failed to send transaction: Transaction simulation failed: Error processing Instruction 1: STAKING-ERROR 0x11: StakerMinimumBalanceNotMet'
+            'failed to send transaction: Transaction simulation failed: Error processing Instruction 1: STAKING-ERROR 0x12: StakerMinimumBalanceNotMet'
         );
 
         expect(

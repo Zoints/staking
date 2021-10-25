@@ -6,10 +6,11 @@ export enum StakingErrors {
     InvalidRewardPoolAccount,
     InvalidPoolAuthorityAccount,
     TokenNotSPLToken,
-    CommunityAccountAlreadyExists,
+    NFTOwnerNotNFT,
+    EndpointAccountAlreadyExists,
     InvalidStakeAccount,
     InvalidStakeFundAccount,
-    InvalidCommunityAccount,
+    InvalidEndpointAccount,
     MissingStakeSignature,
     AssociatedInvalidOwner,
     AssociatedInvalidToken,
@@ -21,7 +22,11 @@ export enum StakingErrors {
     WithdrawNothingtowithdraw,
     WithdrawUnbondingTimeNotOverYet,
     InvalidBeneficiaryAccount,
-    InvalidToken
+    InvalidToken,
+    PrimaryAuthorityCannotBeEmpty,
+    InvalidAuthorityType,
+    AuthorityKeysDoNotMatch,
+    SecondaryAuthorityKeysDoNotMatch
 }
 
 const custom = /custom program error: 0x([0-9a-fA-F]+)/;

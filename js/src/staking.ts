@@ -1,12 +1,11 @@
 import { Connection, PublicKey } from '@solana/web3.js';
-import { ACCOUNT_SCHEMA, Beneficiary, Community, Settings } from './';
+import { ACCOUNT_SCHEMA, Beneficiary, Endpoint, Settings } from './';
 import * as borsh from 'borsh';
 import { Stake } from './accounts';
 
 export class Staking {
     programId: PublicKey;
     connection: Connection;
-    feeRecipient: PublicKey | undefined;
 
     constructor(programId: PublicKey, connection: Connection) {
         this.programId = programId;
@@ -22,30 +21,22 @@ export class Staking {
         return borsh.deserialize(ACCOUNT_SCHEMA, Settings, account.data);
     }
 
-    public async getFeeRecipient(): Promise<PublicKey> {
-        if (this.feeRecipient === undefined) {
-            const settings = await this.getSettings();
-            this.feeRecipient = settings.feeRecipient;
-        }
-        return this.feeRecipient;
-    }
-
-    public async getCommunity(communityId: PublicKey): Promise<Community> {
-        const account = await this.connection.getAccountInfo(communityId);
+    public async getEndpoint(endpointId: PublicKey): Promise<Endpoint> {
+        const account = await this.connection.getAccountInfo(endpointId);
         if (account === null)
-            throw new Error('Unable to find community account');
+            throw new Error('Unable to find endpoint account');
         if (!account.owner.equals(this.programId))
-            throw new Error('Not a recognized community account');
-        return borsh.deserialize(ACCOUNT_SCHEMA, Community, account.data);
+            throw new Error('Not a recognized endpoint account');
+        return borsh.deserialize(ACCOUNT_SCHEMA, Endpoint, account.data);
     }
 
     public async getStakeWithoutId(
-        communityId: PublicKey,
+        endpointId: PublicKey,
         owner: PublicKey
     ): Promise<Stake> {
         const stakeId = await Staking.stakeAddress(
             this.programId,
-            communityId,
+            endpointId,
             owner
         );
         return this.getStake(stakeId);
@@ -112,12 +103,12 @@ export class Staking {
 
     static async stakeAddress(
         programId: PublicKey,
-        community: PublicKey,
+        endpoint: PublicKey,
         staker: PublicKey
     ): Promise<PublicKey> {
         return (
             await PublicKey.findProgramAddress(
-                [Buffer.from('stake'), community.toBuffer(), staker.toBuffer()],
+                [Buffer.from('stake'), endpoint.toBuffer(), staker.toBuffer()],
                 programId
             )
         )[0];
@@ -131,7 +122,7 @@ export class Staking {
     }
 
     static async stakeFundAddress(
-        community: PublicKey,
+        endpoint: PublicKey,
         staker: PublicKey,
         programId: PublicKey
     ): Promise<PublicKey> {
@@ -139,7 +130,7 @@ export class Staking {
             await PublicKey.findProgramAddress(
                 [
                     Buffer.from('stake fund'),
-                    community.toBuffer(),
+                    endpoint.toBuffer(),
                     staker.toBuffer()
                 ],
                 programId

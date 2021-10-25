@@ -1,27 +1,46 @@
-import { Keypair } from '@solana/web3.js';
+import { Keypair, PublicKey } from '@solana/web3.js';
+import { Authority } from '@zoints/staking';
 import { App } from './app';
-import { AppCommunity, AppStaker } from './community';
 
 export interface StakeEngine {
-    registerCommunity(
+    registerEndpoint(
         app: App,
-        community: AppCommunity,
-        noSecondary: boolean
+        key: Keypair,
+        owner: Authority,
+        primary: PublicKey,
+        secondary: PublicKey
     ): Promise<void>;
     claim(
         app: App,
-        authority?: Keypair,
-        communities?: AppCommunity[]
+        authority: Keypair,
+        communities?: PublicKey[]
     ): Promise<void>;
     stake(
         app: App,
-        community: AppCommunity,
-        staker: AppStaker,
+        endpoint: PublicKey,
+        staker: Keypair,
         amount: bigint
     ): Promise<void>;
     withdraw(
         app: App,
-        staker: AppStaker,
-        communities: AppCommunity[]
+        staker: Keypair,
+        communities: PublicKey[]
+    ): Promise<void>;
+    transfer(
+        app: App,
+        endpoint: PublicKey,
+        owner: PublicKey,
+        ownerSigner: Keypair,
+        recipient: Authority
+    ): Promise<void>;
+    changeBeneficiaries(
+        app: App,
+        endpoint: PublicKey,
+        owner: PublicKey,
+        ownerSigner: Keypair,
+        oldPrimary: PublicKey,
+        oldSecondary: PublicKey,
+        newPrimary: PublicKey,
+        newSecondary: PublicKey
     ): Promise<void>;
 }

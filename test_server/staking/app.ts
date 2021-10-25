@@ -16,10 +16,14 @@ import {
     Transaction
 } from '@solana/web3.js';
 import * as fs from 'fs';
-import { Instruction, Staking } from '@zoints/staking';
+import {
+    Authority,
+    AuthorityType,
+    Instruction,
+    Staking
+} from '@zoints/staking';
 import { seededKey, sleep } from './util';
 import * as crypto from 'crypto';
-import { AppCommunity, AppStaker } from './community';
 import { StakeEngine } from './engine';
 
 export class App {
@@ -39,12 +43,12 @@ export class App {
     deploy_key: Keypair;
     program_id: PublicKey;
 
-    fee_authority: Keypair;
     mint_id: Keypair;
     mint_authority: Keypair;
 
-    communities: AppCommunity[];
-    stakers: AppStaker[];
+    endpoints: Keypair[];
+    wallets: Keypair[];
+    nfts: Keypair[];
 
     engine: StakeEngine;
 
@@ -67,7 +71,6 @@ export class App {
         this.deploy_key = this.getKeyPair('deployKey');
         this.program_id = this.deploy_key.publicKey;
 
-        this.fee_authority = this.getKeyPair('feeAuthority');
         this.mint_id = this.getKeyPair('mint');
         this.mint_authority = this.getKeyPair('mintAuthority');
 
@@ -79,8 +82,9 @@ export class App {
             this.funder
         );
 
-        this.communities = [];
-        this.stakers = [];
+        this.endpoints = [];
+        this.wallets = [];
+        this.nfts = [];
 
         this.engine = engine;
 
@@ -126,45 +130,13 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
 `);
     }
 
-    async regenerate() {
-        this.loaded = false;
-
-        this.seed = crypto.randomBytes(16);
-        console.log(`Reloading BPF with new seed ${this.seed.toString('hex')}`);
-        fs.writeFileSync(this.seedPath, this.seed.toString('hex'), {});
-        this.newSeed = true;
-
-        this.funder = this.getKeyPair('funder');
-        this.deploy_key = this.getKeyPair('deployKey');
-        this.program_id = this.deploy_key.publicKey;
-
-        this.fee_authority = this.getKeyPair('feeAuthority');
-        this.mint_id = this.getKeyPair('mint');
-        this.mint_authority = this.getKeyPair('mintAuthority');
-
-        this.staking = new Staking(this.program_id, this.connection);
-        this.token = new Token(
-            this.connection,
-            this.mint_id.publicKey,
-            TOKEN_PROGRAM_ID,
-            this.funder
-        );
-
-        this.communities = [];
-        this.stakers = [];
-
-        this.print_config();
-
-        await this.setup();
-    }
-
     private getKeyPair(name: string): Keypair {
         return seededKey(name, this.seed);
     }
 
     public async airdrop(id: number, amount: number): Promise<void> {
         const assoc = await this.token.getOrCreateAssociatedAccountInfo(
-            this.stakers[id].key.publicKey
+            this.wallets[id].publicKey
         );
         return this.token.mintTo(
             assoc.address,
@@ -174,68 +146,49 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
         );
     }
 
-    public async claimStaker(stakerId: number): Promise<string> {
-        const staker = this.stakers[stakerId];
+    public async claimWallet(walletId: number): Promise<void> {
+        const wallet = this.wallets[walletId];
 
-        const communities = [];
-        for (const comm of this.communities) {
+        const endpoints = [];
+        for (const ep of this.endpoints) {
             try {
                 const stake = await this.staking.getStakeWithoutId(
-                    comm.key.publicKey,
-                    staker.key.publicKey
+                    ep.publicKey,
+                    wallet.publicKey
                 );
                 if (
                     stake.unbondingAmount.gtn(0) &&
                     stake.unbondingEnd.valueOf() <= new Date().valueOf()
                 ) {
-                    communities.push(comm);
+                    endpoints.push(ep.publicKey);
                 }
             } catch (e) {}
-            if (communities.length >= 6) break;
+            if (endpoints.length >= 6) break;
         }
 
-        await this.engine.claim(this, staker.key, communities);
-        return 'removed with engine';
-    }
-
-    public async claimPrimary(commId: number): Promise<string> {
-        const community = this.communities[commId];
-        await this.engine.claim(this, community.primaryAuthority);
-        return 'removed with engine';
-    }
-
-    public async claimFee(): Promise<string> {
-        await this.engine.claim(this);
-        return 'removed with engine';
-    }
-
-    public async claimSecondary(commId: number): Promise<string> {
-        const community = this.communities[commId];
-        await this.engine.claim(this, community.secondaryAuthority);
-        return 'removed with engine';
+        await this.engine.claim(this, wallet, endpoints);
     }
 
     public async stake(
-        commId: number,
-        stakerId: number,
+        endpoint: number,
+        wallet: number,
         amount: number
-    ): Promise<string> {
-        const community = this.communities[commId];
-        const staker = this.stakers[stakerId];
-
-        await this.engine.stake(this, community, staker, BigInt(amount));
-
-        return 'removed with engine';
+    ): Promise<void> {
+        await this.engine.stake(
+            this,
+            this.endpoints[endpoint].publicKey,
+            this.wallets[wallet],
+            BigInt(amount)
+        );
     }
 
     public async withdrawUnbond(
-        commId: number,
-        stakerId: number
-    ): Promise<string> {
-        const community = this.communities[commId];
-        const staker = this.stakers[stakerId];
-        await this.engine.withdraw(this, staker, [community]);
-        return 'removed with engine';
+        endpoint: number,
+        wallet: number
+    ): Promise<void> {
+        await this.engine.withdraw(this, this.wallets[wallet], [
+            this.endpoints[endpoint].publicKey
+        ]);
     }
 
     public async setup() {
@@ -270,82 +223,159 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
             await this.initializeProgram();
             console.log(`Initialization done.`);
         } else {
-            for (let i = 0; ; i++) {
-                const comm = new AppCommunity(i, this.seed);
-                const acc = await this.connection.getAccountInfo(
-                    comm.key.publicKey
-                );
-                if (acc === null) break;
-                this.communities.push(comm);
-            }
+            // autodetect accounts
 
+            // wallets
             for (let i = 0; ; i++) {
-                const staker = new AppStaker(i, this.seed);
-                const address = await Token.getAssociatedTokenAddress(
+                const wallet = this.getKeyPair(`wallet-${i}`);
+                const assoc = await Token.getAssociatedTokenAddress(
                     ASSOCIATED_TOKEN_PROGRAM_ID,
                     TOKEN_PROGRAM_ID,
                     this.mint_id.publicKey,
-                    staker.key.publicKey
+                    wallet.publicKey
                 );
-                const acc = await this.connection.getAccountInfo(address);
+                const acc = await this.connection.getAccountInfo(assoc);
                 if (acc === null) break;
-                this.stakers.push(staker);
+                this.wallets.push(wallet);
+            }
+
+            // endpoints
+            for (let i = 0; ; i++) {
+                const endpoint = this.getKeyPair(`endpoint-${i}`);
+                const acc = await this.connection.getAccountInfo(
+                    endpoint.publicKey
+                );
+                if (acc === null) break;
+                this.endpoints.push(endpoint);
+            }
+
+            // nfts
+            for (let i = 0; ; i++) {
+                const nft = this.getKeyPair(`nft-${i}`);
+                const acc = await this.connection.getAccountInfo(nft.publicKey);
+                if (acc === null) break;
+                this.nfts.push(nft);
             }
         }
         this.loaded = true;
     }
 
-    async addCommunity(noSecondary: boolean) {
-        const community = new AppCommunity(this.communities.length, this.seed);
-        this.communities.push(community);
+    async addEndpoint(
+        authorityType: AuthorityType,
+        owner: number,
+        primary: number,
+        secondary: number
+    ) {
+        const id = this.endpoints.length;
+        const key = this.getKeyPair(`endpoint-${id}`);
+        this.endpoints.push(key);
 
-        const promises: Promise<void>[] = [
-            new Promise((resolve, reject) => {
-                this.engine
-                    .registerCommunity(this, community, noSecondary)
-                    .then(() => {
-                        resolve();
-                    })
-                    .catch((r) => reject(r));
-            }),
-            new Promise((resolve, reject) => {
-                this.token
-                    .getOrCreateAssociatedAccountInfo(
-                        community.primaryAuthority.publicKey
-                    )
-                    .then(() => {
-                        resolve();
-                    })
-                    .catch((r) => reject(r));
-            })
-        ];
+        const address =
+            authorityType == AuthorityType.NFT
+                ? this.nfts[owner].publicKey
+                : this.wallets[owner].publicKey;
 
-        if (!noSecondary) {
-            promises.push(
-                new Promise((resolve, reject) => {
-                    this.token
-                        .getOrCreateAssociatedAccountInfo(
-                            community.secondaryAuthority.publicKey
-                        )
-                        .then(() => {
-                            resolve();
-                        })
-                        .catch((r) => reject(r));
-                })
-            );
+        const authority = new Authority({
+            authorityType,
+            address
+        });
+
+        let sec = PublicKey.default;
+        if (secondary >= 0) {
+            sec = this.wallets[secondary].publicKey;
         }
 
-        await Promise.all(promises);
-    }
-
-    async addStaker() {
-        const staker = new AppStaker(this.stakers.length, this.seed);
-        this.stakers.push(staker);
-        console.log(
-            `Adding staker ${staker.id}: ${staker.key.publicKey.toBase58()}`
+        await this.engine.registerEndpoint(
+            this,
+            key,
+            authority,
+            this.wallets[primary].publicKey,
+            sec
         );
 
-        await this.token.getOrCreateAssociatedAccountInfo(staker.key.publicKey);
+        return id;
+    }
+
+    async addWallet() {
+        const id = this.wallets.length;
+        const key = this.getKeyPair(`wallet-${id}`);
+        this.wallets.push(key);
+        await this.token.getOrCreateAssociatedAccountInfo(key.publicKey);
+        console.log(`Added wallet ${id}: ${key.publicKey.toBase58()}`);
+
+        return id;
+    }
+
+    async addNFT(wallet: number) {
+        const recipient = this.wallets[wallet];
+
+        const id = this.nfts.length;
+        const mint = this.getKeyPair(`nft-${id}`);
+        const authority = this.getKeyPair(`nft-${id}-authority`);
+
+        this.nfts.push(mint);
+
+        const balanceNeeded = await Token.getMinBalanceRentForExemptMint(
+            this.connection
+        );
+
+        const assoc = await Token.getAssociatedTokenAddress(
+            ASSOCIATED_TOKEN_PROGRAM_ID,
+            TOKEN_PROGRAM_ID,
+            mint.publicKey,
+            recipient.publicKey,
+            true
+        );
+
+        const tx = new Transaction();
+        tx.add(
+            SystemProgram.createAccount({
+                fromPubkey: this.funder.publicKey,
+                newAccountPubkey: mint.publicKey,
+                lamports: balanceNeeded,
+                space: MintLayout.span,
+                programId: TOKEN_PROGRAM_ID
+            }),
+            Token.createInitMintInstruction(
+                TOKEN_PROGRAM_ID,
+                mint.publicKey,
+                0,
+                authority.publicKey,
+                null
+            ),
+            Token.createAssociatedTokenAccountInstruction(
+                ASSOCIATED_TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                mint.publicKey,
+                assoc,
+                recipient.publicKey,
+                this.funder.publicKey
+            ),
+            Token.createMintToInstruction(
+                TOKEN_PROGRAM_ID,
+                mint.publicKey,
+                assoc,
+                authority.publicKey,
+                [],
+                1
+            ),
+            Token.createSetAuthorityInstruction(
+                TOKEN_PROGRAM_ID,
+                mint.publicKey,
+                null,
+                'MintTokens',
+                authority.publicKey,
+                []
+            )
+        );
+
+        await sendAndConfirmTransaction(this.connection, tx, [
+            this.funder,
+            authority,
+            mint
+        ]);
+
+        console.log(`Added NFT ${mint.publicKey.toBase58()}`);
     }
 
     private async fund() {
@@ -385,6 +415,67 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
         }
     }
 
+    async getEndpointOwnerAndOwnerSigner(
+        id: number
+    ): Promise<{ owner: PublicKey; ownerSigner: Keypair }> {
+        const pubkey = this.endpoints[id].publicKey;
+        const endpoint = await this.staking.getEndpoint(pubkey);
+
+        if (endpoint.owner.authorityType == AuthorityType.Basic) {
+            for (let id = 0; id < this.wallets.length; id++) {
+                if (this.wallets[id].publicKey.equals(endpoint.owner.address)) {
+                    return {
+                        owner: this.wallets[id].publicKey,
+                        ownerSigner: this.wallets[id]
+                    };
+                }
+            }
+        } else if (endpoint.owner.authorityType == AuthorityType.NFT) {
+            for (let id = 0; id < this.nfts.length; id++) {
+                if (this.nfts[id].publicKey.equals(endpoint.owner.address)) {
+                    const ownerSigner =
+                        this.wallets[await this.getNFTOwner(id)];
+                    return {
+                        owner: await Token.getAssociatedTokenAddress(
+                            ASSOCIATED_TOKEN_PROGRAM_ID,
+                            TOKEN_PROGRAM_ID,
+                            this.nfts[id].publicKey,
+                            ownerSigner.publicKey,
+                            true
+                        ),
+                        ownerSigner
+                    };
+                }
+            }
+        }
+
+        throw new Error('invalid endpoint data');
+    }
+
+    async getNFTOwner(id: number): Promise<number> {
+        const nft = this.nfts[id];
+        const accs = await this.connection.getTokenLargestAccounts(
+            nft.publicKey
+        );
+        for (const acc of accs.value) {
+            if (acc.amount == '1') {
+                const token = new Token(
+                    this.connection,
+                    nft.publicKey,
+                    TOKEN_PROGRAM_ID,
+                    new Keypair()
+                );
+                const assoc = await token.getAccountInfo(acc.address);
+                for (let id = 0; id < this.wallets.length; id++) {
+                    if (this.wallets[id].publicKey.equals(assoc.owner)) {
+                        return id;
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
     private async initializeProgram() {
         // Token library doesn't accept tokens with pre-defined mint for some reason
         const balanceNeeded = await Token.getMinBalanceRentForExemptMint(
@@ -417,7 +508,6 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
                 await Instruction.Initialize(
                     this.program_id,
                     this.funder.publicKey,
-                    this.fee_authority.publicKey,
                     this.mint_id.publicKey,
                     date,
                     60
@@ -426,7 +516,7 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
         const sig = await sendAndConfirmTransaction(
             this.connection,
             transaction,
-            [this.funder, this.mint_id, this.fee_authority]
+            [this.funder, this.mint_id]
         );
         console.log(`Initialized: ${sig}`);
 
@@ -435,9 +525,9 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
             rewardPool,
             this.mint_authority,
             [],
-            1_000_000_000
+            1_000_000_000_000
         );
 
-        console.log(`Token minted and 1_000_000_000 ZEE created`);
+        console.log(`Token minted and 1_000_000_000_000 ZEE created`);
     }
 }
