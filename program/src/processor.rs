@@ -117,6 +117,33 @@ macro_rules! create_beneficiary {
     };
 }
 
+pub struct WorkingBeneficiary {
+    pub beneficiary: Beneficiary,
+    pub add: u64,
+    pub sub: u64,
+}
+
+fn insert_beneficiary(
+    beneficiaries: &mut Vec<WorkingBeneficiary>,
+    owner: Pubkey,
+    beneficiary: Beneficiary,
+) -> usize {
+    match beneficiaries
+        .iter()
+        .position(|item| item.beneficiary.authority == owner)
+    {
+        Some(idx) => idx,
+        None => {
+            beneficiaries.push(WorkingBeneficiary {
+                beneficiary,
+                add: 0,
+                sub: 0,
+            });
+            beneficiaries.len() - 1
+        }
+    }
+}
+
 pub struct Processor {}
 impl Processor {
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
@@ -514,20 +541,28 @@ impl Processor {
         // holds the beneficiaries so we don't have duplicate objects
         let mut beneficiaries = vec![];
         let staker_beneficiary = 0;
-        beneficiaries.push(Beneficiary::from_account_info(
-            staker_beneficiary_info,
-            staker_info.key,
-            program_id,
-        )?);
+        beneficiaries.push(WorkingBeneficiary {
+            beneficiary: Beneficiary::from_account_info(
+                staker_beneficiary_info,
+                staker_info.key,
+                program_id,
+            )?,
+            add: 0,
+            sub: 0,
+        });
 
         let primary_beneficiary = if *primary_beneficiary_info.key == *staker_beneficiary_info.key {
             staker_beneficiary
         } else {
-            beneficiaries.push(Beneficiary::from_account_info(
-                primary_beneficiary_info,
-                &endpoint.primary,
-                program_id,
-            )?);
+            beneficiaries.push(WorkingBeneficiary {
+                beneficiary: Beneficiary::from_account_info(
+                    primary_beneficiary_info,
+                    &endpoint.primary,
+                    program_id,
+                )?,
+                add: 0,
+                sub: 0,
+            });
             1
         };
         let secondary_beneficiary =
@@ -536,11 +571,15 @@ impl Processor {
             } else if *secondary_beneficiary_info.key == *primary_beneficiary_info.key {
                 primary_beneficiary
             } else {
-                beneficiaries.push(Beneficiary::from_account_info(
-                    secondary_beneficiary_info,
-                    &endpoint.secondary,
-                    program_id,
-                )?);
+                beneficiaries.push(WorkingBeneficiary {
+                    beneficiary: Beneficiary::from_account_info(
+                        secondary_beneficiary_info,
+                        &endpoint.secondary,
+                        program_id,
+                    )?,
+                    add: 0,
+                    sub: 0,
+                });
                 primary_beneficiary + 1
             };
 
@@ -582,21 +621,28 @@ impl Processor {
 
         // PROCESS STAKER'S REWARD
 
-        let new_stake = beneficiaries[staker_beneficiary].staked + new_staker - old_staker;
-        beneficiaries[staker_beneficiary].pay_out(new_stake, settings.reward_per_share);
+        beneficiaries[staker_beneficiary].add += new_staker;
+        beneficiaries[staker_beneficiary].sub += old_staker;
+        beneficiaries[primary_beneficiary].add += new_primary;
+        beneficiaries[primary_beneficiary].sub += old_primary;
+        beneficiaries[secondary_beneficiary].add += new_secondary;
+        beneficiaries[secondary_beneficiary].sub += old_secondary;
 
-        // allow them to re-stake their pending reward immediately
-        if staking && staker_assoc.amount + beneficiaries[staker_beneficiary].holding < amount {
-            return Err(StakingError::StakerBalanceTooLow.into());
+        for working in &mut beneficiaries {
+            working.beneficiary.pay_out(
+                (working.beneficiary.staked + working.add)
+                    .checked_sub(working.sub)
+                    .unwrap(),
+                settings.reward_per_share,
+            );
         }
 
-        // primary + secondary
-        let new_stake = beneficiaries[primary_beneficiary].staked + new_primary - old_primary;
-        beneficiaries[primary_beneficiary].pay_out(new_stake, settings.reward_per_share);
-
-        let new_stake = beneficiaries[secondary_beneficiary].staked + new_secondary - old_secondary;
-        beneficiaries[secondary_beneficiary].pay_out(new_stake, settings.reward_per_share);
-
+        // allow them to re-stake their pending reward immediately
+        if staking
+            && staker_assoc.amount + beneficiaries[staker_beneficiary].beneficiary.holding < amount
+        {
+            return Err(StakingError::StakerBalanceTooLow.into());
+        }
         // pay out pending reward first
         pool_transfer!(
             RewardPool,
@@ -604,10 +650,13 @@ impl Processor {
             staker_associated_info,
             pool_authority_info,
             program_id,
-            beneficiaries[staker_beneficiary].holding
+            beneficiaries[staker_beneficiary].beneficiary.holding
         )?;
-        msg!("zee claimed: {}", beneficiaries[staker_beneficiary].holding);
-        beneficiaries[staker_beneficiary].holding = 0;
+        msg!(
+            "zee claimed: {}",
+            beneficiaries[staker_beneficiary].beneficiary.holding
+        );
+        beneficiaries[staker_beneficiary].beneficiary.holding = 0;
 
         if staking {
             // transfer the new staked amount to fund pool
@@ -645,18 +694,24 @@ impl Processor {
             .borrow_mut()
             .copy_from_slice(&endpoint.try_to_vec()?);
 
+        // some of these may be write identical data to the same account
         staker_beneficiary_info
             .data
             .borrow_mut()
-            .copy_from_slice(&beneficiaries[staker_beneficiary].try_to_vec()?);
-        primary_beneficiary_info
-            .data
-            .borrow_mut()
-            .copy_from_slice(&beneficiaries[primary_beneficiary].try_to_vec()?);
+            .copy_from_slice(&beneficiaries[staker_beneficiary].beneficiary.try_to_vec()?);
+        primary_beneficiary_info.data.borrow_mut().copy_from_slice(
+            &beneficiaries[primary_beneficiary]
+                .beneficiary
+                .try_to_vec()?,
+        );
         secondary_beneficiary_info
             .data
             .borrow_mut()
-            .copy_from_slice(&beneficiaries[secondary_beneficiary].try_to_vec()?);
+            .copy_from_slice(
+                &beneficiaries[secondary_beneficiary]
+                    .beneficiary
+                    .try_to_vec()?,
+            );
 
         Ok(())
     }
@@ -865,16 +920,27 @@ impl Processor {
             return Err(StakingError::MissingAuthoritySignature.into());
         }
 
-        let mut old_primary_beneficiary = Beneficiary::from_account_info(
-            old_primary_beneficiary_info,
-            &endpoint.primary,
-            program_id,
-        )?;
-        let mut old_secondary_beneficiary = Beneficiary::from_account_info(
-            old_secondary_beneficiary_info,
-            &endpoint.secondary,
-            program_id,
-        )?;
+        let mut beneficiaries = vec![];
+
+        let old_primary_beneficiary = insert_beneficiary(
+            &mut beneficiaries,
+            endpoint.primary,
+            Beneficiary::from_account_info(
+                old_primary_beneficiary_info,
+                &endpoint.primary,
+                program_id,
+            )?,
+        );
+
+        let old_secondary_beneficiary = insert_beneficiary(
+            &mut beneficiaries,
+            endpoint.secondary,
+            Beneficiary::from_account_info(
+                old_secondary_beneficiary_info,
+                &endpoint.secondary,
+                program_id,
+            )?,
+        );
 
         if new_primary_beneficiary_info.data_is_empty() {
             create_beneficiary!(
@@ -910,16 +976,24 @@ impl Processor {
             )?;
         }
 
-        let mut new_primary_beneficiary = Beneficiary::from_account_info(
-            new_primary_beneficiary_info,
-            new_primary_info.key,
-            program_id,
-        )?;
-        let mut new_secondary_beneficiary = Beneficiary::from_account_info(
-            new_secondary_beneficiary_info,
-            new_secondary_info.key,
-            program_id,
-        )?;
+        let new_primary_beneficiary = insert_beneficiary(
+            &mut beneficiaries,
+            *new_primary_info.key,
+            Beneficiary::from_account_info(
+                new_primary_beneficiary_info,
+                new_primary_info.key,
+                program_id,
+            )?,
+        );
+        let new_secondary_beneficiary = insert_beneficiary(
+            &mut beneficiaries,
+            *new_secondary_info.key,
+            Beneficiary::from_account_info(
+                new_secondary_beneficiary_info,
+                new_secondary_info.key,
+                program_id,
+            )?,
+        );
 
         settings.update_rewards(clock.unix_timestamp);
 
@@ -934,29 +1008,19 @@ impl Processor {
             secondary_share
         );
 
-        old_primary_beneficiary.pay_out(
-            old_primary_beneficiary
-                .staked
-                .checked_sub(primary_share)
-                .unwrap(),
-            settings.reward_per_share,
-        );
-        old_secondary_beneficiary.pay_out(
-            old_secondary_beneficiary
-                .staked
-                .checked_sub(secondary_share)
-                .unwrap(),
-            settings.reward_per_share,
-        );
+        beneficiaries[old_primary_beneficiary].sub += primary_share;
+        beneficiaries[new_primary_beneficiary].add += primary_share;
+        beneficiaries[old_secondary_beneficiary].sub += secondary_share;
+        beneficiaries[new_secondary_beneficiary].add += secondary_share;
 
-        new_primary_beneficiary.pay_out(
-            new_primary_beneficiary.staked + primary_share,
-            settings.reward_per_share,
-        );
-        new_secondary_beneficiary.pay_out(
-            new_secondary_beneficiary.staked + secondary_share,
-            settings.reward_per_share,
-        );
+        for working in &mut beneficiaries {
+            working.beneficiary.pay_out(
+                (working.beneficiary.staked + working.add)
+                    .checked_sub(working.sub)
+                    .unwrap(),
+                settings.reward_per_share,
+            );
+        }
 
         msg!(
             "changing endpoint primary from {} to {}",
@@ -979,20 +1043,36 @@ impl Processor {
         old_primary_beneficiary_info
             .data
             .borrow_mut()
-            .copy_from_slice(&old_primary_beneficiary.try_to_vec()?);
+            .copy_from_slice(
+                &beneficiaries[old_primary_beneficiary]
+                    .beneficiary
+                    .try_to_vec()?,
+            );
         old_secondary_beneficiary_info
             .data
             .borrow_mut()
-            .copy_from_slice(&old_secondary_beneficiary.try_to_vec()?);
+            .copy_from_slice(
+                &beneficiaries[old_secondary_beneficiary]
+                    .beneficiary
+                    .try_to_vec()?,
+            );
 
         new_primary_beneficiary_info
             .data
             .borrow_mut()
-            .copy_from_slice(&new_primary_beneficiary.try_to_vec()?);
+            .copy_from_slice(
+                &beneficiaries[new_primary_beneficiary]
+                    .beneficiary
+                    .try_to_vec()?,
+            );
         new_secondary_beneficiary_info
             .data
             .borrow_mut()
-            .copy_from_slice(&new_secondary_beneficiary.try_to_vec()?);
+            .copy_from_slice(
+                &beneficiaries[new_secondary_beneficiary]
+                    .beneficiary
+                    .try_to_vec()?,
+            );
 
         endpoint_info
             .data
