@@ -67,7 +67,7 @@ export class Settings {
                 );
                 lastReward = nextEmissionChange;
                 nextEmissionChange += SECONDS_PER_YEAR.toNumber();
-                emission = emission.muln(3).divn(4);
+                emission = emission.muln(9).divn(10);
             }
 
             const seconds = new BN(newSeconds - lastReward);
