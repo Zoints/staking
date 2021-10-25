@@ -134,7 +134,7 @@ impl Settings {
 
                 self.last_reward = self.next_emission_change;
                 self.next_emission_change += SECONDS_PER_YEAR as i64;
-                self.emission = (self.emission as u128 * 3 / 4) as u64; // 75%
+                self.emission = (self.emission as u128 * 9 / 10) as u64; // 90%
             }
 
             let seconds = (now - self.last_reward) as u128;
@@ -485,23 +485,23 @@ mod tests {
             (
                 SECONDS_PER_YEAR + 1,
                 PRECISION * BASE_REWARD / SECONDS_PER_YEAR * SECONDS_PER_YEAR
-                    + PRECISION * (BASE_REWARD * 3 / 4) / SECONDS_PER_YEAR,
+                    + PRECISION * (BASE_REWARD * 9 / 10) / SECONDS_PER_YEAR,
             ),
             (
                 SECONDS_PER_YEAR + 2,
                 PRECISION * BASE_REWARD / SECONDS_PER_YEAR * SECONDS_PER_YEAR
-                    + PRECISION * (BASE_REWARD * 3 / 4) / SECONDS_PER_YEAR * 2,
+                    + PRECISION * (BASE_REWARD * 9 / 10) / SECONDS_PER_YEAR * 2,
             ),
             (
                 SECONDS_PER_YEAR * 2,
                 PRECISION * BASE_REWARD / SECONDS_PER_YEAR * SECONDS_PER_YEAR
-                    + PRECISION * (BASE_REWARD * 3 / 4) / SECONDS_PER_YEAR * SECONDS_PER_YEAR,
+                    + PRECISION * (BASE_REWARD * 9 / 10) / SECONDS_PER_YEAR * SECONDS_PER_YEAR,
             ),
             (
                 SECONDS_PER_YEAR * 3,
                 PRECISION * BASE_REWARD / SECONDS_PER_YEAR * SECONDS_PER_YEAR
-                    + PRECISION * (BASE_REWARD * 3 / 4) / SECONDS_PER_YEAR * SECONDS_PER_YEAR
-                    + PRECISION * (BASE_REWARD * 3 / 4 * 3 / 4) / SECONDS_PER_YEAR
+                    + PRECISION * (BASE_REWARD * 9 / 10) / SECONDS_PER_YEAR * SECONDS_PER_YEAR
+                    + PRECISION * (BASE_REWARD * 9 / 10 * 9 / 10) / SECONDS_PER_YEAR
                         * SECONDS_PER_YEAR,
             ),
             (
@@ -513,10 +513,10 @@ mod tests {
                     .unwrap()
                     .checked_mul(SECONDS_PER_YEAR)
                     .unwrap()
-                    + PRECISION * (BASE_REWARD * 3 / 4) / SECONDS_PER_YEAR * SECONDS_PER_YEAR
-                    + PRECISION * (BASE_REWARD * 3 / 4 * 3 / 4) / SECONDS_PER_YEAR
+                    + PRECISION * (BASE_REWARD * 9 / 10) / SECONDS_PER_YEAR * SECONDS_PER_YEAR
+                    + PRECISION * (BASE_REWARD * 9 / 10 * 9 / 10) / SECONDS_PER_YEAR
                         * SECONDS_PER_YEAR
-                    + PRECISION * (BASE_REWARD * 3 / 4 * 3 / 4 * 3 / 4) / SECONDS_PER_YEAR,
+                    + PRECISION * (BASE_REWARD * 9 / 10 * 9 / 10 * 9 / 10) / SECONDS_PER_YEAR,
             ),
         ];
 

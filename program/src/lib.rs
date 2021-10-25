@@ -14,7 +14,7 @@ pub const ZERO_KEY: Pubkey = Pubkey::new_from_array([0; 32]);
 pub const MINIMUM_STAKE: u64 = 1_000;
 /// The amount of ZEE per year that are distributed as yield.
 /// The initial value of the emission system.
-pub const BASE_REWARD: u128 = 900_000_000_000;
+pub const BASE_REWARD: u128 = 550_000_000_000;
 /// Helper constant
 pub const SECONDS_PER_YEAR: u128 = 31_536_000;
 /// Internally all yield calculations are done in integers to avoid
@@ -129,7 +129,7 @@ mod tests {
                 .checked_mul(SECONDS_PER_YEAR)
                 .unwrap();
 
-            emission_per_year = (emission_per_year * 3) / 4; // *.75
+            emission_per_year = (emission_per_year * 9) / 10; // * .90
         }
 
         println!(
