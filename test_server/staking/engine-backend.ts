@@ -1,10 +1,10 @@
 import { Keypair } from '@solana/web3.js';
 import { App } from './app';
-import { AppCommunity, AppStaker } from './community';
 import { StakeEngine } from './engine';
 import axios, { AxiosInstance } from 'axios';
 import nacl from 'tweetnacl';
 
+/*
 export class EngineBackend implements StakeEngine {
     url: string;
     client: AxiosInstance;
@@ -182,3 +182,4 @@ export class EngineBackend implements StakeEngine {
         }
     }
 }
+*/

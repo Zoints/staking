@@ -3,12 +3,14 @@ import 'mocha';
 import * as borsh from 'borsh';
 import {
     AmountSchema,
+    Authority,
+    AuthorityType,
     decodeInstructionData,
+    AuthoritySchema,
     InitSchema,
     Instruction,
     Instructions,
-    INSTRUCTION_SCHEMA,
-    SimpleSchema
+    INSTRUCTION_SCHEMA
 } from '../src';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import BN from 'bn.js';
@@ -154,9 +156,16 @@ describe('Serialization', () => {
         expect(reverse).to.be.eql(init);
     });
 
-    it('decode unknown simple instruction data', async () => {
-        const init = new SimpleSchema({
-            instructionId: Instructions.RegisterEndpoint // uses simple schema
+    it('decode unknown authority instruction data', async () => {
+        const authority = new Authority({
+            authorityType: AuthorityType.Basic,
+            address: new PublicKey(
+                '2bvn5d4krBDdCXEMH9KKHPx8xGauv6wEsaPZWAyYnUJh'
+            )
+        });
+        const init = new AuthoritySchema({
+            instructionId: Instructions.RegisterEndpoint, // uses simple schema
+            authority
         });
 
         const data = Buffer.from(borsh.serialize(INSTRUCTION_SCHEMA, init));

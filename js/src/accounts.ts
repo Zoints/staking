@@ -85,6 +85,21 @@ export class Settings {
     }
 }
 
+export enum AuthorityType {
+    Basic,
+    NFT
+}
+
+export class Authority {
+    authorityType: AuthorityType;
+    address: PublicKey;
+
+    constructor(params: { authorityType: AuthorityType; address: PublicKey }) {
+        this.authorityType = params.authorityType;
+        this.address = params.address;
+    }
+}
+
 export class Beneficiary {
     public authority: PublicKey;
     public staked: BN;
@@ -111,7 +126,7 @@ export class Beneficiary {
     }
 
     public isEmpty(): boolean {
-        return this.authority.equals(PublicKey.default);
+        return this.authority == PublicKey.default;
     }
 }
 
@@ -119,21 +134,20 @@ export class Endpoint {
     public creationDate: Date;
     public totalStake: BN;
 
-    public authority: PublicKey;
-
+    public owner: Authority;
     public primary: PublicKey;
     public secondary: PublicKey;
 
     constructor(params: {
         creationDate: Date;
         totalStake: BN;
-        authority: PublicKey;
+        owner: Authority;
         primary: PublicKey;
         secondary: PublicKey;
     }) {
         this.creationDate = params.creationDate;
         this.totalStake = params.totalStake;
-        this.authority = params.authority;
+        this.owner = params.owner;
         this.primary = params.primary;
         this.secondary = params.secondary;
     }
@@ -171,7 +185,6 @@ export const ACCOUNT_SCHEMA: borsh.Schema = new Map<any, any>([
                 ['unbondingTime', 'u64'],
                 ['nextEmissionChange', 'Date'],
                 ['emission', 'u64'],
-
                 ['totalStake', 'u64'],
                 ['rewardPerShare', 'u128'],
                 ['lastReward', 'Date']
@@ -197,7 +210,7 @@ export const ACCOUNT_SCHEMA: borsh.Schema = new Map<any, any>([
             fields: [
                 ['creationDate', 'Date'],
                 ['totalStake', 'u64'],
-                ['authority', 'PublicKey'],
+                ['owner', 'Authority'],
                 ['primary', 'PublicKey'],
                 ['secondary', 'PublicKey']
             ]

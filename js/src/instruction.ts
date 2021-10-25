@@ -7,7 +7,7 @@ import {
     SYSVAR_RENT_PUBKEY,
     TransactionInstruction
 } from '@solana/web3.js';
-import { Staking } from '.';
+import { Authority, AuthorityType, Staking } from '.';
 import * as borsh from 'borsh';
 import './extendBorsh';
 import BN from 'bn.js';
@@ -18,21 +18,33 @@ export enum Instructions {
     InitializeStake,
     Stake,
     WithdrawUnbond,
-    Claim
+    Claim,
+    TransferEndpoint,
+    ChangeBeneficiaries
 }
 
-export type InstructionSchema = SimpleSchema | AmountSchema | InitSchema;
+export type InstructionSchema =
+    | SimpleSchema
+    | AmountSchema
+    | InitSchema
+    | AuthoritySchema;
 
 export class SimpleSchema {
     instructionId: Exclude<
         Instructions,
-        Instructions.Initialize | Instructions.Stake
+        | Instructions.Initialize
+        | Instructions.Stake
+        | Instructions.RegisterEndpoint
+        | Instructions.TransferEndpoint
     >;
 
     constructor(params: {
         instructionId: Exclude<
             Instructions,
-            Instructions.Initialize | Instructions.Stake
+            | Instructions.Initialize
+            | Instructions.Stake
+            | Instructions.RegisterEndpoint
+            | Instructions.TransferEndpoint
         >;
     }) {
         this.instructionId = params.instructionId;
@@ -62,6 +74,25 @@ export class InitSchema {
         this.instructionId = params.instructionId;
         this.startTime = params.startTime;
         this.unbondingDuration = params.unbondingDuration;
+    }
+}
+
+export class AuthoritySchema {
+    instructionId: Extract<
+        Instructions,
+        Instructions.TransferEndpoint | Instructions.RegisterEndpoint
+    >;
+    authority: Authority;
+
+    constructor(params: {
+        instructionId: Extract<
+            Instructions,
+            Instructions.TransferEndpoint | Instructions.RegisterEndpoint
+        >;
+        authority: Authority;
+    }) {
+        this.instructionId = params.instructionId;
+        this.authority = params.authority;
     }
 }
 
@@ -108,8 +139,8 @@ export class Instruction {
     public static async RegisterEndpoint(
         programId: PublicKey,
         funder: PublicKey,
-        owner: PublicKey,
         endpoint: PublicKey,
+        owner: Authority,
         primary: PublicKey,
         secondary?: PublicKey
     ): Promise<TransactionInstruction> {
@@ -128,8 +159,8 @@ export class Instruction {
 
         const keys: AccountMeta[] = [
             am(funder, true, true),
-            am(owner, false, false),
             am(endpoint, true, true),
+            am(owner.address, false, false),
             am(primary, false, false),
             am(primaryBeneficiary, false, true),
             am(secondary, false, false),
@@ -139,8 +170,9 @@ export class Instruction {
             am(SystemProgram.programId, false, false)
         ];
 
-        const instruction = new SimpleSchema({
-            instructionId: Instructions.RegisterEndpoint
+        const instruction = new AuthoritySchema({
+            instructionId: Instructions.RegisterEndpoint,
+            authority: owner
         });
         const instructionData = borsh.serialize(
             INSTRUCTION_SCHEMA,
@@ -347,6 +379,104 @@ export class Instruction {
             data: Buffer.from(instructionData)
         });
     }
+
+    public static async TransferEndpoint(
+        programId: PublicKey,
+        funder: PublicKey,
+        endpoint: PublicKey,
+        owner: PublicKey,
+        ownerSigner: PublicKey,
+        recipient: Authority
+    ): Promise<TransactionInstruction> {
+        const keys: AccountMeta[] = [
+            am(funder, true, true),
+            am(endpoint, false, true),
+            am(owner, false, false),
+            am(ownerSigner, true, false),
+            am(recipient.address, false, false),
+            am(recipient.address, false, false)
+        ];
+
+        const instruction = new AuthoritySchema({
+            instructionId: Instructions.TransferEndpoint,
+            authority: recipient
+        });
+        const instructionData = borsh.serialize(
+            INSTRUCTION_SCHEMA,
+            instruction
+        );
+
+        return new TransactionInstruction({
+            keys: keys,
+            programId,
+            data: Buffer.from(instructionData)
+        });
+    }
+
+    public static async ChangeBeneficiaries(
+        programId: PublicKey,
+        funder: PublicKey,
+        endpoint: PublicKey,
+        owner: PublicKey,
+        ownerSigner: PublicKey,
+        oldPrimary: PublicKey,
+        oldSecondary: PublicKey,
+        newPrimary: PublicKey,
+        newSecondary?: PublicKey
+    ): Promise<TransactionInstruction> {
+        const settingsId = await Staking.settingsId(programId);
+        if (newSecondary === undefined) {
+            newSecondary = PublicKey.default;
+        }
+
+        const oldPrimaryBeneficiary = await Staking.beneficiary(
+            oldPrimary,
+            programId
+        );
+        const oldSecondaryBeneficiary = await Staking.beneficiary(
+            oldSecondary,
+            programId
+        );
+
+        const newPrimaryBeneficiary = await Staking.beneficiary(
+            newPrimary,
+            programId
+        );
+        const newSecondaryBeneficiary = await Staking.beneficiary(
+            newSecondary,
+            programId
+        );
+        const keys: AccountMeta[] = [
+            am(funder, true, true),
+            am(endpoint, false, true),
+            am(owner, false, false),
+            am(ownerSigner, true, false),
+            am(oldPrimaryBeneficiary, false, true),
+            am(oldSecondaryBeneficiary, false, true),
+            am(newPrimary, false, false),
+            am(newPrimaryBeneficiary, false, true),
+            am(newSecondary, false, false),
+            am(newSecondaryBeneficiary, false, true),
+            am(settingsId, false, true),
+            am(SYSVAR_RENT_PUBKEY, false, false),
+            am(SYSVAR_CLOCK_PUBKEY, false, false),
+            am(SystemProgram.programId, false, false)
+        ];
+
+        const instruction = new SimpleSchema({
+            instructionId: Instructions.ChangeBeneficiaries
+        });
+        const instructionData = borsh.serialize(
+            INSTRUCTION_SCHEMA,
+            instruction
+        );
+
+        return new TransactionInstruction({
+            keys: keys,
+            programId,
+            data: Buffer.from(instructionData)
+        });
+    }
 }
 
 function am(
@@ -363,6 +493,9 @@ export function decodeInstructionData(data: Buffer): InstructionSchema {
             return borsh.deserialize(INSTRUCTION_SCHEMA, InitSchema, data);
         case Instructions.Stake:
             return borsh.deserialize(INSTRUCTION_SCHEMA, AmountSchema, data);
+        case Instructions.RegisterEndpoint: // fallthrough intentional
+        case Instructions.TransferEndpoint:
+            return borsh.deserialize(INSTRUCTION_SCHEMA, AuthoritySchema, data);
         default:
             return borsh.deserialize(INSTRUCTION_SCHEMA, SimpleSchema, data);
     }
@@ -394,6 +527,16 @@ export const INSTRUCTION_SCHEMA: borsh.Schema = new Map<any, any>([
                 ['instructionId', 'u8'],
                 ['startTime', 'Date'],
                 ['unbondingDuration', 'u64']
+            ]
+        }
+    ],
+    [
+        AuthoritySchema,
+        {
+            kind: 'struct',
+            fields: [
+                ['instructionId', 'u8'],
+                ['authority', 'Authority']
             ]
         }
     ]

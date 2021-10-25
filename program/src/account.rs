@@ -3,11 +3,40 @@ use solana_program::account_info::AccountInfo;
 use solana_program::clock::UnixTimestamp;
 
 use solana_program::msg;
-use solana_program::{program_error::ProgramError, pubkey::Pubkey};
+use solana_program::{
+    program_error::ProgramError, program_option::COption, program_pack::Pack, pubkey::Pubkey,
+};
+use spl_token::state::{Account, Mint};
 
 use crate::error::StakingError;
-use crate::ZERO_KEY;
 use crate::{PRECISION, SECONDS_PER_YEAR};
+
+/// Verifies that an account is a valid mint for an NFT
+#[macro_export]
+macro_rules! is_nft_mint {
+    ($data:expr) => {
+        match Mint::unpack(&$data) {
+            Ok(mint) => {
+                if !mint.is_initialized {
+                    msg!("not initialized");
+                    Err(StakingError::NFTOwnerNotNFT)
+                } else if mint.decimals != 0 {
+                    msg!("invalid decimals");
+                    Err(StakingError::NFTOwnerNotNFT)
+                } else if mint.supply != 1 {
+                    msg!("invalid supply");
+                    Err(StakingError::NFTOwnerNotNFT)
+                } else if mint.mint_authority != COption::None {
+                    msg!("mint authority is not locked");
+                    Err(StakingError::NFTOwnerNotNFT)
+                } else {
+                    Ok(mint)
+                }
+            }
+            _ => Err(StakingError::NFTOwnerNotNFT),
+        }
+    };
+}
 
 /// Account to hold global variables commonly used by instructions
 #[repr(C)]
@@ -175,8 +204,62 @@ impl RewardPool {
     }
 }
 
+/// The way that the "Authority" address should be interpreted.
+#[derive(Debug, PartialEq, Eq, Clone, Copy, BorshDeserialize, BorshSerialize)]
+pub enum Authority {
+    /// A regular Solana address that can sign instructions
+    Basic(Pubkey),
+    /// An NFT mint address where the signer is the NFT's current holder
+    NFT(Pubkey),
+}
+
+impl Authority {
+    pub fn verify(&self, account: &AccountInfo) -> Result<(), ProgramError> {
+        match self {
+            Authority::Basic(pubkey) => {
+                if *pubkey == Pubkey::default() {
+                    msg!("Basic authority has null pubkey");
+                    Err(StakingError::InvalidAuthorityType.into())
+                } else if *pubkey != *account.key {
+                    Err(StakingError::AuthorityKeysDoNotMatch.into())
+                } else {
+                    Ok(())
+                }
+            }
+            Authority::NFT(mint) => {
+                if *mint == Pubkey::default() {
+                    msg!("NFT authority has null account");
+                    Err(StakingError::InvalidAuthorityType.into())
+                } else if *mint != *account.key {
+                    Err(StakingError::AuthorityKeysDoNotMatch.into())
+                } else {
+                    match is_nft_mint!(account.data.borrow()) {
+                        Ok(_) => Ok(()),
+                        Err(err) => Err(err.into()),
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn has_signed(&self, owner: &AccountInfo, signer: &AccountInfo) -> bool {
+        match self {
+            Authority::Basic(key) => {
+                *key == *owner.key && *owner.key == *signer.key && signer.is_signer
+            }
+            Authority::NFT(mint) => {
+                let account = Account::unpack(&owner.data.borrow()).unwrap(); // @todo better than unwrap?
+                account.mint == *mint
+                    && account.amount == 1
+                    && account.owner == *signer.key
+                    && signer.is_signer
+            }
+        }
+    }
+}
+
 /// An Endpoint is a the entity that someone can stake against to share yield.
-/// Each endpoint has an authority, which is the solana address in charge of making
+/// Each endpoint has an owner, which is the entity in charge of making
 /// decisions about the Endpoint itself, once that functionality is implemented.
 /// The Primary beneficiary receives 45% of the staker's yield, the secondary beneficiary
 /// receives 5% of the staker's yield.
@@ -189,8 +272,8 @@ pub struct Endpoint {
     pub creation_date: UnixTimestamp,
     /// Total amount of ZEE staked to this endpoint
     pub total_stake: u64,
-    /// The endpoint's authority
-    pub authority: Pubkey,
+    /// The owner of the endpoint
+    pub owner: Authority,
     /// The primary beneficiary receiving 45% of yield
     pub primary: Pubkey,
     /// The secondary beneficiary receiving 5% of yield
@@ -214,9 +297,8 @@ impl Endpoint {
 /// A Beneficiary receives yield based on the amount of ZEE staked.
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
 pub struct Beneficiary {
-    /// The address who is allowed to harvest the yield
+    /// The authority that owns the Beneficiary
     pub authority: Pubkey,
-
     /// The amount of ZEE staked for the beneficiary
     pub staked: u64,
     /// Helper variable. For more information see https://www.mathcha.io/editor/j4V1YiODsYQu8dee0NiO39Z05cePQvk0f9qPex6
@@ -253,7 +335,7 @@ impl Beneficiary {
 
     /// True if there is no authority
     pub fn is_empty(&self) -> bool {
-        self.authority == ZERO_KEY
+        self.authority == Pubkey::default()
     }
 
     /// The total amount of theoretical ZEE owed if the amount staked had been staked
@@ -461,5 +543,60 @@ mod tests {
         assert_eq!(beneficiary.staked, 0);
         assert_eq!(beneficiary.reward_debt, 0);
         assert_eq!(beneficiary.holding, 0);
+    }
+
+    #[test]
+    pub fn test_verify_nft_macro() {
+        let mut data = [0; Mint::LEN];
+
+        let ok_mint = Mint {
+            mint_authority: COption::None,
+            supply: 1,
+            decimals: 0,
+            is_initialized: true,
+            freeze_authority: COption::None,
+        };
+        Mint::pack(ok_mint, &mut data).unwrap();
+        assert_eq!(Ok(ok_mint), is_nft_mint!(data));
+
+        let bad_mint_authority = Mint {
+            mint_authority: COption::Some(Pubkey::new_unique()),
+            supply: 1,
+            decimals: 0,
+            is_initialized: true,
+            freeze_authority: COption::None,
+        };
+        Mint::pack(bad_mint_authority, &mut data).unwrap();
+        assert_eq!(Err(StakingError::NFTOwnerNotNFT), is_nft_mint!(data));
+
+        let bad_mint_supply = Mint {
+            mint_authority: COption::None,
+            supply: 2,
+            decimals: 0,
+            is_initialized: true,
+            freeze_authority: COption::None,
+        };
+        Mint::pack(bad_mint_supply, &mut data).unwrap();
+        assert_eq!(Err(StakingError::NFTOwnerNotNFT), is_nft_mint!(data));
+
+        let bad_mint_decimals = Mint {
+            mint_authority: COption::None,
+            supply: 1,
+            decimals: 10,
+            is_initialized: true,
+            freeze_authority: COption::None,
+        };
+        Mint::pack(bad_mint_decimals, &mut data).unwrap();
+        assert_eq!(Err(StakingError::NFTOwnerNotNFT), is_nft_mint!(data));
+
+        let bad_mint_initialized = Mint {
+            mint_authority: COption::None,
+            supply: 1,
+            decimals: 0,
+            is_initialized: false,
+            freeze_authority: COption::None,
+        };
+        Mint::pack(bad_mint_initialized, &mut data).unwrap();
+        assert_eq!(Err(StakingError::NFTOwnerNotNFT), is_nft_mint!(data));
     }
 }

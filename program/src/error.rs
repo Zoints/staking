@@ -34,6 +34,10 @@ pub enum StakingError {
     #[error("Token is not a valid SPL token")]
     TokenNotSPLToken,
 
+    /// NFT owner is not a valid NFT
+    #[error("NFT owner is not a valid NFT")]
+    NFTOwnerNotNFT,
+
     /// Endpoint Account Already Exists
     #[error("Endpoint Account Already Exists")]
     EndpointAccountAlreadyExists,
@@ -97,6 +101,22 @@ pub enum StakingError {
     /// Invalid Token
     #[error("Invalid Token")]
     InvalidToken,
+
+    /// Primary Authority Cannot Be Empty
+    #[error("Primary Authority Cannot Be Empty")]
+    PrimaryAuthorityCannotBeEmpty,
+
+    /// Invalid Authority Type
+    #[error("Invalid Authority Type")]
+    InvalidAuthorityType,
+
+    ///  Authority Keys Do Not Match
+    #[error("Authority Keys Do Not Match")]
+    AuthorityKeysDoNotMatch,
+
+    /// Secondary Authority Keys Do Not Match
+    #[error("Secondary Authority Keys Do Not Match")]
+    SecondaryAuthorityKeysDoNotMatch,
 }
 
 impl From<StakingError> for ProgramError {
