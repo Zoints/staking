@@ -317,12 +317,12 @@ export class Instruction {
 
         const keys: AccountMeta[] = [
             am(funder, true, true),
+            am(stakeId, false, true),
             am(staker, true, false),
             am(stakeFund, false, true),
             am(stakerAssociated, false, true),
             am(endpoint, false, false),
             am(settingsId, false, false),
-            am(stakeId, false, true),
             am(SYSVAR_CLOCK_PUBKEY, false, false),
             am(TOKEN_PROGRAM_ID, false, false)
         ];
