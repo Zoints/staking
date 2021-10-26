@@ -10,22 +10,14 @@ export interface StakeEngine {
         primary: PublicKey,
         secondary: PublicKey
     ): Promise<void>;
-    claim(
-        app: App,
-        authority: Keypair,
-        communities?: PublicKey[]
-    ): Promise<void>;
+    claim(app: App, authority: Keypair, endpoints?: PublicKey[]): Promise<void>;
     stake(
         app: App,
         endpoint: PublicKey,
         staker: Keypair,
         amount: bigint
     ): Promise<void>;
-    withdraw(
-        app: App,
-        staker: Keypair,
-        communities: PublicKey[]
-    ): Promise<void>;
+    withdraw(app: App, staker: Keypair, endpoints: PublicKey[]): Promise<void>;
     transfer(
         app: App,
         endpoint: PublicKey,
