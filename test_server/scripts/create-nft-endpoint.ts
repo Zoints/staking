@@ -1,5 +1,6 @@
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import {
+    clusterApiUrl,
     Connection,
     Keypair,
     LAMPORTS_PER_SOL,
@@ -14,7 +15,7 @@ import {
     Authority
 } from '@zoints/staking';
 
-const connection = new Connection('http://localhost:8899', 'confirmed');
+const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
 const programId = new PublicKey('6K6MbwYzafYS7yLQenBkPCZwf4k8XWJxvTNzFryzJvro');
 const staking = new Staking(programId, connection);
 (async () => {

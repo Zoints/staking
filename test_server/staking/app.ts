@@ -413,6 +413,7 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
 
             break;
         }
+        console.log(`BPF Deployed`);
     }
 
     async getEndpointOwnerAndOwnerSigner(
