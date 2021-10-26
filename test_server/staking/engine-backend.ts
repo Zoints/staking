@@ -1,10 +1,10 @@
-import { Keypair } from '@solana/web3.js';
+import { Keypair, PublicKey } from '@solana/web3.js';
 import { App } from './app';
 import { StakeEngine } from './engine';
 import axios, { AxiosInstance } from 'axios';
 import nacl from 'tweetnacl';
+import { Authority } from '@zoints/staking';
 
-/*
 export class EngineBackend implements StakeEngine {
     url: string;
     client: AxiosInstance;
@@ -53,16 +53,19 @@ export class EngineBackend implements StakeEngine {
         });
     }
 
-    async registerCommunity(
+    async registerEndpoint(
         app: App,
-        community: AppCommunity,
-        noSecondary: boolean
+        key: Keypair,
+        owner: Authority,
+        primary: PublicKey,
+        secondary: PublicKey
     ): Promise<void> {
-        const result = await this.post('staking/v1/community/register', {
-            owner: community.authority.publicKey.toBase58(),
-            primary: community.primaryAuthority.publicKey.toBase58(),
-            secondary: community.secondaryAuthority.publicKey.toBase58(),
-            seed: Buffer.from(community.key.secretKey).toString('hex')
+        const result = await this.post('staking/v1/endpoint/register', {
+            authorityType: owner.authorityType,
+            authorityAddress: owner.address.toBase58(),
+            primary: primary.toBase58(),
+            secondary: secondary.toBase58(),
+            seed: Buffer.from(key.secretKey).toString('hex')
         });
 
         const confirm = await this.get(
@@ -70,26 +73,26 @@ export class EngineBackend implements StakeEngine {
         );
 
         console.log(
-            `Community create:\n\tsig: ${result.txSignature}\n\tcommunity: ${result.community}\n\tconfirm: ${confirm.status}`
+            `Endpoint create:\n\tsig: ${result.txSignature}\n\tendpoint: ${result.endpoint}\n\tconfirm: ${confirm.status}`
         );
     }
 
     async claim(
         app: App,
         authority: Keypair,
-        communities?: AppCommunity[]
+        endpoints?: PublicKey[]
     ): Promise<void> {
-        const commKeys: string[] = [];
-        if (communities) {
-            for (const comm of communities) {
-                commKeys.push(comm.key.publicKey.toBase58());
+        const epKeys: string[] = [];
+        if (endpoints) {
+            for (const ep of endpoints) {
+                epKeys.push(ep.toBase58());
             }
         }
 
         const prep = await this.post(`staking/v1/claim/prepare`, {
             fund: true,
             authority: authority.publicKey.toBase58(),
-            withdraw: commKeys
+            withdraw: epKeys
         });
 
         const data = Buffer.from(prep.message, 'base64');
@@ -111,12 +114,12 @@ export class EngineBackend implements StakeEngine {
     }
     async stake(
         app: App,
-        community: AppCommunity,
-        staker: AppStaker,
+        endpoint: PublicKey,
+        staker: Keypair,
         amount: bigint
     ): Promise<void> {
         const prep = await this.post(
-            `staking/v1/stake/${community.key.publicKey.toBase58()}/${staker.key.publicKey.toBase58()}/stake/prepare`,
+            `staking/v1/stake/${endpoint.toBase58()}/${staker.publicKey.toBase58()}/stake/prepare`,
             {
                 fund: true,
                 amount: Number(amount)
@@ -128,11 +131,11 @@ export class EngineBackend implements StakeEngine {
 
         const userSig = nacl.sign.detached(
             Buffer.from(prep.message, 'base64'),
-            staker.key.secretKey
+            staker.secretKey
         );
 
         const result = await this.post(
-            `staking/v1/stake/${community.key.publicKey.toBase58()}/${staker.key.publicKey.toBase58()}/stake`,
+            `staking/v1/stake/${endpoint.toBase58()}/${staker.publicKey.toBase58()}/stake`,
             {
                 userSignature: Buffer.from(userSig).toString('base64'),
                 message: prep.message
@@ -149,12 +152,12 @@ export class EngineBackend implements StakeEngine {
 
     async withdraw(
         app: App,
-        staker: AppStaker,
-        communities: AppCommunity[]
+        staker: Keypair,
+        endpoints: PublicKey[]
     ): Promise<void> {
-        for (const community of communities) {
+        for (const endpoint of endpoints) {
             const prep = await this.post(
-                `staking/v1/stake/${community.key.publicKey.toBase58()}/${staker.key.publicKey.toBase58()}/withdraw/prepare`,
+                `staking/v1/stake/${endpoint.toBase58()}/${staker.publicKey.toBase58()}/withdraw/prepare`,
                 {
                     fund: true
                 }
@@ -162,11 +165,11 @@ export class EngineBackend implements StakeEngine {
 
             const userSig = nacl.sign.detached(
                 Buffer.from(prep.message, 'base64'),
-                staker.key.secretKey
+                staker.secretKey
             );
 
             const result = await this.post(
-                `staking/v1/stake/${community.key.publicKey.toBase58()}/${staker.key.publicKey.toBase58()}/withdraw`,
+                `staking/v1/stake/${endpoint.toBase58()}/${staker.publicKey.toBase58()}/withdraw`,
                 {
                     userSignature: Buffer.from(userSig).toString('base64'),
                     message: prep.message
@@ -181,5 +184,86 @@ export class EngineBackend implements StakeEngine {
             );
         }
     }
+
+    async transfer(
+        app: App,
+        endpoint: PublicKey,
+        owner: PublicKey,
+        ownerSigner: Keypair,
+        recipient: Authority
+    ): Promise<void> {
+        const prep = await this.post(
+            `staking/v1/endpoint/transfer/${endpoint.toBase58()}/prepare`,
+            {
+                fund: true,
+                recipientType: recipient.authorityType,
+                recipient: recipient.address.toBase58()
+            }
+        );
+        console.log(
+            `Transfer prep: \n\trecent: ${prep.recent}\n\tmessage: ${prep.message}`
+        );
+
+        const userSig = nacl.sign.detached(
+            Buffer.from(prep.message, 'base64'),
+            ownerSigner.secretKey
+        );
+
+        const result = await this.post(
+            `staking/v1/endpoint/transfer/${endpoint.toBase58()}`,
+            {
+                userSignature: Buffer.from(userSig).toString('base64'),
+                message: prep.message
+            }
+        );
+
+        const confirm = await this.get(
+            `general/v1/confirm/${result.txSignature}`
+        );
+        console.log(
+            `Transfer result: ${result.txSignature}\n\t${confirm.status}`
+        );
+    }
+    async changeBeneficiaries(
+        app: App,
+        endpoint: PublicKey,
+        owner: PublicKey,
+        ownerSigner: Keypair,
+        oldPrimary: PublicKey,
+        oldSecondary: PublicKey,
+        newPrimary: PublicKey,
+        newSecondary: PublicKey
+    ): Promise<void> {
+        const prep = await this.post(
+            `staking/v1/endpoint/change-beneficiaries/${endpoint.toBase58()}/prepare`,
+            {
+                fund: true,
+                newPrimary,
+                newSecondary
+            }
+        );
+        console.log(
+            `Change beneficiaries prep: \n\trecent: ${prep.recent}\n\tmessage: ${prep.message}`
+        );
+
+        const userSig = nacl.sign.detached(
+            Buffer.from(prep.message, 'base64'),
+            ownerSigner.secretKey
+        );
+
+        const result = await this.post(
+            `staking/v1/endpoint/change-beneficiaries/${endpoint.toBase58()}`,
+            {
+                userSignature: Buffer.from(userSig).toString('base64'),
+                message: prep.message
+            }
+        );
+
+        const confirm = await this.get(
+            `general/v1/confirm/${result.txSignature}`
+        );
+        console.log(
+            `Change beneficiaries result: ${result.txSignature}\n\t${confirm.status}`
+        );
+    }
 }
-*/

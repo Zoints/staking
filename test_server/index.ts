@@ -3,23 +3,18 @@ import * as express from 'express';
 import { viewEndpoint, wrap, viewWallet, viewNFT } from './view';
 import { EngineDirect } from './staking/engine-direct';
 import { Authority, AuthorityType } from '@zoints/staking';
-import { Keypair, PublicKey } from '@solana/web3.js';
-import {
-    ASSOCIATED_TOKEN_PROGRAM_ID,
-    Token,
-    TOKEN_PROGRAM_ID
-} from '@solana/spl-token';
-//import { EngineBackend } from './staking/engine-backend';
+import { PublicKey } from '@solana/web3.js';
+import { EngineBackend } from './staking/engine-backend';
 
 const app = express.default();
 const port = 8081;
 
 const engine = new EngineDirect();
-/*  process.env.ENGINE?.toLowerCase() === 'direct'
-        ? new EngineDirect()
-        : new EngineBackend('http://localhost:8080/');*/
+process.env.ENGINE?.toLowerCase() === 'backend'
+    ? new EngineBackend('http://localhost:8080/')
+    : new EngineDirect();
 console.log(
-    `Engine: ${process.env.ENGINE === 'direct' ? 'direct' : 'backend'}`
+    `Engine: ${process.env.ENGINE === 'backend' ? 'backend' : 'direct'}`
 );
 
 const staking = new App(
