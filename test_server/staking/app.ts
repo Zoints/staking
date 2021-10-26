@@ -379,10 +379,10 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
     }
 
     private async fund() {
-        console.log(`Funding funder with 100 SOL`);
+        console.log(`Funding funder with 5 SOL`);
         let sig = await this.connection.requestAirdrop(
             this.funder.publicKey,
-            100 * LAMPORTS_PER_SOL
+            5 * LAMPORTS_PER_SOL
         );
         await this.connection.confirmTransaction(sig);
         console.log(`Funded: ${sig}`);

@@ -7,7 +7,12 @@ import {
     sendAndConfirmTransaction,
     Transaction
 } from '@solana/web3.js';
-import { Instruction, OwnerType, Staking } from '@zoints/staking';
+import {
+    Instruction,
+    AuthorityType,
+    Staking,
+    Authority
+} from '@zoints/staking';
 
 const connection = new Connection('http://localhost:8899', 'confirmed');
 const programId = new PublicKey('6K6MbwYzafYS7yLQenBkPCZwf4k8XWJxvTNzFryzJvro');
@@ -46,9 +51,11 @@ const staking = new Staking(programId, connection);
         await Instruction.RegisterEndpoint(
             programId,
             funder.publicKey,
-            OwnerType.NFT,
-            token.publicKey,
             endpoint.publicKey,
+            new Authority({
+                authorityType: AuthorityType.NFT,
+                address: token.publicKey
+            }),
             primary.publicKey
         )
     );

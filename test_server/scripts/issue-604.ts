@@ -14,7 +14,12 @@ import {
     sendAndConfirmTransaction,
     Transaction
 } from '@solana/web3.js';
-import { Instruction, Staking } from '@zoints/staking';
+import {
+    Authority,
+    AuthorityType,
+    Instruction,
+    Staking
+} from '@zoints/staking';
 import BN from 'bn.js';
 
 const programId = new PublicKey('GGgStUEFvrGGj3aBH6mcLzyrMM6EyKDDuLZYbgZczq4Q');
@@ -65,11 +70,14 @@ async function createCommunity(
 ): Promise<Community> {
     const comm = new Keypair();
     const tx = new Transaction().add(
-        await Instruction.RegisterCommunity(
+        await Instruction.RegisterEndpoint(
             programId,
             funder.publicKey,
-            owner,
             comm.publicKey,
+            new Authority({
+                authorityType: AuthorityType.Basic,
+                address: owner
+            }),
             primary,
             secondary
         )
@@ -112,7 +120,6 @@ async function stake(staker: Address, community: Community, amount: bigint) {
             staker.pubkey,
             staker.assoc,
             community.pubkey,
-            feeRecipient,
             community.primary,
             community.secondary || PublicKey.default,
             amount

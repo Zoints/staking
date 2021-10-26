@@ -3,7 +3,7 @@ import * as express from 'express';
 import { viewEndpoint, wrap, viewWallet, viewNFT } from './view';
 import { EngineDirect } from './staking/engine-direct';
 import { Authority, AuthorityType } from '@zoints/staking';
-import { PublicKey } from '@solana/web3.js';
+import { clusterApiUrl, PublicKey } from '@solana/web3.js';
 import { EngineBackend } from './staking/engine-backend';
 
 const app = express.default();
@@ -17,8 +17,11 @@ console.log(
     `Engine: ${process.env.ENGINE === 'backend' ? 'backend' : 'direct'}`
 );
 
+const url = process.env.DEVNET
+    ? clusterApiUrl('devnet')
+    : 'http://localhost:8899';
 const staking = new App(
-    'http://localhost:8899',
+    url,
     '../program/target/deploy/staking.so',
     './seed.txt',
     engine
