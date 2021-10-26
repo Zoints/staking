@@ -223,6 +223,7 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
             await this.initializeProgram();
             console.log(`Initialization done.`);
         } else {
+            await this.initializeProgram();
             // autodetect accounts
 
             // wallets
@@ -478,6 +479,12 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
     }
 
     private async initializeProgram() {
+        const settingsID = await Staking.settingsId(this.program_id);
+        const exists = await this.connection.getAccountInfo(settingsID);
+        if (exists !== null) {
+            return;
+        }
+
         // Token library doesn't accept tokens with pre-defined mint for some reason
         const balanceNeeded = await Token.getMinBalanceRentForExemptMint(
             this.connection
