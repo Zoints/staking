@@ -403,7 +403,7 @@ export async function viewWallet(staking: App, id: number): Promise<string> {
             staking_list += `
                 <tr>
                     <td>Stake ID</td>
-                    <td>${wallet.toBase58()}</td>
+                    <td>${stakeId.toBase58()}</td>
                 </tr>
                 <tr>
                     <td>Created</td>
