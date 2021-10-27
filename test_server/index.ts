@@ -177,15 +177,9 @@ app.post(
         const [rType, rId] = String(req.body.newOwner).split('-');
         let recipient: Authority;
         if (rType == '1') {
-            recipient = new Authority({
-                authorityType: AuthorityType.NFT,
-                address: staking.nfts[Number(rId)].publicKey
-            });
+            recipient = Authority.NFT(staking.nfts[Number(rId)].publicKey);
         } else {
-            recipient = new Authority({
-                authorityType: AuthorityType.Basic,
-                address: staking.wallets[Number(rId)].publicKey
-            });
+            recipient = Authority.Basic(staking.wallets[Number(rId)].publicKey);
         }
 
         await staking.engine.transfer(

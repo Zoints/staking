@@ -98,6 +98,14 @@ export class Authority {
         this.authorityType = params.authorityType;
         this.address = params.address;
     }
+
+    static Basic(address: PublicKey): Authority {
+        return new this({ authorityType: AuthorityType.Basic, address });
+    }
+
+    static NFT(address: PublicKey): Authority {
+        return new this({ authorityType: AuthorityType.NFT, address });
+    }
 }
 
 export class Beneficiary {

@@ -52,10 +52,7 @@ const staking = new Staking(programId, connection);
             programId,
             funder.publicKey,
             endpoint.publicKey,
-            new Authority({
-                authorityType: AuthorityType.NFT,
-                address: token.publicKey
-            }),
+            Authority.NFT(token.publicKey),
             primary.publicKey
         )
     );
