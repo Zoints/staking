@@ -104,10 +104,7 @@ describe('borsh extensions', () => {
         const key = new PublicKey(
             'A7PR2hfpVDsBqd83mD6WSEr9Z9CvDNJ9FehcvvLdvuC2'
         );
-        const authority = new Authority({
-            authorityType: AuthorityType.NFT,
-            address: key
-        });
+        const authority = Authority.NFT(key);
 
         const authorityTest = new AuthorityTest({ authority });
         const data = Buffer.from(borsh.serialize(TEST_SCHEMA, authorityTest));

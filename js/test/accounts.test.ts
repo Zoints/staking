@@ -72,12 +72,9 @@ describe('Endpoint', () => {
         expect(endpoint.totalStake.eqn(120000)).to.be.true;
 
         expect(endpoint.owner).to.be.eql(
-            new Authority({
-                authorityType: AuthorityType.NFT,
-                address: new PublicKey(
-                    'QkzWg35HR5SsXRLHwUHnc4b1ch5YRijXp1sjxHeSCWf'
-                )
-            })
+            Authority.NFT(
+                new PublicKey('QkzWg35HR5SsXRLHwUHnc4b1ch5YRijXp1sjxHeSCWf')
+            )
         );
 
         expect(endpoint.primary).to.be.eql(
@@ -114,12 +111,9 @@ describe('Endpoint without secondary', () => {
         expect(endpoint.totalStake.eqn(120000)).to.be.true;
 
         expect(endpoint.owner).to.be.eql(
-            new Authority({
-                authorityType: AuthorityType.NFT,
-                address: new PublicKey(
-                    'QkzWg35HR5SsXRLHwUHnc4b1ch5YRijXp1sjxHeSCWf'
-                )
-            })
+            Authority.NFT(
+                new PublicKey('QkzWg35HR5SsXRLHwUHnc4b1ch5YRijXp1sjxHeSCWf')
+            )
         );
 
         expect(endpoint.primary).to.be.eql(

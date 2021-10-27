@@ -74,10 +74,7 @@ async function createCommunity(
             programId,
             funder.publicKey,
             comm.publicKey,
-            new Authority({
-                authorityType: AuthorityType.Basic,
-                address: owner
-            }),
+            Authority.Basic(owner),
             primary,
             secondary
         )

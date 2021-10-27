@@ -157,12 +157,9 @@ describe('Serialization', () => {
     });
 
     it('decode unknown authority instruction data', async () => {
-        const authority = new Authority({
-            authorityType: AuthorityType.Basic,
-            address: new PublicKey(
-                '2bvn5d4krBDdCXEMH9KKHPx8xGauv6wEsaPZWAyYnUJh'
-            )
-        });
+        const authority = Authority.Basic(
+            new PublicKey('2bvn5d4krBDdCXEMH9KKHPx8xGauv6wEsaPZWAyYnUJh')
+        );
         const init = new AuthoritySchema({
             instructionId: Instructions.RegisterEndpoint, // uses simple schema
             authority
