@@ -1,5 +1,5 @@
 import { clusterApiUrl, Connection, PublicKey } from '@solana/web3.js';
-import { Staking } from '@zoints/staking';
+import { PRECISION, Staking } from '@zoints/staking';
 
 // Run a simple audit on the reward pool to see how much has been paid out so far.
 // The reward pool balance should be somewhere between the initial balance and
@@ -8,7 +8,7 @@ import { Staking } from '@zoints/staking';
 const ONE_YEAR = 365 * 24 * 3600;
 const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
 const staking = new Staking(
-    new PublicKey('7vo1tfi7A7DfLi5viwb1eNwv9WUuphV2QS3TNv1nPUo5'),
+    new PublicKey('FBxGvPGn5248SUX6kV13MntjuGw3M5ka55kYPxg1Uju9'),
     connection
 );
 
@@ -38,7 +38,7 @@ const staking = new Staking(
         (await connection.getTokenAccountBalance(await staking.rewardPoolId()))
             .value.uiAmount || 0;
 
-    const initial = 3_600_000_000_000;
+    const initial = 5_000_000_000_000;
 
     console.log(`   Initial Reward Pool Balance: ${initial} ZEE`);
     console.log(`Current Balance of Reward Pool: ${balance} ZEE`);
