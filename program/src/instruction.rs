@@ -88,9 +88,8 @@ pub enum StakingInstruction {
     ///     5. `[writable]` Staker's ZEE Token Account
     ///     6. `[]` Endpoint
     ///     7. `[]` Settings
-    ///     8. `[]` Pool Authority
-    ///     9. `[]` Clock Sysvar
-    ///     10. `[]` SPL Token Program
+    ///     8. `[]` Clock Sysvar
+    ///     9. `[]` SPL Token Program
     WithdrawUnbond,
     /// Claim Beneficiary Yield
     ///
