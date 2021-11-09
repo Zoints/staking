@@ -21,10 +21,7 @@ use crate::{
     pool_transfer, split_stake, verify_associated, BASE_REWARD, MINIMUM_STAKE, SECONDS_PER_YEAR,
 };
 
-/// Transfer ZEE from a Pool
-///
-/// The type of pool (RewardPool/StakePool) has to be specified as the first parameter.
-/// The recipient has to be verified to be ZEE before this is used.
+/// Transfer ZEE from the reward pool
 #[macro_export]
 macro_rules! pool_transfer {
     ($fund_type:ident, $fund:expr, $recipient:expr, $authority:expr, $program_id:expr, $amount:expr) => {
@@ -117,12 +114,16 @@ macro_rules! create_beneficiary {
     };
 }
 
-pub struct WorkingBeneficiary {
+/// Helper struct to deal with endpoints where multiple beneficiaries are the same.
+/// The additions and subtractions to the stake amount are added up in this helper class
+/// before being applied to the beneficiary account and paid out at the end
+struct WorkingBeneficiary {
     pub beneficiary: Beneficiary,
     pub add: u64,
     pub sub: u64,
 }
 
+/// insert a beneficiary without duplication
 fn insert_beneficiary(
     beneficiaries: &mut Vec<WorkingBeneficiary>,
     owner: Pubkey,
@@ -734,7 +735,6 @@ impl Processor {
         let settings = Settings::from_account_info(settings_info, program_id)?;
         Endpoint::from_account_info(endpoint_info, program_id)?;
 
-        // stakes can only be owned by an address, not an nft
         if !staker_info.is_signer {
             return Err(StakingError::MissingStakeSignature.into());
         }
