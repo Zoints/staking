@@ -96,7 +96,7 @@ impl Settings {
     /// The basic formula is:
     ///   `reward per share += <time elapsed> * <emissions during that period> / <total amount staked>`
     ///
-    /// Emissions are automatically reduced by 25% every year
+    /// Emissions are automatically reduced by 10% every year
     pub fn update_rewards(&mut self, now: UnixTimestamp) {
         if now <= self.last_reward {
             return;
@@ -108,7 +108,7 @@ impl Settings {
         if self.total_stake > 0 {
             let mut reward: u128 = 0;
 
-            // emissions reduce by 25% every year, so if the period between `last_reward`
+            // emissions reduce by 10% every year, so if the period between `last_reward`
             // and `now` crosses the year threshold, we calculate the period in each year
             // separately
             // the math works across multiple year gaps though in production this would
