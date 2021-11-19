@@ -7,7 +7,7 @@ import {
     SYSVAR_RENT_PUBKEY,
     TransactionInstruction
 } from '@solana/web3.js';
-import { Authority, AuthorityType, Staking } from '.';
+import { Authority, Staking } from '.';
 import * as borsh from 'borsh';
 import './extendBorsh';
 import BN from 'bn.js';
@@ -247,8 +247,6 @@ export class Instruction {
         amount: bigint
     ): Promise<TransactionInstruction> {
         const settingsId = await Staking.settingsId(programId);
-        const poolAuthorityId = await Staking.poolAuthorityId(programId);
-        const rewardPoolId = await Staking.rewardPoolId(programId);
         const stakeId = await Staking.stakeAddress(programId, endpoint, staker);
 
         const stakerBeneficiary = await Staking.beneficiary(staker, programId);
@@ -276,8 +274,6 @@ export class Instruction {
             am(endpoint, false, true),
             am(primaryBeneficiary, false, true),
             am(secondaryBeneficiary, false, true),
-            am(poolAuthorityId, false, false),
-            am(rewardPoolId, false, true),
             am(settingsId, false, true),
             am(stakeId, false, true),
             am(SYSVAR_CLOCK_PUBKEY, false, false),
