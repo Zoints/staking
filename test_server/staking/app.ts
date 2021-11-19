@@ -69,7 +69,11 @@ export class App {
 
         this.funder = this.getKeyPair('funder');
         this.deploy_key = this.getKeyPair('deployKey');
-        this.program_id = this.deploy_key.publicKey;
+        if (process.env.PROGRAM_ID !== undefined) {
+            this.program_id = new PublicKey(process.env.PROGRAM_ID);
+        } else {
+            this.program_id = this.deploy_key.publicKey;
+        }
 
         this.mint_id = this.getKeyPair('mint');
         this.mint_authority = this.getKeyPair('mintAuthority');
@@ -192,71 +196,49 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
     }
 
     public async setup() {
-        if (!this.newSeed) {
-            // check if bpf is loaded
-            let acc = await this.connection.getAccountInfo(this.program_id);
-            if (acc === null) {
-                this.loaded = false;
-                console.log(
-                    `Seed file found but program not loaded. Reloading BPF with original seed ${this.seed.toString(
-                        'hex'
-                    )}`
-                );
-                this.newSeed = true;
-            } else if (acc.executable === false) {
-                this.loaded = false;
-                this.seed = crypto.randomBytes(16);
-                fs.writeFileSync(this.seedPath, this.seed.toString('hex'), {});
-                console.log(
-                    `Seed file found but program loaded incorrect. Reloading BPF with new seed ${this.seed.toString(
-                        'hex'
-                    )}`
-                );
-                this.newSeed = true;
-            }
+        const acc = await this.connection.getAccountInfo(this.program_id);
+        if (acc === null) {
+            this.loaded = false;
+        } else if (acc.executable) {
+            this.loaded = true;
         }
 
-        if (this.newSeed) {
-            console.log(`New BPF: initializing program...`);
-            await this.fund();
-            await this.loadBPF();
-            await this.initializeProgram();
-            console.log(`Initialization done.`);
-        } else {
-            // autodetect accounts
+        await this.fund();
+        await this.loadBPF();
+        await this.initializeProgram();
 
-            // wallets
-            for (let i = 0; ; i++) {
-                const wallet = this.getKeyPair(`wallet-${i}`);
-                const assoc = await Token.getAssociatedTokenAddress(
-                    ASSOCIATED_TOKEN_PROGRAM_ID,
-                    TOKEN_PROGRAM_ID,
-                    this.mint_id.publicKey,
-                    wallet.publicKey
-                );
-                const acc = await this.connection.getAccountInfo(assoc);
-                if (acc === null) break;
-                this.wallets.push(wallet);
-            }
-
-            // endpoints
-            for (let i = 0; ; i++) {
-                const endpoint = this.getKeyPair(`endpoint-${i}`);
-                const acc = await this.connection.getAccountInfo(
-                    endpoint.publicKey
-                );
-                if (acc === null) break;
-                this.endpoints.push(endpoint);
-            }
-
-            // nfts
-            for (let i = 0; ; i++) {
-                const nft = this.getKeyPair(`nft-${i}`);
-                const acc = await this.connection.getAccountInfo(nft.publicKey);
-                if (acc === null) break;
-                this.nfts.push(nft);
-            }
+        // wallets
+        for (let i = 0; ; i++) {
+            const wallet = this.getKeyPair(`wallet-${i}`);
+            const assoc = await Token.getAssociatedTokenAddress(
+                ASSOCIATED_TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                this.mint_id.publicKey,
+                wallet.publicKey
+            );
+            const acc = await this.connection.getAccountInfo(assoc);
+            if (acc === null) break;
+            this.wallets.push(wallet);
         }
+
+        // endpoints
+        for (let i = 0; ; i++) {
+            const endpoint = this.getKeyPair(`endpoint-${i}`);
+            const acc = await this.connection.getAccountInfo(
+                endpoint.publicKey
+            );
+            if (acc === null) break;
+            this.endpoints.push(endpoint);
+        }
+
+        // nfts
+        for (let i = 0; ; i++) {
+            const nft = this.getKeyPair(`nft-${i}`);
+            const acc = await this.connection.getAccountInfo(nft.publicKey);
+            if (acc === null) break;
+            this.nfts.push(nft);
+        }
+
         this.loaded = true;
     }
 
@@ -380,7 +362,7 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
 
     private async fund() {
         console.log(`Funding funder with 5 SOL`);
-        let sig = await this.connection.requestAirdrop(
+        const sig = await this.connection.requestAirdrop(
             this.funder.publicKey,
             5 * LAMPORTS_PER_SOL
         );
@@ -389,6 +371,10 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
     }
 
     async loadBPF() {
+        if (this.loaded) {
+            return;
+        }
+
         console.log(`Deploying BPF`);
         const programdata = fs.readFileSync(this.bpfPath);
         if (
@@ -477,12 +463,21 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
     }
 
     private async initializeProgram() {
+        if (
+            (await this.connection.getAccountInfo(
+                await Staking.settingsId(this.program_id)
+            )) !== null
+        ) {
+            console.log(`Program already initialized`);
+            return;
+        }
+
         // Token library doesn't accept tokens with pre-defined mint for some reason
         const balanceNeeded = await Token.getMinBalanceRentForExemptMint(
             this.connection
         );
 
-        let date = new Date();
+        const date = new Date();
         //date.setMinutes(date.getMinutes() + 3);
 
         const transaction = new Transaction()
