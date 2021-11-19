@@ -69,12 +69,10 @@ pub enum StakingInstruction {
     ///     6. `[writable]` Endpoint
     ///     7. `[writable]` Endpoint Primary Beneficiary
     ///     8. `[writable]` Endpoint Secondary Beneficiary
-    ///     9. `[]` Pool Authority
-    ///     10. `[writable]` Reward Pool
-    ///     11. `[writable]` Settings
-    ///     12. `[writable]` Stake Account
-    ///     13. `[]` Clock Sysvar
-    ///     14. `[]` SPL Token Program
+    ///     9. `[writable]` Settings
+    ///     10. `[writable]` Stake Account
+    ///     11. `[]` Clock Sysvar
+    ///     12. `[]` SPL Token Program
     Stake { amount: i64 },
     /// Withdraw Unbounded Tokens
     ///
