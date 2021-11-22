@@ -541,48 +541,31 @@ impl Processor {
 
         // holds the beneficiaries so we don't have duplicate objects
         let mut beneficiaries = vec![];
-        let staker_beneficiary = 0;
-        beneficiaries.push(WorkingBeneficiary {
-            beneficiary: Beneficiary::from_account_info(
-                staker_beneficiary_info,
-                staker_info.key,
+        let staker_beneficiary = insert_beneficiary(
+            &mut beneficiaries,
+            *staker_info.key,
+            Beneficiary::from_account_info(staker_beneficiary_info, staker_info.key, program_id)?,
+        );
+
+        let primary_beneficiary = insert_beneficiary(
+            &mut beneficiaries,
+            endpoint.primary,
+            Beneficiary::from_account_info(
+                primary_beneficiary_info,
+                &endpoint.primary,
                 program_id,
             )?,
-            add: 0,
-            sub: 0,
-        });
+        );
 
-        let primary_beneficiary = if *primary_beneficiary_info.key == *staker_beneficiary_info.key {
-            staker_beneficiary
-        } else {
-            beneficiaries.push(WorkingBeneficiary {
-                beneficiary: Beneficiary::from_account_info(
-                    primary_beneficiary_info,
-                    &endpoint.primary,
-                    program_id,
-                )?,
-                add: 0,
-                sub: 0,
-            });
-            1
-        };
-        let secondary_beneficiary =
-            if *secondary_beneficiary_info.key == *staker_beneficiary_info.key {
-                staker_beneficiary
-            } else if *secondary_beneficiary_info.key == *primary_beneficiary_info.key {
-                primary_beneficiary
-            } else {
-                beneficiaries.push(WorkingBeneficiary {
-                    beneficiary: Beneficiary::from_account_info(
-                        secondary_beneficiary_info,
-                        &endpoint.secondary,
-                        program_id,
-                    )?,
-                    add: 0,
-                    sub: 0,
-                });
-                primary_beneficiary + 1
-            };
+        let secondary_beneficiary = insert_beneficiary(
+            &mut beneficiaries,
+            endpoint.secondary,
+            Beneficiary::from_account_info(
+                secondary_beneficiary_info,
+                &endpoint.secondary,
+                program_id,
+            )?,
+        );
 
         let staking = raw_amount >= 0;
         let amount = raw_amount.abs() as u64;

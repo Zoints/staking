@@ -199,7 +199,7 @@ app.post(
     async (req: express.Request, res: express.Response) => {
         const id = Number(req.params.id);
         let pid = Number(req.body.primary);
-        let sid = Number(req.body.secondary);
+        const sid = Number(req.body.secondary);
 
         if (pid < 0) {
             pid = await staking.addWallet();
