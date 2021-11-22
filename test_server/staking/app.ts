@@ -194,7 +194,7 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
     public async setup() {
         if (!this.newSeed) {
             // check if bpf is loaded
-            let acc = await this.connection.getAccountInfo(this.program_id);
+            const acc = await this.connection.getAccountInfo(this.program_id);
             if (acc === null) {
                 this.loaded = false;
                 console.log(
@@ -380,7 +380,7 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
 
     private async fund() {
         console.log(`Funding funder with 5 SOL`);
-        let sig = await this.connection.requestAirdrop(
+        const sig = await this.connection.requestAirdrop(
             this.funder.publicKey,
             5 * LAMPORTS_PER_SOL
         );
@@ -482,7 +482,7 @@ MINT=${Buffer.from(this.mint_id.secretKey).toString(
             this.connection
         );
 
-        let date = new Date();
+        const date = new Date();
         //date.setMinutes(date.getMinutes() + 3);
 
         const transaction = new Transaction()
