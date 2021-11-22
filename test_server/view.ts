@@ -1,7 +1,6 @@
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { Keypair, PublicKey } from '@solana/web3.js';
-import { Authority, AuthorityType, PRECISION, Staking } from '@zoints/staking';
-import { appendFile } from 'fs';
+import { AuthorityType, Staking } from '@zoints/staking';
 import { App } from './staking/app';
 
 function pretty(d: Date): string {
@@ -15,15 +14,12 @@ export async function viewNFT(staking: App, id: number): Promise<string> {
 
     const pubkey = staking.nfts[id].publicKey;
 
-    const settings = await staking.staking.getSettings();
-
     const token = new Token(
         staking.connection,
         pubkey,
         TOKEN_PROGRAM_ID,
         new Keypair()
     );
-    const mint = await token.getMintInfo();
 
     const allAccounts = await staking.connection.getTokenLargestAccounts(
         pubkey
@@ -589,8 +585,6 @@ export async function wrap(staking: App, content: string): Promise<string> {
     if (remain > 0) {
         unbonding += `${remain} seconds`;
     }
-    const rps = settings.calculateRewardPerShare(new Date());
-
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
