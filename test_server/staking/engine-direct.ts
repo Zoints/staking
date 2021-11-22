@@ -4,7 +4,7 @@ import {
     sendAndConfirmTransaction,
     Transaction
 } from '@solana/web3.js';
-import { Instruction, Authority, AuthorityType } from '@zoints/staking';
+import { Instruction, Authority } from '@zoints/staking';
 import { App } from './app';
 import { StakeEngine } from './engine';
 
