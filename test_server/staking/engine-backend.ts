@@ -238,8 +238,8 @@ export class EngineBackend implements StakeEngine {
             `staking/v1/endpoint/change-beneficiaries/${endpoint.toBase58()}/prepare`,
             {
                 fund: true,
-                newPrimary,
-                newSecondary
+                newPrimary: newPrimary.toBase58(),
+                newSecondary: newSecondary.toBase58()
             }
         );
         console.log(
