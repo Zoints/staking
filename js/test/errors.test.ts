@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import 'mocha';
-import { extractErrorId, parseError } from '../src';
+import { extractErrorId, parseError, StakingErrors } from '../src';
 
 describe('Errors', () => {
     it('should be equal', () => {
@@ -24,6 +24,9 @@ describe('Errors', () => {
         expect(extractErrorId(new Error('custom program error: 0x0'))).to.eql(
             0
         );
+        expect(extractErrorId(new Error('custom program error: 0x09'))).to.eql(
+            9
+        );
         expect(
             extractErrorId(
                 new Error(
@@ -31,5 +34,21 @@ describe('Errors', () => {
                 )
             )
         ).to.eql(17);
+
+        for (
+            let i = 0;
+            i < StakingErrors.SecondaryAuthorityKeysDoNotMatch;
+            i++
+        ) {
+            expect(
+                parseError(
+                    new Error(
+                        `custom program error: 0x${Buffer.from([i]).toString(
+                            'hex'
+                        )}`
+                    )
+                ).message
+            ).to.contain(StakingErrors[i]);
+        }
     });
 });
