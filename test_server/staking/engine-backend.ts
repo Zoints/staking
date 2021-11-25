@@ -98,15 +98,10 @@ export class EngineBackend implements StakeEngine {
         const data = Buffer.from(prep.message, 'base64');
         const userSig = nacl.sign.detached(data, authority.secretKey);
 
-        const result = await this.post(
-            `staking/v1/stake/${
-                epKeys[0]
-            }/${authority.publicKey.toBase58()}/stake`,
-            {
-                message: prep.message,
-                userSignature: Buffer.from(userSig).toString('base64')
-            }
-        );
+        const result = await this.post(`staking/v1/claim`, {
+            message: prep.message,
+            userSignature: Buffer.from(userSig).toString('base64')
+        });
 
         const confirm = await this.get(
             `general/v1/confirm/${result.txSignature}?stakingExtract=true`
