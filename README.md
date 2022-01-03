@@ -1,28 +1,7 @@
+# Zoints Staking
 
-## Running Tests
+Layout of this repository:
 
-Install JavaScript dependencies:
-
-```bash
-cd js
-npm i
-npm run build
-cd ../test_server
-npm i
-```
-
-Build Solana program:
-
-```bash
-cd ../program
-cargo build-bpf
-```
-
-Start Solana node and interactive web server:
-
-```bash
-cd ../test_server
-docker-compose up -d
-
-npm run start
-```
+* [/program](/program) The code for the Solana staking program used by Zoints
+* [/js](/js) The code for the [@zoints/staking](https://www.npmjs.com/package/@zoints/staking) library published on npmjs
+* [/test_server](/test_server) A developer test environment to allow quick simulations of the code and test features
