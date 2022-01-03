@@ -168,7 +168,7 @@ impl Settings {
     }
 }
 
-/// The PDA that owns the pool associated accounts
+/// The PDA that owns the reward pool associated account
 #[derive(Debug, PartialEq, Clone, Copy, Eq)]
 pub struct PoolAuthority {}
 impl PoolAuthority {
@@ -204,7 +204,10 @@ impl RewardPool {
     }
 }
 
-/// The way that the "Authority" address should be interpreted.
+/// The way that the "Authority" address of a Stake should be interpreted.
+/// A "Basic" authority is a direct ownership of the stake by a wallet address.
+/// An "NFT" authority is a delegated ownership, where the current holder of the
+/// NFT is considered the owner.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, BorshDeserialize, BorshSerialize)]
 pub enum Authority {
     /// A regular Solana address that can sign instructions
@@ -214,6 +217,7 @@ pub enum Authority {
 }
 
 impl Authority {
+    /// Verifies that an account matches the authority's type
     pub fn verify(&self, account: &AccountInfo) -> Result<(), ProgramError> {
         match self {
             Authority::Basic(pubkey) => {
@@ -242,6 +246,9 @@ impl Authority {
         }
     }
 
+    /// Verifies that the owner and signer accounts provided a valid signature for the authority type.
+    /// For a basic authority, the owner and signer are the same account.
+    /// For an NFT authority, the owner is the associated SPL token accont, the signer is the associated account's owner
     pub fn has_signed(&self, owner: &AccountInfo, signer: &AccountInfo) -> bool {
         match self {
             Authority::Basic(key) => {
@@ -358,7 +365,7 @@ impl Beneficiary {
     }
 }
 
-/// The account that initiated a stake
+/// The account that holds the data for a staker staking with a specific Endpoint.
 #[derive(Debug, PartialEq, BorshDeserialize, BorshSerialize, Clone, Copy, Eq)]
 pub struct Stake {
     /// Time the account was initiated
